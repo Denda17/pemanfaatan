@@ -1,0 +1,92 @@
+@import 'tailwindcss';
+
+@source '../views/**/*.blade.php';
+@source '../../app/**/*.php';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --color-behance-blue: #0057FF;
+    --color-jabar-emerald: #059669;
+    --color-jabar-teal: #0D9488;
+}
+
+/* Behance-inspired Light Aesthetic */
+.behance-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(229, 231, 235, 0.8);
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.behance-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+    border-color: rgba(5, 150, 105, 0.3);
+}
+
+/* Subtle Creative Mesh Background */
+.bg-mesh-light {
+    background-color: #FFFFFF;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.07) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.07) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(245, 158, 11, 0.05) 0px, transparent 50%);
+}
+
+/* Leaflet Custom Popup Modernization (Behance Style) */
+.leaflet-popup-content-wrapper {
+    border-radius: 1.5rem !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.18), 0 10px 20px -5px rgba(15, 23, 42, 0.08) !important;
+    border: 1px solid rgba(229, 231, 235, 0.95) !important;
+    background: #FFFFFF !important;
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    line-height: 1.4 !important;
+}
+
+.leaflet-container {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+}
+
+/* Leaflet Custom Marker Icons with Hover & Pulse Animations */
+.bmd-marker-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.bmd-marker-wrapper:hover {
+    transform: scale(1.35);
+    z-index: 9999 !important;
+}
+
+.bmd-marker-pulse {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+    opacity: 0.7;
+    animation: bmd-pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes bmd-pulse-ring {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+    70% {
+        transform: scale(2.2);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(2.4);
+        opacity: 0;
+    }
+}

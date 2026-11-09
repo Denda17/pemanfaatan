@@ -1,0 +1,56 @@
+services:
+  app:
+    image: monev-aset-app:latest
+    container_name: bmd_pemanfaatan_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+      - ./storage:/var/www/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bmd-network
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: bmd_pemanfaatan_nginx
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - bmd-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: bmd_pemanfaatan_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bmd_pemanfaatan
+      POSTGRES_USER: bmd_user
+      POSTGRES_PASSWORD: bmd_password
+      POSTGRES_INITDB_ARGS: "--locale=en_US.UTF-8"
+    ports:
+      - "25432:5432"
+    volumes:
+      - bmd_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bmd_user -d bmd_pemanfaatan"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bmd-network
+
+volumes:
+  bmd_postgres_data:
+
+networks:
+  bmd-network:
+    driver: bridge
