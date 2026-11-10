@@ -48,6 +48,36 @@
     line-height: 1.4 !important;
 }
 
+/* Force high-contrast text colors for action buttons inside Leaflet Popups */
+.leaflet-popup-content a {
+    text-decoration: none !important;
+}
+
+.leaflet-popup-content a[href*="booking"],
+.leaflet-popup-content a.bg-emerald-600,
+.leaflet-popup-content a.bg-emerald-700 {
+    color: #ffffff !important;
+    background-color: #059669 !important;
+}
+
+.leaflet-popup-content a[href*="booking"] span,
+.leaflet-popup-content a.bg-emerald-600 span {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+}
+
+.leaflet-popup-content a[href*="booking"] svg,
+.leaflet-popup-content a.bg-emerald-600 svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+.leaflet-popup-content a[href*="booking"]:hover,
+.leaflet-popup-content a.bg-emerald-600:hover {
+    color: #ffffff !important;
+    background-color: #047857 !important;
+}
+
 .leaflet-container {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
 }

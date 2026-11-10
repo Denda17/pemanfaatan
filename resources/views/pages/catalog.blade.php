@@ -459,12 +459,12 @@
 
                                 <!-- Dual Action Buttons: Detail & Ajukan Sewa -->
                                 <div class="grid grid-cols-2 gap-2">
-                                    <a href="${item.url}" class="py-2 px-3 text-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs transition flex items-center justify-center">
-                                        <span>Detail Aset</span>
+                                    <a href="${item.url}" class="py-2.5 px-3 text-center rounded-xl bg-gray-100 hover:bg-gray-200 !text-gray-800 font-extrabold text-xs transition flex items-center justify-center border border-gray-200/80 no-underline shadow-2xs" style="color: #1f2937 !important; text-decoration: none !important;">
+                                        <span style="color: #1f2937 !important;">Detail Aset</span>
                                     </a>
-                                    <a href="${item.booking_url || (item.url + '#form-booking')}" class="py-2 px-3 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-md shadow-emerald-600/25 transition flex items-center justify-center gap-1 group">
-                                        <span>Ajukan Sewa</span>
-                                        <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                    <a href="${item.booking_url || (item.url + '#form-booking')}" class="py-2.5 px-3 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] !text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center gap-1.5 group no-underline" style="color: #ffffff !important; background-color: #059669 !important; text-decoration: none !important;">
+                                        <span style="color: #ffffff !important; font-weight: 800 !important;">Ajukan Sewa</span>
+                                        <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" style="color: #ffffff !important; stroke: #ffffff !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                                     </a>
                                 </div>
                             </div>
@@ -505,9 +505,9 @@
                                 </div>
 
                                 <!-- Detail Action Button -->
-                                <a href="${item.url}" class="block w-full py-2.5 px-4 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-md shadow-emerald-600/25 transition flex items-center justify-center gap-1.5 group">
-                                    <span>Lihat Detail Lengkap</span>
-                                    <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                <a href="${item.url}" class="block w-full py-2.5 px-4 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] !text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center gap-1.5 group no-underline" style="color: #ffffff !important; background-color: #059669 !important; text-decoration: none !important;">
+                                    <span style="color: #ffffff !important; font-weight: 800 !important;">Lihat Detail Lengkap</span>
+                                    <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" style="color: #ffffff !important; stroke: #ffffff !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                                 </a>
                             </div>
                         `;
