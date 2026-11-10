@@ -14,12 +14,15 @@ class AssetPemanfaatan extends Model
 
     protected $fillable = [
         'asset_id',
+        'nomor_urut_excel',
         'jenis_pemanfaatan',
+        'status_pengelola',
         'nama_mitra',
         'jenis_mitra',
         'kontak_mitra',
         'besaran_sewa_tahunan',
         'jangka_waktu_tahun',
+        'jangka_waktu_teks',
         'total_sewa',
         'mekanisme_pembayaran',
         'nomor_persetujuan',
@@ -28,6 +31,7 @@ class AssetPemanfaatan extends Model
         'tanggal_awal',
         'tanggal_akhir',
         'status_perpanjangan',
+        'kategori_status',
         'keterangan',
     ];
 

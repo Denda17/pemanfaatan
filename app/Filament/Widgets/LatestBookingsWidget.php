@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 class LatestBookingsWidget extends BaseWidget
 {
     protected static bool $isLazy = false;
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
     protected int | string | array $columnSpan = 'full';
     protected static ?string $heading = 'Permohonan Booking Aset Terbaru (Perlu Tindak Lanjut Admin)';
 

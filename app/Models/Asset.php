@@ -17,9 +17,11 @@ class Asset extends Model implements HasMedia
 
     protected $fillable = [
         'kode_aset',
+        'nomor_urut_excel',
         'nama_objek',
         'slug',
         'bentuk_objek',
+        'status_pengelola',
         'luas_tanah',
         'luas_bangunan',
         'alamat',
