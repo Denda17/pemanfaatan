@@ -48,6 +48,32 @@ class AssetPemanfaatan extends Model
         return $this->belongsTo(Asset::class);
     }
 
+    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AssetPemanfaatanPayment::class, 'asset_pemanfaatan_id')->orderBy('termin_ke');
+    }
+
+    public function getTotalDisetorAttribute(): float
+    {
+        return (float) $this->payments()->where('status_pembayaran', 'lunas')->sum('nominal_disetor');
+    }
+
+    public function getSisaKewajibanAttribute(): float
+    {
+        $totalSewa = (float) ($this->total_sewa ?? 0);
+        return max(0, $totalSewa - $this->total_disetor);
+    }
+
+    public function getPersentasePelunasanAttribute(): float
+    {
+        $totalSewa = (float) ($this->total_sewa ?? 0);
+        if ($totalSewa <= 0) {
+            return 100.0;
+        }
+
+        return min(100.0, round(($this->total_disetor / $totalSewa) * 100, 1));
+    }
+
     /**
      * Format nomor telepon mitra ke standar internasional 62...
      */

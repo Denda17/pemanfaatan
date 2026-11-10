@@ -64,11 +64,74 @@
                 </p>
             </div>
 
-            <!-- Main Showcase Image (Behance Rounded Gallery Frame) -->
-            <div class="bg-white rounded-3xl overflow-hidden shadow-md shadow-gray-200/50 border border-gray-200/90">
-                <div class="relative aspect-[16/10] sm:aspect-[2/1] bg-gray-100">
-                    <img id="main-gallery-img" src="{{ $asset->thumbnail_url }}" alt="{{ $asset->nama_objek }}" class="w-full h-full object-cover">
+            <!-- Interactive Multi-Photo Gallery & Site Plan Frame (Behance Studio Aesthetic) -->
+            <div class="bg-white rounded-3xl overflow-hidden shadow-md shadow-gray-200/50 border border-gray-200/90 p-4 sm:p-5">
+                
+                <!-- Gallery Mode Switcher: Foto Lapangan vs Denah Tapak -->
+                <div class="flex items-center justify-between pb-3.5 mb-3 border-b border-gray-100 flex-wrap gap-2">
+                    <div class="inline-flex p-1 rounded-2xl bg-gray-100/90 border border-gray-200/70 text-xs font-bold">
+                        <button type="button" id="tab-btn-photos" class="px-3.5 py-1.5 rounded-xl bg-white text-emerald-800 font-extrabold shadow-2xs transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span>Foto Lapangan</span>
+                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-50 text-[10px] text-emerald-700 font-extrabold">{{ count($asset->gallery_urls) }}</span>
+                        </button>
+
+                        @if($asset->hasSitePlan())
+                            <button type="button" id="tab-btn-siteplan" class="px-3.5 py-1.5 rounded-xl text-gray-600 hover:text-gray-900 font-bold transition flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                <span>Denah Tapak / Site Plan</span>
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            </button>
+                        @endif
+                    </div>
+
+                    <!-- Fullscreen Zoom Button -->
+                    <button type="button" id="btn-zoom-main" class="px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold border border-gray-200 transition flex items-center gap-1.5" title="Buka Gambar Resolusi Penuh">
+                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+                        <span>Perbesar</span>
+                    </button>
                 </div>
+
+                <!-- Main Display Frame (Photo Stage) -->
+                <div id="gallery-photo-view">
+                    <div class="relative aspect-[16/10] sm:aspect-[2/1] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100">
+                        <img id="main-gallery-img" src="{{ $asset->thumbnail_url }}" alt="{{ $asset->nama_objek }}" class="w-full h-full object-cover transition duration-300">
+                        <div class="absolute bottom-3 right-3 bg-gray-950/70 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/20">
+                            <span id="gallery-counter">1</span> / {{ count($asset->gallery_urls) }} Foto
+                        </div>
+                    </div>
+
+                    <!-- Thumbnail Strip (Klik untuk berganti foto) -->
+                    @if(count($asset->gallery_urls) > 1)
+                        <div class="flex items-center gap-2.5 mt-3 overflow-x-auto pb-1 pt-0.5">
+                            @foreach($asset->gallery_urls as $idx => $imgUrl)
+                                <button type="button" class="gallery-thumb-btn shrink-0 w-20 h-14 sm:w-24 sm:h-16 rounded-xl overflow-hidden border-2 {{ $idx === 0 ? 'border-emerald-600 ring-2 ring-emerald-500/30' : 'border-gray-200 opacity-70 hover:opacity-100' }} transition cursor-pointer" data-img-url="{{ $imgUrl }}" data-index="{{ $idx + 1 }}">
+                                    <img src="{{ $imgUrl }}" alt="Sudut {{ $idx + 1 }}" class="w-full h-full object-cover">
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Site Plan Display Frame (Hidden by default) -->
+                @if($asset->hasSitePlan())
+                    <div id="gallery-siteplan-view" class="hidden">
+                        <div class="relative aspect-[16/10] sm:aspect-[2/1] bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 p-2 flex items-center justify-center">
+                            <img id="siteplan-img" src="{{ $asset->site_plan_image_url }}" alt="Denah Tapak {{ $asset->nama_objek }}" class="max-w-full max-h-full object-contain">
+                            <div class="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md text-gray-800 text-[10px] font-extrabold px-3 py-1 rounded-full border border-gray-200 shadow-2xs">
+                                Peta Ukur & Tapak Bidang Tanah BMD
+                            </div>
+                        </div>
+                        <div class="mt-2.5 flex items-center justify-between text-xs text-gray-500 px-1">
+                            <span>Format resolusi tinggi denah tanah resmi UPTD</span>
+                            <a href="{{ $asset->site_plan_image_url }}" target="_blank" class="text-emerald-700 font-extrabold hover:underline flex items-center gap-1">
+                                <span>Unduh / Buka Ukuran Asli</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
             <!-- Key Specifications Grid Card -->
@@ -568,6 +631,77 @@
         }
 
         hitungSimulasi();
+
+        // Multi-Photo Gallery & Site Plan Interactive Logic
+        const mainImg = document.getElementById('main-gallery-img');
+        const counterEl = document.getElementById('gallery-counter');
+        const thumbBtns = document.querySelectorAll('.gallery-thumb-btn');
+        const btnZoom = document.getElementById('btn-zoom-main');
+        const tabBtnPhotos = document.getElementById('tab-btn-photos');
+        const tabBtnSiteplan = document.getElementById('tab-btn-siteplan');
+        const viewPhotos = document.getElementById('gallery-photo-view');
+        const viewSiteplan = document.getElementById('gallery-siteplan-view');
+        const siteplanImg = document.getElementById('siteplan-img');
+
+        let currentActiveImgUrl = mainImg ? mainImg.src : '';
+
+        thumbBtns.forEach(btn => {
+            btn.addEventListener('click', function () {
+                const url = this.getAttribute('data-img-url');
+                const idx = this.getAttribute('data-index');
+
+                if (mainImg && url) {
+                    mainImg.style.opacity = '0.4';
+                    setTimeout(() => {
+                        mainImg.src = url;
+                        mainImg.style.opacity = '1';
+                        currentActiveImgUrl = url;
+                    }, 150);
+                }
+
+                if (counterEl && idx) {
+                    counterEl.textContent = idx;
+                }
+
+                thumbBtns.forEach(b => {
+                    b.classList.remove('border-emerald-600', 'ring-2', 'ring-emerald-500/30');
+                    b.classList.add('border-gray-200', 'opacity-70');
+                });
+                this.classList.add('border-emerald-600', 'ring-2', 'ring-emerald-500/30');
+                this.classList.remove('border-gray-200', 'opacity-70');
+            });
+        });
+
+        if (btnZoom) {
+            btnZoom.addEventListener('click', function () {
+                const targetUrl = (viewSiteplan && !viewSiteplan.classList.contains('hidden') && siteplanImg) 
+                    ? siteplanImg.src 
+                    : (mainImg ? mainImg.src : currentActiveImgUrl);
+                if (targetUrl) {
+                    window.open(targetUrl, '_blank');
+                }
+            });
+        }
+
+        if (tabBtnPhotos && tabBtnSiteplan && viewPhotos && viewSiteplan) {
+            tabBtnPhotos.addEventListener('click', function () {
+                viewPhotos.classList.remove('hidden');
+                viewSiteplan.classList.add('hidden');
+                tabBtnPhotos.classList.add('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
+                tabBtnPhotos.classList.remove('text-gray-600');
+                tabBtnSiteplan.classList.remove('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
+                tabBtnSiteplan.classList.add('text-gray-600');
+            });
+
+            tabBtnSiteplan.addEventListener('click', function () {
+                viewSiteplan.classList.remove('hidden');
+                viewPhotos.classList.add('hidden');
+                tabBtnSiteplan.classList.add('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
+                tabBtnSiteplan.classList.remove('text-gray-600');
+                tabBtnPhotos.classList.remove('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
+                tabBtnPhotos.classList.add('text-gray-600');
+            });
+        }
     });
 </script>
 

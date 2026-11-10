@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Asset;
 use App\Models\AssetPemanfaatan;
+use App\Models\AssetPemanfaatanPayment;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -20,6 +21,7 @@ class StatsOverviewWidget extends BaseWidget
         $berakhir = AssetPemanfaatan::where('kategori_status', 'berakhir')->count();
         $warningPerpanjangan = AssetPemanfaatan::where('status_perpanjangan', 'peringatan_jatuh_tempo')->count();
         $totalNilaiSewaAktif = AssetPemanfaatan::where('kategori_status', 'sewa_aktif')->sum('besaran_sewa_tahunan');
+        $totalSetoranKasda = AssetPemanfaatanPayment::where('status_pembayaran', 'lunas')->sum('nominal_disetor');
 
         return [
             Stat::make('Total Rekap BMD', number_format($totalAset, 0, ',', '.'))
@@ -47,8 +49,8 @@ class StatsOverviewWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color($warningPerpanjangan > 0 ? 'danger' : 'success'),
 
-            Stat::make('Penerimaan Sewa / Thn', 'Rp ' . number_format($totalNilaiSewaAktif, 0, ',', '.'))
-                ->description('Akumulasi Kontrak Aktif Kas Daerah')
+            Stat::make('Realisasi Masuk Kasda', 'Rp ' . number_format($totalSetoranKasda, 0, ',', '.'))
+                ->description('Total Setoran Retribusi Ber-STS Resmi')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
         ];

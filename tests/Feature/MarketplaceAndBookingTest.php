@@ -172,6 +172,42 @@ class MarketplaceAndBookingTest extends TestCase
         $bookingResponse->assertSessionHas('error', 'Maaf, aset ini sedang dalam masa sewa aktif.');
     }
 
+    public function test_multi_photo_gallery_and_site_plan_render_on_asset_detail(): void
+    {
+        $asset = Asset::first();
+        $this->assertNotNull($asset);
+
+        // Berikan site plan dan galeri untuk pengujian
+        $asset->update([
+            'site_plan_url' => 'assets/site-plans/sample-plan.jpg',
+            'foto_galeri' => [
+                'https://images.unsplash.com/photo-1500382017468-9049fed747ef',
+                'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab',
+            ],
+        ]);
+
+        $response = $this->get('/aset/' . $asset->slug);
+        $response->assertStatus(200);
+        $response->assertSee('Foto Lapangan');
+        $response->assertSee('Denah Tapak / Site Plan');
+        $response->assertSee('gallery-thumb-btn', false);
+    }
+
+    public function test_kasda_payments_relation_and_tracking_work(): void
+    {
+        $lease = \App\Models\AssetPemanfaatan::where('kategori_status', 'sewa_aktif')->first();
+        $this->assertNotNull($lease);
+
+        $this->assertGreaterThan(0, $lease->payments()->count());
+        $this->assertGreaterThan(0, $lease->total_disetor);
+        $this->assertGreaterThanOrEqual(0, $lease->persentase_pelunasan);
+
+        $payment = $lease->payments()->where('status_pembayaran', 'lunas')->first();
+        $this->assertNotNull($payment);
+        $this->assertStringStartsWith('STS-', $payment->nomor_sts);
+        $this->assertEquals('Lunas (Disetor Kasda)', $payment->status_label);
+    }
+
     public function test_check_expiring_leases_command_runs_successfully(): void
     {
         $exitCode = \Illuminate\Support\Facades\Artisan::call('bmd:check-expiring-leases');

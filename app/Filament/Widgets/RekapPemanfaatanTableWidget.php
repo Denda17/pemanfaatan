@@ -115,6 +115,14 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                         default => ucfirst($state ?? '-'),
                     }),
 
+                Tables\Columns\TextColumn::make('total_disetor')
+                    ->label('Disetor Kasda')
+                    ->money('IDR', locale: 'id')
+                    ->color('success')
+                    ->weight('bold')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->description(fn (AssetPemanfaatan $record) => $record->persentase_pelunasan . '% Lunas'),
+
                 Tables\Columns\TextColumn::make('keterangan')
                     ->label('Keterangan / Progres')
                     ->wrap()
@@ -276,7 +284,36 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                                     ->placeholder('-')
                                     ->columnSpanFull(),
                             ])->columns(4),
+
+                        Infolists\Components\Section::make('4. Realisasi Setoran Kasda (STS / NTPN)')
+                            ->schema([
+                                Infolists\Components\TextEntry::make('total_sewa')
+                                    ->label('Total Kewajiban Sewa PKS')
+                                    ->money('IDR', locale: 'id'),
+                                Infolists\Components\TextEntry::make('total_disetor')
+                                    ->label('Total Riil Disetor ke Kasda')
+                                    ->money('IDR', locale: 'id')
+                                    ->weight('bold')
+                                    ->color('success'),
+                                Infolists\Components\TextEntry::make('persentase_pelunasan')
+                                    ->label('Persentase Realisasi Pelunasan')
+                                    ->formatStateUsing(fn ($state) => $state . '%')
+                                    ->badge()
+                                    ->color(fn ($state) => $state >= 100 ? 'success' : ($state > 0 ? 'warning' : 'danger')),
+                                Infolists\Components\TextEntry::make('sisa_kewajiban')
+                                    ->label('Sisa Kewajiban / Termin Mendatang')
+                                    ->money('IDR', locale: 'id')
+                                    ->color('danger'),
+                            ])->columns(4),
                     ]),
+
+                Tables\Actions\Action::make('kelolaSetoran')
+                    ->label('Setoran')
+                    ->icon('heroicon-m-banknotes')
+                    ->color('success')
+                    ->tooltip('Kelola Riwayat Termin & Bukti Setor STS Kasda')
+                    ->url(fn (AssetPemanfaatan $record): string => route('filament.admin.resources.asset-pemanfaatans.edit', ['record' => $record->id]))
+                    ->visible(fn (AssetPemanfaatan $record): bool => $record->kategori_status === 'sewa_aktif'),
 
                 Tables\Actions\Action::make('bukaMaps')
                     ->label('Peta')

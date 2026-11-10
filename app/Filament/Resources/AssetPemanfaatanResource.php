@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AssetPemanfaatanResource\Pages;
+use App\Filament\Resources\AssetPemanfaatanResource\RelationManagers\PaymentsRelationManager;
 use App\Models\AssetPemanfaatan;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -239,7 +240,7 @@ class AssetPemanfaatanResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            PaymentsRelationManager::class,
         ];
     }
 

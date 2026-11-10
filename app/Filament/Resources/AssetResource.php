@@ -133,20 +133,34 @@ class AssetResource extends Resource
                                     ->columnSpanFull(),
                             ])->columns(2),
 
-                        Forms\Components\Tabs\Tab::make('4. Foto & Galeri Thumbnail')
+                        Forms\Components\Tabs\Tab::make('4. Foto, Galeri & Site Plan')
                             ->schema([
-                                Forms\Components\FileUpload::make('thumbnail')
-                                    ->label('Foto Thumbnail Utama (Tampil di Kartu Marketplace)')
-                                    ->directory('assets-thumbnail')
+                                Forms\Components\FileUpload::make('foto_utama')
+                                    ->label('Foto Utama Objek (Cover Marketplace)')
+                                    ->disk('public')
+                                    ->directory('assets/thumbnails')
                                     ->image()
                                     ->imageEditor()
+                                    ->helperText('Foto resolusi tinggi tampak depan objek aset BMD')
                                     ->columnSpanFull(),
 
-                                Forms\Components\FileUpload::make('gallery')
-                                    ->label('Galeri Foto Tambahan / Denah / Site Plan')
-                                    ->directory('assets-gallery')
+                                Forms\Components\FileUpload::make('foto_galeri')
+                                    ->label('Galeri Multi-Foto Lapangan (Multi Angle)')
+                                    ->disk('public')
+                                    ->directory('assets/gallery')
                                     ->multiple()
+                                    ->reorderable()
                                     ->image()
+                                    ->helperText('Unggah foto kondisi fisik lapangan, jalan akses, lingkungan sekitar (bisa lebih dari satu)')
+                                    ->columnSpanFull(),
+
+                                Forms\Components\FileUpload::make('site_plan_url')
+                                    ->label('Denah Tapak / Peta Site Plan Bidang Tanah')
+                                    ->disk('public')
+                                    ->directory('assets/site-plans')
+                                    ->image()
+                                    ->imageEditor()
+                                    ->helperText('Gambar peta ukur BPN, denah tapak, atau site plan arsitektur bidang tanah')
                                     ->columnSpanFull(),
                             ]),
                     ])
@@ -158,7 +172,7 @@ class AssetResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('thumbnail')
+                Tables\Columns\ImageColumn::make('foto_utama')
                     ->label('Foto')
                     ->circular()
                     ->defaultImageUrl(fn (Asset $record) => $record->thumbnail_url),
