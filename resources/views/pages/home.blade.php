@@ -278,10 +278,17 @@
                         <a href="{{ route('catalog.show', $asset->slug) }}" class="flex-grow py-2.5 px-4 rounded-full text-center text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
                             Lihat Detail
                         </a>
-                        <a href="{{ route('catalog.show', $asset->slug) }}#form-booking" class="py-2.5 px-4 rounded-full text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition flex items-center gap-1.5 shrink-0">
-                            <span>Ajukan Minat</span>
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                        </a>
+                        @if($asset->status_ketersediaan === 'tersewa')
+                            <button type="button" disabled class="py-2.5 px-4 rounded-full text-xs font-extrabold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed flex items-center gap-1.5 shrink-0 opacity-75" title="Aset sedang dalam masa sewa aktif">
+                                <span>Tersewa</span>
+                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            </button>
+                        @else
+                            <a href="{{ route('catalog.show', $asset->slug) }}#form-booking" class="py-2.5 px-4 rounded-full text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition flex items-center gap-1.5 shrink-0">
+                                <span>Ajukan Minat</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>

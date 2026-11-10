@@ -308,9 +308,15 @@
                             <a href="{{ route('catalog.show', $asset->slug) }}" class="flex-grow py-2 px-3 rounded-full text-center text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
                                 Detail Aset
                             </a>
-                            <a href="{{ route('catalog.show', $asset->slug) }}#form-booking" class="py-2 px-3 rounded-full text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center justify-center shrink-0 shadow-xs" title="Ajukan Minat Sewa">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                            </a>
+                            @if($asset->status_ketersediaan === 'tersewa')
+                                <button type="button" disabled class="py-2 px-3 rounded-full text-xs font-extrabold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed flex items-center justify-center shrink-0 opacity-75" title="Aset sedang dalam masa sewa aktif">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                </button>
+                            @else
+                                <a href="{{ route('catalog.show', $asset->slug) }}#form-booking" class="py-2 px-3 rounded-full text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center justify-center shrink-0 shadow-xs" title="Ajukan Minat Sewa">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                                </a>
+                            @endif
                         </div>
                     </div>
 
@@ -462,10 +468,17 @@
                                     <a href="${item.url}" class="py-2.5 px-3 text-center rounded-xl bg-gray-100 hover:bg-gray-200 !text-gray-800 font-extrabold text-xs transition flex items-center justify-center border border-gray-200/80 no-underline shadow-2xs" style="color: #1f2937 !important; text-decoration: none !important;">
                                         <span style="color: #1f2937 !important;">Detail Aset</span>
                                     </a>
-                                    <a href="${item.booking_url || (item.url + '#form-booking')}" class="py-2.5 px-3 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] !text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center gap-1.5 group no-underline" style="color: #ffffff !important; background-color: #059669 !important; text-decoration: none !important;">
-                                        <span style="color: #ffffff !important; font-weight: 800 !important;">Ajukan Sewa</span>
-                                        <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" style="color: #ffffff !important; stroke: #ffffff !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                                    </a>
+                                    ${statusKey === 'tersewa' ? `
+                                        <button type="button" disabled class="py-2.5 px-3 text-center rounded-xl bg-gray-100 text-gray-400 font-extrabold text-xs border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 opacity-75" title="Aset sedang dalam masa sewa aktif">
+                                            <span>Tersewa</span>
+                                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                        </button>
+                                    ` : `
+                                        <a href="${item.booking_url || (item.url + '#form-booking')}" class="py-2.5 px-3 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] !text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center gap-1.5 group no-underline" style="color: #ffffff !important; background-color: #059669 !important; text-decoration: none !important;">
+                                            <span style="color: #ffffff !important; font-weight: 800 !important;">Ajukan Sewa</span>
+                                            <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" style="color: #ffffff !important; stroke: #ffffff !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                        </a>
+                                    `}
                                 </div>
                             </div>
                         `;
@@ -504,11 +517,23 @@
                                     </div>
                                 </div>
 
-                                <!-- Detail Action Button -->
-                                <a href="${item.url}" class="block w-full py-2.5 px-4 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] !text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center gap-1.5 group no-underline" style="color: #ffffff !important; background-color: #059669 !important; text-decoration: none !important;">
-                                    <span style="color: #ffffff !important; font-weight: 800 !important;">Lihat Detail Lengkap</span>
-                                    <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" style="color: #ffffff !important; stroke: #ffffff !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                                </a>
+                                <!-- Dual Action Buttons: Detail & Ajukan Sewa -->
+                                <div class="grid grid-cols-2 gap-2">
+                                    <a href="${item.url}" class="py-2.5 px-3 text-center rounded-xl bg-gray-100 hover:bg-gray-200 !text-gray-800 font-extrabold text-xs transition flex items-center justify-center border border-gray-200/80 no-underline shadow-2xs" style="color: #1f2937 !important; text-decoration: none !important;">
+                                        <span style="color: #1f2937 !important;">Detail Aset</span>
+                                    </a>
+                                    ${statusKey === 'tersewa' ? `
+                                        <button type="button" disabled class="py-2.5 px-3 text-center rounded-xl bg-gray-100 text-gray-400 font-extrabold text-xs border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 opacity-75" title="Aset sedang dalam masa sewa aktif">
+                                            <span>Tersewa</span>
+                                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                        </button>
+                                    ` : `
+                                        <a href="${item.booking_url || (item.url + '#form-booking')}" class="py-2.5 px-3 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] !text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center gap-1.5 group no-underline" style="color: #ffffff !important; background-color: #059669 !important; text-decoration: none !important;">
+                                            <span style="color: #ffffff !important; font-weight: 800 !important;">Ajukan Sewa</span>
+                                            <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" style="color: #ffffff !important; stroke: #ffffff !important;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                        </a>
+                                    `}
+                                </div>
                             </div>
                         `;
                     }

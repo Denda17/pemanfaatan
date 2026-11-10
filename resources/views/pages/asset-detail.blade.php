@@ -306,10 +306,17 @@
                     </div>
 
                     <!-- Tombol Autofill ke Form Booking -->
-                    <button type="button" id="btn-terapkan-simulasi" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs hover:shadow-sm transition flex items-center justify-center gap-1.5 group cursor-pointer active:scale-[0.99]">
-                        <svg class="w-4 h-4 text-emerald-200 group-hover:translate-y-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-                        <span>Gunakan Hasil Simulasi pada Formulir</span>
-                    </button>
+                    @if($asset->status_ketersediaan === 'tersewa')
+                        <button type="button" disabled class="w-full py-2.5 px-3 rounded-xl bg-gray-100 text-gray-400 font-extrabold text-xs border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 opacity-75" title="Aset sedang dalam masa sewa aktif">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            <span>Aset Sedang Tersewa Aktif</span>
+                        </button>
+                    @else
+                        <button type="button" id="btn-terapkan-simulasi" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs hover:shadow-sm transition flex items-center justify-center gap-1.5 group cursor-pointer active:scale-[0.99]">
+                            <svg class="w-4 h-4 text-emerald-200 group-hover:translate-y-0.5 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                            <span>Gunakan Hasil Simulasi pada Formulir</span>
+                        </button>
+                    @endif
                 </div>
 
                 <!-- Booking Form Card (Clean White Behance Studio Card) -->

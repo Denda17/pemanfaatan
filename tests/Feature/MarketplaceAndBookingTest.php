@@ -128,7 +128,7 @@ class MarketplaceAndBookingTest extends TestCase
 
     public function test_asset_detail_page_contains_permendagri_calculator(): void
     {
-        $asset = Asset::first();
+        $asset = Asset::where('status_ketersediaan', 'tersedia')->first() ?? Asset::first();
         $this->assertNotNull($asset);
 
         $response = $this->get('/aset/' . $asset->slug);
@@ -138,6 +138,38 @@ class MarketplaceAndBookingTest extends TestCase
         $response->assertSee('Pelaku Usaha Mikro, Kecil', false);
         $response->assertSee('Insentif Afirmatif');
         $response->assertSee('Gunakan Hasil Simulasi pada Formulir');
+    }
+
+    public function test_rented_asset_disables_booking_button_and_blocks_submission(): void
+    {
+        $rentedAsset = Asset::where('status_ketersediaan', 'tersewa')->first();
+        $this->assertNotNull($rentedAsset, 'Harus ada aset berstatus tersewa.');
+
+        // 1. Detail aset tersewa tetap dapat diakses dengan sukses
+        $detailResponse = $this->get('/aset/' . $rentedAsset->slug);
+        $detailResponse->assertStatus(200);
+        $detailResponse->assertSee($rentedAsset->nama_objek);
+        $detailResponse->assertSee('Objek ini Berstatus Tersewa Aktif');
+        $detailResponse->assertSee('Aset Sedang Tersewa Aktif');
+
+        // 2. Pada halaman beranda & katalog, aset tersewa menampilkan indikator disabled
+        $homeResponse = $this->get('/');
+        $homeResponse->assertStatus(200);
+        $homeResponse->assertSee('Tersewa');
+
+        $catalogResponse = $this->get('/katalog');
+        $catalogResponse->assertStatus(200);
+        $catalogResponse->assertSee('Detail Aset');
+
+        // 3. Pengajuan booking untuk aset berstatus tersewa diblokir
+        $postData = [
+            'nama_pemohon' => 'Ujang Rented Test',
+            'nomor_whatsapp' => '081999888777',
+            'rencana_peruntukan' => 'Uji Coba Booking Aset Tersewa',
+            'durasi_sewa_tahun' => 1,
+        ];
+        $bookingResponse = $this->post('/aset/' . $rentedAsset->slug . '/booking', $postData);
+        $bookingResponse->assertSessionHas('error', 'Maaf, aset ini sedang dalam masa sewa aktif.');
     }
 
     public function test_check_expiring_leases_command_runs_successfully(): void
