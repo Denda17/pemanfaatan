@@ -213,4 +213,47 @@ class MarketplaceAndBookingTest extends TestCase
         $exitCode = \Illuminate\Support\Facades\Artisan::call('bmd:check-expiring-leases');
         $this->assertEquals(0, $exitCode);
     }
+
+    public function test_dasar_hukum_page_loads_with_all_regulations_and_filters(): void
+    {
+        // 1. Indeks regulasi
+        $response = $this->get('/dasar-hukum');
+        $response->assertStatus(200);
+        $response->assertSee('Dasar Hukum & Regulasi Pemanfaatan BMD');
+        $response->assertSee('Nomor 3 Tahun 2026');
+        $response->assertSee('Nomor 20 Tahun 2021');
+        $response->assertSee('Permendagri');
+        $response->assertSee('Nomor 28 Tahun 2020');
+        $response->assertSee('Peraturan Pemerintah (PP)');
+
+        // 2. Filter kategori daerah
+        $filterResponse = $this->get('/dasar-hukum?kategori=daerah');
+        $filterResponse->assertStatus(200);
+        $filterResponse->assertSee('Nomor 3 Tahun 2026');
+        $filterResponse->assertDontSee('Permendagri No 7 Tahun 2024');
+
+        // 3. Pencarian kata kunci
+        $searchResponse = $this->get('/dasar-hukum?q=insentif');
+        $searchResponse->assertStatus(200);
+        $searchResponse->assertSee('Permendagri');
+    }
+
+    public function test_regulation_preview_and_download_stream_pdf(): void
+    {
+        // 1. Inline preview
+        $preview = $this->get('/dasar-hukum/preview/perda-jabar-3-2026');
+        $preview->assertStatus(200);
+        $preview->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('inline', (string) $preview->headers->get('Content-Disposition'));
+
+        // 2. Unduh PDF
+        $download = $this->get('/dasar-hukum/unduh/perda-jabar-3-2026');
+        $download->assertStatus(200);
+        $download->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('attachment', (string) $download->headers->get('Content-Disposition'));
+
+        // 3. Non-existent slug returns 404
+        $invalid = $this->get('/dasar-hukum/preview/slug-tidak-valid');
+        $invalid->assertStatus(404);
+    }
 }

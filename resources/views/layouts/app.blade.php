@@ -93,6 +93,9 @@
                     <a href="{{ route('catalog.siap-sewa') }}" class="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 {{ (request()->routeIs('catalog.siap-sewa') || request('status') === 'tersedia') ? 'bg-white text-emerald-700 shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60' }}">
                         <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>Aset Siap Sewa
                     </a>
+                    <a href="{{ route('regulasi.index') }}" class="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 {{ request()->routeIs('regulasi.*') ? 'bg-white text-emerald-700 shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60' }}">
+                        Dasar Hukum
+                    </a>
                     <a href="{{ route('booking.tracker') }}" class="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 {{ request()->routeIs('booking.*') ? 'bg-white text-emerald-700 shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60' }}">
                         Lacak Pengajuan
                     </a>
@@ -198,6 +201,11 @@
                         <li>
                             <a href="{{ route('catalog.index', ['status' => 'tersedia']) }}" class="hover:text-emerald-700 transition flex items-center gap-2">
                                 <span class="text-gray-400">&rsaquo;</span> Aset Siap Disewa (Tersedia)
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('regulasi.index') }}" class="hover:text-emerald-700 transition flex items-center gap-2">
+                                <span class="text-gray-400">&rsaquo;</span> Dasar Hukum & Regulasi BMD
                             </a>
                         </li>
                         <li>

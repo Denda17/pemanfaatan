@@ -423,6 +423,23 @@
             </div>
         </div>
 
+        <!-- Banner Link to Dasar Hukum -->
+        <div class="mt-8 p-5 sm:p-6 bg-emerald-50/80 rounded-3xl border border-emerald-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-sm font-extrabold text-emerald-950">Ingin Mengetahui Payung Hukum & Ketentuan Formula Tarif Sewa?</h4>
+                    <p class="text-xs text-emerald-800 font-medium mt-0.5">Pelajari dan unduh dokumen resmi Perda No. 3/2026, Pergub No. 20/2021, Permendagri No. 7/2024, serta PP No. 28/2020.</p>
+                </div>
+            </div>
+            <a href="{{ route('regulasi.index') }}" class="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 shrink-0 active:scale-95">
+                <span>Buka Dasar Hukum</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </a>
+        </div>
+
     </div>
 </section>
 

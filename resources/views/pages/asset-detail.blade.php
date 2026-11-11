@@ -215,7 +215,14 @@
                     </div>
                     <div>
                         <h3 class="font-extrabold text-sm sm:text-base text-gray-900">Panduan 8 Berkas Persyaratan Sewa</h3>
-                        <p class="text-xs text-emerald-800 font-medium">Sesuai Permendagri No. 7 Tahun 2024 & PP No. 28 Tahun 2020</p>
+                        <p class="text-xs text-emerald-800 font-medium flex items-center gap-1.5 flex-wrap">
+                            <span>Sesuai Permendagri No. 7 Tahun 2024 & PP No. 28 Tahun 2020</span>
+                            <span class="text-emerald-400">&bull;</span>
+                            <a href="{{ route('regulasi.index') }}" target="_blank" class="underline font-extrabold hover:text-emerald-950 inline-flex items-center gap-0.5">
+                                <span>Unduh Dasar Hukum</span>
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </a>
+                        </p>
                     </div>
                 </div>
                 
