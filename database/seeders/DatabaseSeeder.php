@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             BookingRequirementSeeder::class,
             BookingSeeder::class,
+            RegulationSeeder::class,
         ]);
     }
 }

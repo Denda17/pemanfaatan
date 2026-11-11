@@ -24,11 +24,11 @@
                 </div>
 
                 <h1 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight">
-                    Dasar Hukum & Regulasi Pemanfaatan BMD
+                    Dasar Hukum, Regulasi & SOP Pemanfaatan BMD
                 </h1>
 
                 <p class="text-sm sm:text-base text-gray-600 mt-3 font-normal leading-relaxed">
-                    Kumpulan peraturan perundang-undangan resmi dari tingkat Pemerintah Pusat, Kementerian Dalam Negeri, hingga Pemerintah Provinsi Jawa Barat yang menjadi landasan hukum pelaksanaan sewa dan kerjasama pemanfaatan aset daerah.
+                    Kumpulan peraturan perundang-undangan resmi dari tingkat Pemerintah Pusat, Kementerian Dalam Negeri, Pemerintah Provinsi Jawa Barat, hingga Standar Operasional Prosedur (SOP) internal yang menjadi landasan hukum pelaksanaan sewa dan kerjasama pemanfaatan aset daerah.
                 </p>
             </div>
 
@@ -39,7 +39,7 @@
                 </div>
                 <div>
                     <span class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Total Dokumen</span>
-                    <span class="block text-lg font-black text-gray-900 leading-none mt-0.5">{{ $counts['semua'] }} Regulasi Resmi</span>
+                    <span class="block text-lg font-black text-gray-900 leading-none mt-0.5">{{ $counts['semua'] }} Regulasi & SOP</span>
                     <span class="text-[11px] text-emerald-700 font-extrabold">Format PDF Asli / OCR</span>
                 </div>
             </div>
@@ -50,8 +50,8 @@
 <!-- Main Content Area -->
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     
-    <!-- 3 Highlight Bento Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+    <!-- Highlight Bento Cards (Dynamic 3 or 4 cols) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 {{ ($counts['sop'] ?? 0) > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-5 mb-10">
         <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-emerald-200 transition">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs">
@@ -96,6 +96,23 @@
                 Payung hukum nasional pengelolaan barang milik negara/daerah untuk menjamin fleksibilitas kerjasama investasi dan peningkatan PAD.
             </p>
         </div>
+
+        @if(($counts['sop'] ?? 0) > 0)
+            <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-amber-200 transition">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs">
+                        SOP
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-sm text-gray-900">SOP & Juknis UPTD</h3>
+                        <span class="text-[11px] text-gray-500 font-medium">{{ $counts['sop'] }} Panduan Operasional</span>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-600 leading-relaxed">
+                    Petunjuk teknis operasional, alur survei lapangan, standar waktu pelayanan, serta tata cara serah terima aset BMD di lingkungan dinas.
+                </p>
+            </div>
+        @endif
     </div>
 
     <!-- Search & Filter Controls -->
@@ -107,7 +124,7 @@
                 <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
-                <input type="text" name="q" value="{{ $search }}" placeholder="Cari nomor peraturan, topik, atau kata kunci (contoh: Permendagri, Tarif, UMKM)..." class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                <input type="text" name="q" value="{{ $search }}" placeholder="Cari nomor peraturan, topik, atau kata kunci (contoh: Permendagri, Tarif, SOP, UMKM)..." class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
                 @if($search)
                     <a href="{{ route('regulasi.index', ['kategori' => $kategori]) }}" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" title="Hapus pencarian">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -131,6 +148,9 @@
                 <button type="button" onclick="setKategori('pusat')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition {{ $kategori === 'pusat' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
                     PP Pusat ({{ $counts['pusat'] }})
                 </button>
+                <button type="button" onclick="setKategori('sop')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition {{ $kategori === 'sop' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                    SOP & Juknis ({{ $counts['sop'] }})
+                </button>
             </div>
         </form>
     </div>
@@ -141,7 +161,7 @@
             <div class="w-16 h-16 rounded-3xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
-            <h3 class="text-base font-extrabold text-gray-900 mb-1">Dokumen Regulasi Tidak Ditemukan</h3>
+            <h3 class="text-base font-extrabold text-gray-900 mb-1">Dokumen Regulasi / SOP Tidak Ditemukan</h3>
             <p class="text-xs text-gray-500 mb-5 leading-relaxed">
                 Tidak ada dokumen yang cocok dengan kata kunci "{{ $search }}". Silakan coba kata kunci lain atau reset filter.
             </p>
@@ -159,60 +179,72 @@
                         <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
                             <div class="flex items-center gap-2">
                                 <span class="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
-                                    {{ $reg['jenis'] }}
+                                    {{ $reg->jenis }}
                                 </span>
                                 <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
-                                    Tahun {{ $reg['tahun'] }}
+                                    Tahun {{ $reg->tahun }}
                                 </span>
+                                @if($reg->tingkat === 'sop')
+                                    <span class="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
+                                        Internal SOP
+                                    </span>
+                                @endif
                             </div>
 
                             <span class="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold text-gray-500 bg-gray-50 px-2.5 py-0.5 rounded-full border border-gray-200">
                                 <svg class="w-3.5 h-3.5 text-rose-500" fill="currentColor" viewBox="0 0 24 24"><path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.65 6 2.457v11.543h-16v-20h7.363zm.826-2h-10.189v24h20v-14.363c0-6.233-4.562-7.447-7.447-7.447-1.127 0-1.844.75-2.364 1.81z"/></svg>
-                                <span>PDF &bull; {{ $reg['size_formatted'] }}</span>
+                                <span>PDF &bull; {{ $reg->formatted_size }}</span>
                             </span>
                         </div>
 
                         <!-- Regulation Number & Title -->
                         <h3 class="text-base sm:text-lg font-black text-gray-900 group-hover:text-emerald-700 transition leading-snug mb-1">
-                            {{ $reg['nomor'] }}
+                            {{ $reg->nomor }}
                         </h3>
                         <h4 class="text-xs sm:text-sm font-extrabold text-gray-700 mb-2 leading-relaxed">
-                            {{ $reg['judul'] }}
+                            {{ $reg->judul }}
                         </h4>
                         <p class="text-[11px] text-gray-400 font-semibold mb-3 flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                            <span>{{ $reg['penerbit'] }}</span>
+                            <span>{{ $reg->penerbit }}</span>
                         </p>
 
                         <!-- Summary Description -->
-                        <p class="text-xs text-gray-600 leading-relaxed mb-4">
-                            {{ $reg['deskripsi'] }}
-                        </p>
+                        @if($reg->deskripsi)
+                            <p class="text-xs text-gray-600 leading-relaxed mb-4">
+                                {{ $reg->deskripsi }}
+                            </p>
+                        @endif
 
                         <!-- Key Takeaway Bullets -->
-                        <div class="bg-gray-50/90 rounded-2xl p-4 border border-gray-100 mb-6">
-                            <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-2">
-                                Poin Pokok untuk Peminat Sewa / Investor:
-                            </span>
-                            <ul class="space-y-1.5">
-                                @foreach($reg['poin_kunci'] as $pk)
-                                    <li class="flex items-start gap-2 text-[11px] text-gray-700 font-medium leading-relaxed">
-                                        <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                        <span>{{ $pk }}</span>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
+                        @php
+                            $poinKunci = is_array($reg->poin_kunci) ? $reg->poin_kunci : (json_decode($reg->poin_kunci, true) ?: []);
+                        @endphp
+                        @if(!empty($poinKunci))
+                            <div class="bg-gray-50/90 rounded-2xl p-4 border border-gray-100 mb-6">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-2">
+                                    Poin Pokok untuk Peminat Sewa / Calon Mitra:
+                                </span>
+                                <ul class="space-y-1.5">
+                                    @foreach($poinKunci as $pk)
+                                        <li class="flex items-start gap-2 text-[11px] text-gray-700 font-medium leading-relaxed">
+                                            <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            <span>{{ $pk }}</span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     </div>
 
                     <!-- Action Buttons: Preview & Download -->
                     <div class="pt-3 border-t border-gray-100 flex items-center gap-2.5">
-                        <a href="{{ $reg['url_preview'] }}" target="_blank" class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs transition flex items-center justify-center gap-1.5 border border-gray-200/80 shadow-2xs">
+                        <a href="{{ $reg->url_preview }}" target="_blank" class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs transition flex items-center justify-center gap-1.5 border border-gray-200/80 shadow-2xs">
                             <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             <span>Lihat Dokumen</span>
                         </a>
 
-                        <a href="{{ $reg['url_download'] }}" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-1.5">
+                        <a href="{{ $reg->url_download }}" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-1.5">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             <span>Unduh PDF</span>
                         </a>
@@ -232,10 +264,10 @@
                 Pusat Bantuan & Konsultasi Regulasi
             </span>
             <h3 class="text-xl sm:text-2xl font-black tracking-tight leading-snug">
-                Butuh Penjelasan Klausul PKS atau Simulasi Retribusi Sewa?
+                Butuh Penjelasan Klausul PKS, SOP, atau Simulasi Retribusi Sewa?
             </h3>
             <p class="text-xs sm:text-sm text-emerald-100 mt-2 font-normal leading-relaxed">
-                Tim UPTD Pengamanan dan Pemanfaatan Aset BPKAD Jabar siap memberikan pendampingan hukum dan simulasi resmi sesuai Permendagri No. 7 Tahun 2024.
+                Tim UPTD Pengamanan dan Pemanfaatan Aset BPKAD Jabar siap memberikan pendampingan hukum dan simulasi resmi sesuai ketentuan peraturan perundang-undangan.
             </p>
         </div>
 

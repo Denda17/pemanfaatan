@@ -124,6 +124,10 @@ class MarketplaceAndBookingTest extends TestCase
         $pemanfaatanList = $this->actingAs($admin, 'web')->get('/admin/asset-pemanfaatans');
         $pemanfaatanList->assertStatus(200);
         $pemanfaatanList->assertSee('Pindai Jatuh Tempo');
+
+        $regulationList = $this->actingAs($admin, 'web')->get('/admin/regulations');
+        $regulationList->assertStatus(200);
+        $regulationList->assertSee('Dasar Hukum & SOP');
     }
 
     public function test_asset_detail_page_contains_permendagri_calculator(): void
@@ -255,5 +259,49 @@ class MarketplaceAndBookingTest extends TestCase
         // 3. Non-existent slug returns 404
         $invalid = $this->get('/dasar-hukum/preview/slug-tidak-valid');
         $invalid->assertStatus(404);
+    }
+
+    public function test_admin_can_create_and_publish_sop_document(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->assertNotNull($admin);
+
+        // Akses halaman tambah regulasi di Filament
+        $createPage = $this->actingAs($admin, 'web')->get('/admin/regulations/create');
+        $createPage->assertStatus(200);
+
+        // Buat record SOP baru
+        $sop = \App\Models\Regulation::create([
+            'slug' => 'sop-survei-lapangan-2026',
+            'nomor' => 'SOP/05/UPTD/2026',
+            'tahun' => 2026,
+            'jenis' => 'Standar Operasional Prosedur (SOP)',
+            'tingkat' => 'sop',
+            'penerbit' => 'UPTD Pengamanan dan Pemanfaatan Aset Jabar',
+            'judul' => 'SOP Pelaksanaan Survei Lapangan dan Verifikasi Fisik Aset Sewa',
+            'deskripsi' => 'Panduan alur petugas lapangan dan peminat sewa dalam pengecekan fisik tanah dan bangunan.',
+            'poin_kunci' => [
+                'Waktu survei maksimal 3 hari kerja setelah pengajuan booking',
+                'Berita Acara Peninjauan Lapangan (BAPL) ditandatangani kedua pihak',
+            ],
+            'file_path' => 'regulasi-docs/Perda Provinsi Jawa Barat Nomor 3 Tahun 2026.pdf',
+            'disk' => 'public',
+            'download_name' => 'SOP-Survei-Lapangan-UPTD-2026.pdf',
+            'badge_color' => 'amber',
+            'urutan' => 7,
+            'is_active' => true,
+        ]);
+
+        // Pastikan tampil di portal publik kategori SOP
+        $publicSop = $this->get('/dasar-hukum?kategori=sop');
+        $publicSop->assertStatus(200);
+        $publicSop->assertSee('SOP/05/UPTD/2026');
+        $publicSop->assertSee('SOP Pelaksanaan Survei Lapangan');
+        $publicSop->assertSee('Internal SOP');
+
+        // Pastikan dokumen dapat dipratinjau
+        $sopPreview = $this->get('/dasar-hukum/preview/' . $sop->slug);
+        $sopPreview->assertStatus(200);
+        $sopPreview->assertHeader('Content-Type', 'application/pdf');
     }
 }
