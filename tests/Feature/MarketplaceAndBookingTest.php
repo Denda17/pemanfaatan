@@ -377,6 +377,8 @@ class MarketplaceAndBookingTest extends TestCase
         $regResponse->assertStatus(200);
         $regResponse->assertSee('Buat Akun Portal Pemanfaatan');
         $regResponse->assertSee('Perorangan / Pribadi');
+        $regResponse->assertSee('Pernyataan Keabsahan Data', false);
+        $regResponse->assertSee('disabled', false);
 
         $email = 'ahmad_' . uniqid() . '@ptpasundan.co.id';
         $registerData = [
@@ -392,21 +394,27 @@ class MarketplaceAndBookingTest extends TestCase
             'alamat' => 'Jl. Asia Afrika No. 100, Bandung',
         ];
 
+        // 1. Tanpa ceklis pernyataan keabsahan, registrasi ditolak
+        $invalidResponse = $this->post('/daftar', $registerData);
+        $invalidResponse->assertSessionHasErrors('agree');
+
+        // 2. Dengan ceklis keabsahan disetujui, pendaftaran berhasil
+        $registerData['agree'] = '1';
         $postResponse = $this->post('/daftar', $registerData);
 
-        // 1. Harus dialihkan ke halaman login, BUKAN langsung login
+        // Harus dialihkan ke halaman login, BUKAN langsung login
         $postResponse->assertRedirect(route('login'));
         $postResponse->assertSessionHas('success');
         $this->assertFalse(\Illuminate\Support\Facades\Auth::check(), 'User tidak boleh langsung login otomatis setelah mendaftar.');
 
-        // 2. Data tersimpan di database dengan role peminat
+        // 3. Data tersimpan di database dengan role peminat
         $createdUser = User::where('email', $email)->first();
         $this->assertNotNull($createdUser);
         $this->assertEquals('peminat', $createdUser->role);
         $this->assertEquals('badan_usaha', $createdUser->tipe_pemohon);
         $this->assertEquals('PT Pasundan Investama Mandiri', $createdUser->instansi);
 
-        // 3. User sekarang dapat login manual di halaman login
+        // 4. User sekarang dapat login manual di halaman login
         $loginPage = $this->get('/masuk');
         $loginPage->assertStatus(200);
         $loginPage->assertSee('Masuk ke Akun Anda');
@@ -419,7 +427,7 @@ class MarketplaceAndBookingTest extends TestCase
         $this->assertTrue(\Illuminate\Support\Facades\Auth::check());
         $this->assertEquals($createdUser->id, \Illuminate\Support\Facades\Auth::id());
 
-        // 4. Logout
+        // 5. Logout
         $logoutResponse = $this->post('/keluar');
         $logoutResponse->assertRedirect(route('home'));
         $this->assertFalse(\Illuminate\Support\Facades\Auth::check());

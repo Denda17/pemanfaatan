@@ -39,6 +39,7 @@ class AuthController extends Controller
             'nib' => ['nullable', 'string', 'max:30'],
             'npwp' => ['nullable', 'string', 'max:30'],
             'alamat' => ['nullable', 'string', 'max:1000'],
+            'agree' => ['required', 'accepted'],
         ], [
             'tipe_pemohon.required' => 'Pilih kategori pemohon (Perorangan atau Badan Usaha).',
             'name.required' => 'Nama lengkap penanggung jawab wajib diisi.',
@@ -50,6 +51,8 @@ class AuthController extends Controller
             'phone.required' => 'Nomor WhatsApp aktif wajib diisi untuk koordinasi survei lapangan.',
             'nik.required_if' => 'NIK wajib diisi untuk pemohon kategori Perorangan.',
             'instansi.required_if' => 'Nama instansi/perusahaan wajib diisi untuk pemohon Badan Usaha.',
+            'agree.required' => 'Pernyataan keabsahan data dan kepatuhan regulasi wajib disetujui.',
+            'agree.accepted' => 'Pernyataan keabsahan data dan kepatuhan regulasi wajib disetujui.',
         ]);
 
         $user = User::create([

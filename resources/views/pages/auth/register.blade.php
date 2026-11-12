@@ -167,18 +167,27 @@
                 </div>
 
                 <!-- Terms & Disclaimer -->
-                <div class="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 text-xs text-gray-600 flex items-start gap-2.5">
-                    <input type="checkbox" id="agree" required checked class="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300">
-                    <label for="agree" class="text-[11px] leading-relaxed select-none">
-                        Saya menyatakan bahwa seluruh data identitas yang diisi adalah benar, sah, dan dapat dipertanggungjawabkan sesuai ketentuan perundang-undangan pengelolaan Barang Milik Daerah Provinsi Jawa Barat.
+                <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-xs text-gray-700 flex items-start gap-3 transition hover:bg-emerald-50/30 hover:border-emerald-200">
+                    <input type="checkbox" id="agree" name="agree" value="1" {{ old('agree') ? 'checked' : '' }} class="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 cursor-pointer shrink-0">
+                    <label for="agree" class="text-xs leading-relaxed select-none cursor-pointer">
+                        <span class="font-extrabold text-gray-900 block mb-0.5">Pernyataan Keabsahan Data & Dokumen <span class="text-rose-500">*</span></span>
+                        <span class="text-gray-600 text-[11px] block">
+                            Saya menyatakan dengan sadar bahwa seluruh data identitas dan informasi yang saya daftarkan adalah benar, sah, dan dapat dipertanggungjawabkan sesuai ketentuan perundang-undangan pengelolaan Barang Milik Daerah (BMD) Provinsi Jawa Barat.
+                        </span>
                     </label>
                 </div>
 
-                <!-- Submit Button -->
-                <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-emerald-600/25 transition flex items-center justify-center gap-2">
-                    <span>Daftar Akun Sekarang</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                </button>
+                <!-- Submit Button with Dynamic Disabled State -->
+                <div class="space-y-2">
+                    <button type="submit" id="btn-submit-register" disabled class="w-full py-3.5 px-6 rounded-2xl font-extrabold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gray-200 text-gray-400 cursor-not-allowed pointer-events-none shadow-none">
+                        <span>Daftar Akun Sekarang</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </button>
+                    <p id="agree-hint" class="text-[11px] text-amber-700 font-semibold text-center flex items-center justify-center gap-1.5 transition">
+                        <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Centang pernyataan keabsahan di atas untuk mengaktifkan tombol pendaftaran.</span>
+                    </p>
+                </div>
 
                 <!-- Footer Link to Login -->
                 <div class="text-center pt-2 border-t border-gray-100">
@@ -216,5 +225,33 @@
             if (instansiInput) instansiInput.removeAttribute('required');
         }
     }
+
+    function updateSubmitButtonState() {
+        const agreeCheckbox = document.getElementById('agree');
+        const submitBtn = document.getElementById('btn-submit-register');
+        const hintText = document.getElementById('agree-hint');
+
+        if (!agreeCheckbox || !submitBtn) return;
+
+        if (agreeCheckbox.checked) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('bg-gray-200', 'text-gray-400', 'cursor-not-allowed', 'pointer-events-none', 'shadow-none');
+            submitBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700', 'active:scale-[0.99]', 'text-white', 'cursor-pointer', 'shadow-md', 'shadow-emerald-600/25');
+            if (hintText) hintText.classList.add('hidden');
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('bg-gray-200', 'text-gray-400', 'cursor-not-allowed', 'pointer-events-none', 'shadow-none');
+            submitBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700', 'active:scale-[0.99]', 'text-white', 'cursor-pointer', 'shadow-md', 'shadow-emerald-600/25');
+            if (hintText) hintText.classList.remove('hidden');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const agreeCheckbox = document.getElementById('agree');
+        if (agreeCheckbox) {
+            agreeCheckbox.addEventListener('change', updateSubmitButtonState);
+            updateSubmitButtonState();
+        }
+    });
 </script>
 @endpush
