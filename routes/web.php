@@ -28,8 +28,14 @@ Route::post('/aset/{slug}/booking', [BookingController::class, 'store'])
     ->middleware('auth')
     ->name('booking.store');
 
+Route::get('/pengajuan-saya', [BookingController::class, 'myBookings'])
+    ->middleware('auth')
+    ->name('booking.my');
+
 Route::get('/status-booking', [BookingController::class, 'tracker'])->name('booking.tracker');
-Route::get('/status-booking/{kode}', [BookingController::class, 'showStatus'])->name('booking.status');
+Route::get('/status-booking/{kode}', [BookingController::class, 'showStatus'])
+    ->middleware('auth')
+    ->name('booking.status');
 
 // Fallback login POST handler for Filament admin
 Route::post('/admin/login', function (\Illuminate\Http\Request $request) {

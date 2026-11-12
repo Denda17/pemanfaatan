@@ -14,7 +14,7 @@
                 <nav class="flex items-center gap-2 text-xs text-gray-500 mb-2.5 font-semibold">
                     <a href="{{ route('home') }}" class="hover:text-emerald-700 transition">Beranda</a>
                     <span class="text-gray-300">/</span>
-                    <a href="{{ route('booking.tracker') }}" class="hover:text-emerald-700 transition">Lacak Pengajuan</a>
+                    <a href="{{ route('booking.my') }}" class="hover:text-emerald-700 transition">Pengajuan Saya</a>
                     <span class="text-gray-300">/</span>
                     <span class="text-emerald-700 font-extrabold font-mono">{{ $booking->kode_booking }}</span>
                 </nav>

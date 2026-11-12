@@ -99,22 +99,70 @@ class MarketplaceAndBookingTest extends TestCase
         $this->assertEquals('proses_booking', $asset->status_ketersediaan);
     }
 
-    public function test_booking_tracker_page_finds_record_and_displays_status(): void
+    public function test_my_bookings_dashboard_and_booking_status_authorization(): void
     {
-        $booking = Booking::first();
-        $this->assertNotNull($booking);
+        $applicant1 = User::factory()->create([
+            'name' => 'Pemohon Pertama',
+            'email' => 'pemohon1_' . uniqid() . '@example.com',
+            'phone' => '081111222333',
+            'role' => 'peminat',
+            'is_active' => true,
+        ]);
 
-        // Search by booking code
-        $trackerSearch = $this->get('/status-booking?q=' . $booking->kode_booking);
-        $trackerSearch->assertStatus(200);
-        $trackerSearch->assertSee($booking->kode_booking);
+        $applicant2 = User::factory()->create([
+            'name' => 'Pemohon Kedua',
+            'email' => 'pemohon2_' . uniqid() . '@example.com',
+            'phone' => '082222333444',
+            'role' => 'peminat',
+            'is_active' => true,
+        ]);
 
-        // Direct status detail
-        $statusDetail = $this->get('/status-booking/' . $booking->kode_booking);
+        $asset = Asset::where('status_ketersediaan', 'tersedia')->first() ?? Asset::first();
+
+        $booking = Booking::create([
+            'asset_id' => $asset->id,
+            'user_id' => $applicant1->id,
+            'nama_pemohon' => $applicant1->name,
+            'email' => $applicant1->email,
+            'nomor_whatsapp' => $applicant1->phone,
+            'rencana_peruntukan' => 'Outlet Kuliner dan Co-working Space',
+            'durasi_sewa_tahun' => 2,
+            'status' => 'pending',
+            'tanggal_booking' => now(),
+        ]);
+
+        // 1. Tamu tanpa login dialihkan ke halaman login saat akses /pengajuan-saya
+        $guestResponse = $this->get('/pengajuan-saya');
+        $guestResponse->assertRedirect(route('login'));
+
+        // 2. Pemohon 1 login dan melihat daftar permohonannya
+        $myBookingsResponse = $this->actingAs($applicant1, 'web')->get('/pengajuan-saya');
+        $myBookingsResponse->assertStatus(200);
+        $myBookingsResponse->assertSee('Daftar Pengajuan Sewa Saya');
+        $myBookingsResponse->assertSee($booking->kode_booking);
+        $myBookingsResponse->assertSee($asset->nama_objek);
+        $myBookingsResponse->assertSee('Menunggu Tindak Lanjut');
+
+        // 3. Pemohon 1 dapat melihat detail status pengajuannya sendiri
+        $statusDetail = $this->actingAs($applicant1, 'web')->get('/status-booking/' . $booking->kode_booking);
         $statusDetail->assertStatus(200);
         $statusDetail->assertSee($booking->kode_booking);
         $statusDetail->assertSee('Linimasa Progres Permohonan');
         $statusDetail->assertSee('Daftar Berkas Persyaratan Sewa');
+
+        // 4. Pemohon 2 TIDAK BISA mengakses status booking milik Pemohon 1 (403 Forbidden)
+        $forbiddenResponse = $this->actingAs($applicant2, 'web')->get('/status-booking/' . $booking->kode_booking);
+        $forbiddenResponse->assertStatus(403);
+
+        // 5. Admin UPTD dapat mengakses status booking pemohon manapun
+        $admin = User::where('role', 'admin')->first();
+        $adminResponse = $this->actingAs($admin, 'web')->get('/status-booking/' . $booking->kode_booking);
+        $adminResponse->assertStatus(200);
+        $adminResponse->assertSee($booking->kode_booking);
+
+        // 6. Rute legacy /status-booking mengalihkan user login ke /pengajuan-saya
+        $redirectResponse = $this->actingAs($applicant1, 'web')->get('/status-booking');
+        $redirectResponse->assertRedirect(route('booking.my'));
     }
 
     public function test_admin_uptd_can_access_filament_panel_and_records(): void

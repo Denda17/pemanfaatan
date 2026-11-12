@@ -58,21 +58,30 @@ class BookingController extends Controller
             ->with('success', "Permohonan booking berhasil dikirim! Kode Booking Anda adalah {$booking->kode_booking}. Petugas UPTD Pengamanan dan Pemanfaatan Aset akan segera menghubungi nomor WhatsApp Anda.");
     }
 
+    public function myBookings(Request $request)
+    {
+        $user = Auth::user();
+
+        $bookings = Booking::where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhere('email', $user->email)
+                    ->orWhere('nomor_whatsapp', $user->phone);
+            })
+            ->with(['asset'])
+            ->latest('tanggal_booking')
+            ->get();
+
+        return view('pages.my-bookings', compact('bookings', 'user'));
+    }
+
     public function tracker(Request $request)
     {
-        $search = trim($request->get('q', ''));
-        $bookings = collect();
-
-        if (!empty($search)) {
-            $bookings = Booking::where('kode_booking', 'ilike', "%{$search}%")
-                ->orWhere('nomor_whatsapp', 'like', "%{$search}%")
-                ->orWhere('email', 'ilike', "%{$search}%")
-                ->with(['asset'])
-                ->latest()
-                ->get();
+        if (Auth::check()) {
+            return redirect()->route('booking.my');
         }
 
-        return view('pages.booking-tracker', compact('bookings', 'search'));
+        return redirect()->route('login')
+            ->with('info', 'Silakan masuk ke akun Anda untuk melihat daftar dan status permohonan sewa aset.');
     }
 
     public function showStatus(string $kode)
@@ -80,6 +89,17 @@ class BookingController extends Controller
         $booking = Booking::where('kode_booking', $kode)
             ->with(['asset', 'documents.requirement', 'petugasUptd'])
             ->firstOrFail();
+
+        $user = Auth::user();
+
+        // Otorisasi: hanya pemilik permohonan atau admin yang dapat melihat status
+        if ($user && !$user->isAdmin()) {
+            $isOwner = ($booking->user_id === $user->id) 
+                || ($booking->email && strtolower($booking->email) === strtolower($user->email))
+                || ($booking->nomor_whatsapp && $booking->nomor_whatsapp === $user->phone);
+
+            abort_unless($isOwner, 403, 'Anda tidak memiliki hak akses untuk melihat permohonan ini.');
+        }
 
         // 6 Tahapan Proses Permohonan Pemanfaatan BMD
         $steps = [

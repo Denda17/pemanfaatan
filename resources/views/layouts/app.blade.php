@@ -96,9 +96,11 @@
                     <a href="{{ route('regulasi.index') }}" class="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 {{ request()->routeIs('regulasi.*') ? 'bg-white text-emerald-700 shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60' }}">
                         Dasar Hukum
                     </a>
-                    <a href="{{ route('booking.tracker') }}" class="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 {{ request()->routeIs('booking.*') ? 'bg-white text-emerald-700 shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60' }}">
-                        Lacak Pengajuan
-                    </a>
+                    @auth
+                        <a href="{{ route('booking.my') }}" class="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 {{ request()->routeIs('booking.*') ? 'bg-white text-emerald-700 shadow-xs' : 'text-gray-600 hover:text-gray-900 hover:bg-white/60' }}">
+                            Pengajuan Saya
+                        </a>
+                    @endauth
                 </div>
 
                 <!-- Call To Action & Auth Buttons -->
@@ -233,8 +235,8 @@
                             </a>
                         </li>
                         <li>
-                            <a href="{{ route('booking.tracker') }}" class="hover:text-emerald-700 transition flex items-center gap-2">
-                                <span class="text-gray-400">&rsaquo;</span> Lacak Status Permohonan
+                            <a href="{{ route('booking.my') }}" class="hover:text-emerald-700 transition flex items-center gap-2">
+                                <span class="text-gray-400">&rsaquo;</span> Pengajuan Sewa Saya
                             </a>
                         </li>
                         <li>
