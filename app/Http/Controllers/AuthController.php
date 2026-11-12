@@ -77,19 +77,24 @@ class AuthController extends Controller
     }
 
     /**
-     * Tampilkan formulir login.
+     * Tampilkan formulir login terpadu (Pemohon & Admin).
      */
     public function showLogin(): View|RedirectResponse
     {
         if (Auth::check()) {
-            return redirect()->route('catalog.index');
+            if (Auth::user()->isAdmin()) {
+                return redirect()->intended('/admin');
+            }
+
+            return redirect()->intended(route('booking.my'));
         }
 
         return view('pages.auth.login');
     }
 
     /**
-     * Proses autentikasi login pengguna.
+     * Proses autentikasi login terpadu pengguna.
+     * Mengarahkan admin ke dashboard admin dan pemohon ke halaman akunnya.
      */
     public function login(Request $request): RedirectResponse
     {
@@ -114,9 +119,17 @@ class AuthController extends Controller
 
         if (Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'is_active' => true], $remember)) {
             $request->session()->regenerate();
+            $loggedInUser = Auth::user();
 
-            return redirect()->intended(route('catalog.index'))
-                ->with('success', 'Selamat datang kembali, ' . Auth::user()->name . '! Anda dapat melanjutkan proses pemanfaatan aset.');
+            // 1. Jika terdeteksi sebagai Admin UPTD -> arahkan ke dashboard admin
+            if ($loggedInUser->isAdmin()) {
+                return redirect()->intended('/admin')
+                    ->with('success', 'Selamat datang di Panel Administrasi UPTD, ' . $loggedInUser->name . '!');
+            }
+
+            // 2. Selain itu (Pemohon / Calon Mitra) -> arahkan ke akun masing-masing (Pengajuan Saya)
+            return redirect()->intended(route('booking.my'))
+                ->with('success', 'Selamat datang kembali, ' . $loggedInUser->name . '! Anda dapat memantau permohonan atau mengajukan sewa aset.');
         }
 
         return back()->withErrors([

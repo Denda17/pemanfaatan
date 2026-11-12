@@ -37,19 +37,9 @@ Route::get('/status-booking/{kode}', [BookingController::class, 'showStatus'])
     ->middleware('auth')
     ->name('booking.status');
 
-// Fallback login POST handler for Filament admin
-Route::post('/admin/login', function (\Illuminate\Http\Request $request) {
-    $email = $request->input('email') ?? $request->input('data.email');
-    $password = $request->input('password') ?? $request->input('data.password');
-    $remember = (bool) ($request->input('remember') ?? $request->input('data.remember', false));
+// Pengalihan Login Admin ke Portal Login Terpadu
+Route::get('/admin/login', function () {
+    return redirect()->route('login');
+})->name('filament.admin.auth.login');
 
-    if ($email && $password && \Illuminate\Support\Facades\Auth::attempt(['email' => $email, 'password' => $password], $remember)) {
-        $request->session()->regenerate();
-        return redirect()->intended('/admin');
-    }
-
-    return back()->withErrors([
-        'data.email' => 'Kredensial yang diberikan tidak cocok dengan data kami.',
-        'email' => 'Kredensial yang diberikan tidak cocok dengan data kami.',
-    ]);
-});
+Route::post('/admin/login', [AuthController::class, 'login']);

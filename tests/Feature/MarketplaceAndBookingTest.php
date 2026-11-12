@@ -414,16 +414,17 @@ class MarketplaceAndBookingTest extends TestCase
         $this->assertEquals('badan_usaha', $createdUser->tipe_pemohon);
         $this->assertEquals('PT Pasundan Investama Mandiri', $createdUser->instansi);
 
-        // 4. User sekarang dapat login manual di halaman login
+        // 4. User pemohon login manual di formulir terpadu -> diarahkan ke Pengajuan Saya
         $loginPage = $this->get('/masuk');
         $loginPage->assertStatus(200);
         $loginPage->assertSee('Masuk ke Akun Anda');
+        $loginPage->assertSee('Portal Masuk Terpadu');
 
         $loginResponse = $this->post('/masuk', [
             'email' => $email,
             'password' => 'password123',
         ]);
-        $loginResponse->assertRedirect(route('catalog.index'));
+        $loginResponse->assertRedirect(route('booking.my'));
         $this->assertTrue(\Illuminate\Support\Facades\Auth::check());
         $this->assertEquals($createdUser->id, \Illuminate\Support\Facades\Auth::id());
 
@@ -463,5 +464,45 @@ class MarketplaceAndBookingTest extends TestCase
 
         $createResponse = $this->actingAs($admin, 'web')->get('/admin/users/create');
         $createResponse->assertStatus(200);
+    }
+
+    public function test_unified_login_redirects_admin_to_dashboard_and_regular_user_to_my_bookings(): void
+    {
+        // 1. Akses URL legacy admin login otomatis redirect ke portal login terpadu
+        $adminLoginRedirect = $this->get('/admin/login');
+        $adminLoginRedirect->assertRedirect(route('login'));
+
+        // 2. Admin login via formulir terpadu -> diarahkan ke dashboard Filament /admin
+        $admin = User::where('role', 'admin')->first();
+        $this->assertNotNull($admin);
+
+        $adminPost = $this->post('/masuk', [
+            'email' => $admin->email,
+            'password' => 'password',
+        ]);
+        $adminPost->assertRedirect('/admin');
+        $this->assertEquals($admin->id, \Illuminate\Support\Facades\Auth::id());
+
+        // Saat admin sedang login dan membuka /masuk, otomatis dilempar ke /admin
+        $alreadyLoggedInAdmin = $this->get('/masuk');
+        $alreadyLoggedInAdmin->assertRedirect('/admin');
+
+        // Logout
+        $this->post('/keluar');
+        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+
+        // 3. Pemohon login via formulir terpadu -> diarahkan ke Pengajuan Saya
+        $peminat = User::where('role', 'peminat')->where('is_active', true)->first();
+        $this->assertNotNull($peminat);
+
+        $peminatPost = $this->post('/masuk', [
+            'email' => $peminat->email,
+            'password' => 'password',
+        ]);
+        $peminatPost->assertRedirect(route('booking.my'));
+
+        // Saat pemohon sedang login dan membuka /masuk, otomatis dilempar ke Pengajuan Saya
+        $alreadyLoggedInPeminat = $this->get('/masuk');
+        $alreadyLoggedInPeminat->assertRedirect(route('booking.my'));
     }
 }

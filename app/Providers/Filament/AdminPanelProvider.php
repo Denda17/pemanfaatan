@@ -28,7 +28,6 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
             ->darkMode(false)
             ->font('Plus Jakarta Sans')
             ->maxContentWidth(MaxWidth::Full)

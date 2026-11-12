@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Masuk Akun Pemohon - Marketplace Pemanfaatan BMD Jabar')
+@section('title', 'Masuk Akun Terpadu - SIP-BMD Jabar')
 
 @section('content')
 <div class="relative bg-mesh-light min-h-[calc(100vh-160px)] py-12 lg:py-16 overflow-hidden flex items-center justify-center">
@@ -20,14 +20,14 @@
 
             <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-extrabold mb-3 border border-emerald-200/80 shadow-2xs">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                Autentikasi Calon Mitra Sewa
+                Portal Masuk Terpadu
             </div>
 
             <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
                 Masuk ke Akun Anda
             </h1>
             <p class="text-xs sm:text-sm text-gray-600 mt-2 leading-relaxed">
-                Silakan masukkan email dan kata sandi akun Anda untuk mengajukan minat sewa atau memantau progres permohonan.
+                Satu pintu masuk untuk Calon Mitra Sewa BMD dan Petugas Administrator UPTD. Sistem akan otomatis mendeteksi peran akun Anda.
             </p>
         </div>
 
@@ -97,6 +97,14 @@
                         <input type="checkbox" name="remember" class="rounded text-emerald-600 focus:ring-emerald-500 border-gray-300">
                         <span class="font-medium text-[11px]">Ingat sesi saya di perangkat ini</span>
                     </label>
+                </div>
+
+                <!-- Role Direction Notice -->
+                <div class="p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-[11px] text-emerald-900 flex items-start gap-2.5">
+                    <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span class="leading-relaxed">
+                        Akun <strong>Admin UPTD</strong> akan otomatis diarahkan ke Panel Dashboard, sedangkan akun <strong>Calon Mitra</strong> akan diarahkan ke halaman Pengajuan Saya.
+                    </span>
                 </div>
 
                 <!-- Submit Button -->
