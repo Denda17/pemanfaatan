@@ -292,45 +292,32 @@
                                 <p class="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Permendagri No. 7/2024</p>
                             </div>
                         </div>
-                        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                            Insentif Afirmatif
-                        </span>
                     </div>
 
-                    <!-- Pilihan Kategori Pemohon -->
-                    <div class="space-y-3 mb-4">
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-700 mb-1.5 flex items-center justify-between">
-                                <span>Kategori Pemohon / Peruntukan</span>
-                                <span id="badge-diskon" class="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">Diskon 50%</span>
-                            </label>
-                            <select id="simulasi-kategori" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition cursor-pointer">
-                                <option value="0.50" data-label="UMKM / Koperasi" data-diskon="50%" selected>
-                                    Pelaku Usaha Mikro, Kecil & Koperasi (Diskon 50%)
-                                </option>
-                                <option value="0.25" data-label="Sosial / Keagamaan" data-diskon="75%">
-                                    Sosial, Pendidikan, Kebudayaan / Non-Profit (Diskon 75%)
-                                </option>
-                                <option value="0.75" data-label="Usaha Menengah" data-diskon="25%">
-                                    Pelaku Usaha Menengah (Diskon 25%)
-                                </option>
-                                <option value="1.00" data-label="Komersial / Korporasi" data-diskon="0%">
-                                    Badan Usaha / BUMN / BUMD / Swasta (Tarif Penuh 100%)
-                                </option>
-                            </select>
-                        </div>
-
-                        <!-- Jangka Waktu Sewa (Tahun) -->
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-700 mb-1.5 flex items-center justify-between">
-                                <span>Jangka Waktu Sewa</span>
-                                <span class="text-[10px] text-gray-400 font-medium">Maks. 5 Thn (Permendagri 19/2016)</span>
-                            </label>
-                            <div class="grid grid-cols-4 gap-1.5" id="group-durasi-simulasi">
-                                <button type="button" class="btn-durasi py-1.5 text-xs font-extrabold rounded-xl border border-emerald-500 bg-emerald-600 text-white transition shadow-xs cursor-pointer" data-tahun="1">1 Thn</button>
-                                <button type="button" class="btn-durasi py-1.5 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition cursor-pointer" data-tahun="2">2 Thn</button>
-                                <button type="button" class="btn-durasi py-1.5 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition cursor-pointer" data-tahun="3">3 Thn</button>
-                                <button type="button" class="btn-durasi py-1.5 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition cursor-pointer" data-tahun="5">5 Thn</button>
+                    <!-- Input Durasi Simulasi & Tarif Pokok -->
+                    <div class="space-y-4 mb-4">
+                        <!-- Jangka Waktu Sewa (Interactive Range Slider + Stepper) -->
+                        <div class="bg-gray-50/80 p-3.5 rounded-2xl border border-gray-200/80">
+                            <div class="flex items-center justify-between mb-2.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-800">Durasi Sewa</label>
+                                    <span class="text-[10px] text-gray-400 font-medium">Geser untuk simulasi (1 - 10 Tahun)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-2 py-1 shadow-2xs">
+                                    <button type="button" id="btn-stepper-minus" class="w-6 h-6 rounded-lg bg-gray-50 text-gray-700 hover:bg-emerald-600 hover:text-white transition font-black text-xs flex items-center justify-center border border-gray-200 cursor-pointer select-none" title="Kurangi 1 tahun">&minus;</button>
+                                    <span id="slider-durasi-display" class="text-xs font-extrabold text-emerald-900 min-w-[55px] text-center">1 Tahun</span>
+                                    <button type="button" id="btn-stepper-plus" class="w-6 h-6 rounded-lg bg-gray-50 text-gray-700 hover:bg-emerald-600 hover:text-white transition font-black text-xs flex items-center justify-center border border-gray-200 cursor-pointer select-none" title="Tambah 1 tahun">+</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Slider Range Bar -->
+                            <div class="relative px-0.5 pt-1 pb-1">
+                                <input type="range" id="simulasi-durasi-range" min="1" max="10" step="1" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 focus:outline-none">
+                                <div class="flex justify-between items-center text-[10px] font-bold mt-2 text-gray-400">
+                                    <span>1 Thn</span>
+                                    <span class="text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/70">&gt; 5 Thn: Wajib Proposal</span>
+                                    <span>10 Thn</span>
+                                </div>
                             </div>
                         </div>
 
@@ -353,25 +340,22 @@
                             <span class="text-gray-500 font-medium">Tarif Pokok / Thn:</span>
                             <span id="hasil-pokok-tahunan" class="font-bold text-gray-700">Rp 0</span>
                         </div>
-                        <div class="flex items-center justify-between text-[11px]">
-                            <span class="text-gray-500 font-medium">Faktor Penyesuai:</span>
-                            <span id="hasil-faktor-persen" class="font-bold text-emerald-800">50% (Afirmatif)</span>
-                        </div>
                         <div class="flex items-center justify-between text-[11px] pb-1.5 border-b border-emerald-200/60">
-                            <span class="text-emerald-800 font-semibold flex items-center gap-1">
-                                <svg class="w-3.5 h-3.5 text-emerald-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                Insentif yang Dihemat:
-                            </span>
-                            <span id="hasil-hemat" class="font-extrabold text-emerald-700">Rp 0</span>
+                            <span class="text-gray-500 font-medium">Durasi Sewa:</span>
+                            <span id="hasil-durasi-pilihan" class="font-bold text-emerald-800">1 Tahun</span>
                         </div>
                         <div class="flex items-baseline justify-between pt-0.5">
                             <div>
                                 <span class="block text-[11px] font-bold text-gray-800">Estimasi Retribusi Sewa:</span>
-                                <span id="hasil-durasi-label" class="text-[9.5px] text-gray-500 font-medium leading-none">Untuk 1 Tahun Sewa</span>
+                                <span id="hasil-durasi-label" class="text-[9.5px] text-gray-500 font-medium leading-none">Total untuk 1 Tahun</span>
                             </div>
                             <div class="text-right">
                                 <span id="hasil-total-sewa" class="text-base sm:text-lg font-black text-emerald-900 tracking-tight">Rp 0</span>
                             </div>
+                        </div>
+                        <div id="simulasi-warning-proposal" class="hidden pt-1.5 border-t border-emerald-200/60 text-[10.5px] text-amber-800 font-semibold flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <span>Durasi > 5 tahun wajib melengkapi Proposal Bisnis</span>
                         </div>
                     </div>
 
@@ -443,7 +427,7 @@
                             </div>
                         </div>
 
-                        <form action="{{ route('booking.store', $asset->slug) }}" method="POST" class="space-y-4">
+                        <form action="{{ route('booking.store', $asset->slug) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                             @csrf
 
                             <!-- Nama Pemohon -->
@@ -481,14 +465,75 @@
                                     <input type="text" name="nik_atau_nib" value="{{ old('nik_atau_nib', Auth::user()->nik ?? Auth::user()->nib) }}" placeholder="3204..." class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Durasi Sewa</label>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+                                        <span>Durasi Sewa <span class="text-rose-500">*</span></span>
+                                    </label>
                                     <select id="booking_durasi_sewa_tahun" name="durasi_sewa_tahun" required class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition cursor-pointer">
-                                        <option value="1">1 Tahun</option>
-                                        <option value="2">2 Tahun</option>
-                                        <option value="3">3 Tahun</option>
-                                        <option value="5">5 Tahun (Maks)</option>
+                                        @for($i = 1; $i <= 10; $i++)
+                                            <option value="{{ $i }}" {{ old('durasi_sewa_tahun', '1') == (string) $i ? 'selected' : '' }}>
+                                                {{ $i }} Tahun {{ $i > 5 ? '(Wajib Proposal Bisnis)' : '' }}
+                                            </option>
+                                        @endfor
                                     </select>
+                                    @error('durasi_sewa_tahun')
+                                        <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>
+                                    @enderror
                                 </div>
+                            </div>
+
+                            <!-- Lampiran Dokumen Proposal Bisnis (Muncul Otomatis & Wajib Jika Durasi Sewa > 5 Tahun) -->
+                            <div id="container-proposal-bisnis" class="p-4 rounded-2xl border transition-all duration-300 bg-amber-50/70 border-amber-200 hidden">
+                                <div class="flex items-start gap-2.5 mb-2.5">
+                                    <div class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-extrabold text-amber-950">
+                                            Dokumen Proposal Bisnis <span class="text-rose-600">*</span>
+                                        </label>
+                                        <p class="text-[11px] text-amber-800 leading-relaxed mt-0.5">
+                                            Durasi sewa lebih dari 5 tahun diwajibkan melengkapi Proposal Bisnis / Rencana Usaha jangka panjang.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    <input type="file" name="proposal_bisnis" id="input_proposal_bisnis" accept=".pdf,.doc,.docx" class="w-full text-xs text-gray-700 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-amber-600 file:text-white hover:file:bg-amber-700 file:cursor-pointer file:transition cursor-pointer bg-white p-2 rounded-xl border border-amber-300 focus:outline-none">
+                                    <div class="flex items-center justify-between text-[10px] text-amber-700 mt-1.5 px-0.5">
+                                        <span>Format: PDF, DOC, DOCX</span>
+                                        <span>Maks. 20 MB</span>
+                                    </div>
+                                </div>
+                                @error('proposal_bisnis')
+                                    <p class="text-[11px] text-rose-600 font-semibold mt-1.5">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Pilihan Skema Pembayaran -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                                    <span>Skema Pembayaran <span class="text-rose-500">*</span></span>
+                                    <span class="text-[10px] text-gray-400">Pilih skema retribusi sewa</span>
+                                </label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <label class="relative flex items-start gap-3 p-3 rounded-2xl border border-gray-200 bg-gray-50/60 hover:bg-emerald-50/40 hover:border-emerald-300 transition cursor-pointer select-none group has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/60 has-[:checked]:ring-1 has-[:checked]:ring-emerald-500">
+                                        <input type="radio" name="skema_pembayaran" value="sekaligus" class="mt-0.5 text-emerald-600 focus:ring-emerald-500 border-gray-300" {{ old('skema_pembayaran', 'sekaligus') === 'sekaligus' ? 'checked' : '' }}>
+                                        <div class="text-xs">
+                                            <span class="block font-extrabold text-gray-900 group-has-[:checked]:text-emerald-950">Dibayar Full Sekaligus</span>
+                                            <span class="block text-[11px] text-gray-500 leading-tight mt-0.5">Pelunasan 100% di awal periode sewa sebelum tanda tangan PKS</span>
+                                        </div>
+                                    </label>
+                                    <label class="relative flex items-start gap-3 p-3 rounded-2xl border border-gray-200 bg-gray-50/60 hover:bg-emerald-50/40 hover:border-emerald-300 transition cursor-pointer select-none group has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/60 has-[:checked]:ring-1 has-[:checked]:ring-emerald-500">
+                                        <input type="radio" name="skema_pembayaran" value="bertahap" class="mt-0.5 text-emerald-600 focus:ring-emerald-500 border-gray-300" {{ old('skema_pembayaran') === 'bertahap' ? 'checked' : '' }}>
+                                        <div class="text-xs">
+                                            <span class="block font-extrabold text-gray-900 group-has-[:checked]:text-emerald-950">Pembayaran Bertahap</span>
+                                            <span class="block text-[11px] text-gray-500 leading-tight mt-0.5">Pembayaran termin tahunan sebelum masa sewa berjalan tiap tahunnya</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                @error('skema_pembayaran')
+                                    <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             <!-- Instansi / Perusahaan -->
@@ -555,16 +600,22 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const selectKategori = document.getElementById('simulasi-kategori');
-        const badgeDiskon = document.getElementById('badge-diskon');
         const inputTarifPokok = document.getElementById('simulasi-tarif-pokok');
-        const durasiButtons = document.querySelectorAll('.btn-durasi');
+        const rangeDurasi = document.getElementById('simulasi-durasi-range');
+        const sliderDurasiDisplay = document.getElementById('slider-durasi-display');
+        const btnMinus = document.getElementById('btn-stepper-minus');
+        const btnPlus = document.getElementById('btn-stepper-plus');
         const hasilPokokTahunan = document.getElementById('hasil-pokok-tahunan');
-        const hasilFaktorPersen = document.getElementById('hasil-faktor-persen');
-        const hasilHemat = document.getElementById('hasil-hemat');
+        const hasilDurasiPilihan = document.getElementById('hasil-durasi-pilihan');
         const hasilTotalSewa = document.getElementById('hasil-total-sewa');
         const hasilDurasiLabel = document.getElementById('hasil-durasi-label');
+        const simulasiWarningProposal = document.getElementById('simulasi-warning-proposal');
         const btnTerapkan = document.getElementById('btn-terapkan-simulasi');
+
+        // Form elements
+        const selectDurasi = document.getElementById('booking_durasi_sewa_tahun');
+        const containerProposal = document.getElementById('container-proposal-bisnis');
+        const inputProposal = document.getElementById('input_proposal_bisnis');
 
         let selectedTahun = 1;
 
@@ -576,90 +627,99 @@
             }).format(number);
         }
 
-        function hitungSimulasi() {
-            if (!selectKategori) return;
-
-            const factor = parseFloat(selectKategori.value) || 1.0;
-            const selectedOption = selectKategori.options[selectKategori.selectedIndex];
-            const diskonText = selectedOption.getAttribute('data-diskon') || '0%';
-            const basePerYear = parseFloat(inputTarifPokok?.value) || 0;
-
-            if (badgeDiskon) {
-                badgeDiskon.textContent = factor < 1.0 ? `Diskon ${diskonText}` : 'Tarif Penuh';
-                if (factor <= 0.5) {
-                    badgeDiskon.className = 'text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300';
-                } else if (factor < 1.0) {
-                    badgeDiskon.className = 'text-[10px] font-extrabold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded border border-blue-300';
+        function setDurasi(tahun) {
+            selectedTahun = Math.max(1, Math.min(10, parseInt(tahun) || 1));
+            if (rangeDurasi) rangeDurasi.value = selectedTahun;
+            if (sliderDurasiDisplay) {
+                sliderDurasiDisplay.textContent = `${selectedTahun} Tahun`;
+                if (selectedTahun > 5) {
+                    sliderDurasiDisplay.className = 'text-xs font-extrabold text-amber-700 min-w-[55px] text-center';
                 } else {
-                    badgeDiskon.className = 'text-[10px] font-extrabold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-300';
+                    sliderDurasiDisplay.className = 'text-xs font-extrabold text-emerald-900 min-w-[55px] text-center';
                 }
             }
+            hitungSimulasi();
+        }
 
-            const standardTotal = basePerYear * selectedTahun;
-            const adjustedTotal = basePerYear * factor * selectedTahun;
-            const savedAmount = Math.max(0, standardTotal - adjustedTotal);
+        function hitungSimulasi() {
+            const basePerYear = parseFloat(inputTarifPokok?.value) || 0;
+            const totalSewa = basePerYear * selectedTahun;
 
             if (hasilPokokTahunan) {
                 hasilPokokTahunan.textContent = formatRupiah(basePerYear);
             }
 
-            if (hasilFaktorPersen) {
-                const persenStr = Math.round(factor * 100) + '%';
-                hasilFaktorPersen.textContent = factor < 1.0 ? `${persenStr} (Insentif)` : `${persenStr} (Standar)`;
-            }
-
-            if (hasilHemat) {
-                hasilHemat.textContent = formatRupiah(savedAmount);
+            if (hasilDurasiPilihan) {
+                hasilDurasiPilihan.textContent = `${selectedTahun} Tahun`;
             }
 
             if (hasilTotalSewa) {
-                hasilTotalSewa.textContent = formatRupiah(adjustedTotal);
+                hasilTotalSewa.textContent = formatRupiah(totalSewa);
             }
 
             if (hasilDurasiLabel) {
-                hasilDurasiLabel.textContent = `Untuk ${selectedTahun} Tahun Sewa (${selectedOption.getAttribute('data-label') || ''})`;
+                hasilDurasiLabel.textContent = `Total untuk ${selectedTahun} Tahun`;
+            }
+
+            if (simulasiWarningProposal) {
+                if (selectedTahun > 5) {
+                    simulasiWarningProposal.classList.remove('hidden');
+                } else {
+                    simulasiWarningProposal.classList.add('hidden');
+                }
             }
         }
 
-        durasiButtons.forEach(btn => {
-            btn.addEventListener('click', function () {
-                durasiButtons.forEach(b => {
-                    b.className = 'btn-durasi py-1.5 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition cursor-pointer';
-                });
-                this.className = 'btn-durasi py-1.5 text-xs font-extrabold rounded-xl border border-emerald-500 bg-emerald-600 text-white transition shadow-xs cursor-pointer';
-                selectedTahun = parseInt(this.getAttribute('data-tahun')) || 1;
-                hitungSimulasi();
+        if (rangeDurasi) {
+            rangeDurasi.addEventListener('input', function () {
+                setDurasi(this.value);
             });
-        });
+        }
 
-        if (selectKategori) {
-            selectKategori.addEventListener('change', hitungSimulasi);
+        if (btnMinus) {
+            btnMinus.addEventListener('click', function () {
+                setDurasi(selectedTahun - 1);
+            });
+        }
+
+        if (btnPlus) {
+            btnPlus.addEventListener('click', function () {
+                setDurasi(selectedTahun + 1);
+            });
         }
 
         if (inputTarifPokok && inputTarifPokok.type !== 'hidden') {
             inputTarifPokok.addEventListener('input', hitungSimulasi);
         }
 
+        function syncProposalRequirement() {
+            if (!selectDurasi || !containerProposal) return;
+            const durasi = parseInt(selectDurasi.value) || 1;
+            if (durasi > 5) {
+                containerProposal.classList.remove('hidden');
+                if (inputProposal) {
+                    inputProposal.required = true;
+                }
+            } else {
+                containerProposal.classList.add('hidden');
+                if (inputProposal) {
+                    inputProposal.required = false;
+                }
+            }
+        }
+
+        if (selectDurasi) {
+            selectDurasi.addEventListener('change', syncProposalRequirement);
+            syncProposalRequirement();
+        }
+
         if (btnTerapkan) {
             btnTerapkan.addEventListener('click', function () {
                 const formBooking = document.getElementById('form-booking');
-                const selectDurasi = document.getElementById('booking_durasi_sewa_tahun');
-                const inputInstansi = document.getElementById('booking_nama_instansi');
-                const textareaPeruntukan = document.getElementById('booking_rencana_peruntukan');
 
                 if (selectDurasi) {
                     selectDurasi.value = selectedTahun;
-                }
-
-                if (selectKategori) {
-                    const selectedOption = selectKategori.options[selectKategori.selectedIndex];
-                    const label = selectedOption.getAttribute('data-label') || '';
-                    if (inputInstansi && (!inputInstansi.value || inputInstansi.value.trim() === '')) {
-                        inputInstansi.value = label;
-                    }
-                    if (textareaPeruntukan && (!textareaPeruntukan.value || textareaPeruntukan.value.trim() === '')) {
-                        textareaPeruntukan.value = `Rencana pemanfaatan kegiatan ${label}`;
-                    }
+                    syncProposalRequirement();
                 }
 
                 if (formBooking) {
@@ -672,7 +732,7 @@
             });
         }
 
-        hitungSimulasi();
+        setDurasi(1);
 
         // Multi-Photo Gallery & Site Plan Interactive Logic
         const mainImg = document.getElementById('main-gallery-img');

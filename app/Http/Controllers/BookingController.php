@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\Booking;
+use App\Models\BookingDocument;
+use App\Models\BookingRequirement;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
@@ -25,15 +28,35 @@ class BookingController extends Controller
             'nama_instansi' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
             'rencana_peruntukan' => 'required|string|max:1000',
-            'durasi_sewa_tahun' => 'required|integer|min:1|max:30',
+            'durasi_sewa_tahun' => 'required|integer|min:1|max:10',
+            'skema_pembayaran' => 'required|in:sekaligus,bertahap',
+            'proposal_bisnis' => [
+                'nullable',
+                Rule::requiredIf(fn () => (int) $request->input('durasi_sewa_tahun') > 5),
+                'file',
+                'mimes:pdf,doc,docx',
+                'max:20480',
+            ],
         ], [
             'nama_pemohon.required' => 'Nama lengkap pemohon wajib diisi.',
             'nomor_whatsapp.required' => 'Nomor WhatsApp aktif wajib diisi agar petugas UPTD dapat menghubungi Anda.',
             'rencana_peruntukan.required' => 'Rencana peruntukan / jenis usaha wajib dijelaskan.',
             'durasi_sewa_tahun.required' => 'Rencana durasi sewa wajib dipilih.',
+            'durasi_sewa_tahun.max' => 'Rencana durasi sewa maksimal 10 tahun.',
+            'skema_pembayaran.required' => 'Skema pembayaran sewa wajib dipilih.',
+            'skema_pembayaran.in' => 'Pilihan skema pembayaran tidak valid.',
+            'proposal_bisnis.required' => 'Untuk permohonan sewa dengan durasi lebih dari 5 tahun, Anda wajib melampirkan Dokumen Proposal Bisnis / Feasibility Study.',
+            'proposal_bisnis.mimes' => 'Format file proposal bisnis harus berupa dokumen PDF atau DOC/DOCX.',
+            'proposal_bisnis.max' => 'Ukuran file proposal bisnis maksimal 20 MB.',
         ]);
 
         $user = Auth::user();
+
+        $proposalPath = null;
+        if ($request->hasFile('proposal_bisnis')) {
+            $proposalFile = $request->file('proposal_bisnis');
+            $proposalPath = $proposalFile->store('booking-documents', 'public');
+        }
 
         $booking = Booking::create([
             'asset_id' => $asset->id,
@@ -45,9 +68,29 @@ class BookingController extends Controller
             'email' => $validated['email'] ?? $user?->email,
             'rencana_peruntukan' => $validated['rencana_peruntukan'],
             'durasi_sewa_tahun' => (int) $validated['durasi_sewa_tahun'],
+            'skema_pembayaran' => $validated['skema_pembayaran'],
+            'proposal_bisnis_path' => $proposalPath,
             'status' => 'pending',
             'tanggal_booking' => now(),
         ]);
+
+        if ($proposalPath) {
+            $proposalReq = BookingRequirement::where('kode', 'REQ_PROPOSAL')->first();
+            if ($proposalReq) {
+                BookingDocument::create([
+                    'booking_id' => $booking->id,
+                    'booking_requirement_id' => $proposalReq->id,
+                    'nomor_dokumen' => 'PROP/' . $booking->kode_booking,
+                    'tanggal_dokumen' => now(),
+                    'file_path' => $proposalPath,
+                    'file_name' => $request->file('proposal_bisnis')->getClientOriginalName(),
+                    'file_size' => $request->file('proposal_bisnis')->getSize(),
+                    'file_type' => $request->file('proposal_bisnis')->getClientMimeType(),
+                    'status_verifikasi' => 'pending',
+                    'catatan' => 'Diunggah mandiri oleh pemohon saat pengajuan sewa > 5 tahun',
+                ]);
+            }
+        }
 
         // Update status aset di marketplace menjadi dalam proses booking
         if ($asset->status_ketersediaan === 'tersedia') {

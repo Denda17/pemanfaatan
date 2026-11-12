@@ -244,9 +244,32 @@
                         <span class="font-extrabold text-gray-900">{{ $booking->durasi_sewa_tahun }} Tahun</span>
                     </div>
                     <div>
+                        <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Skema Pembayaran:</span>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-extrabold {{ $booking->skema_pembayaran === 'bertahap' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200' }}">
+                            {{ $booking->skema_pembayaran_label }}
+                        </span>
+                    </div>
+                    <div>
                         <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Alamat Email:</span>
                         <span class="font-bold text-gray-800">{{ $booking->email ?: '-' }}</span>
                     </div>
+                    @if($booking->proposal_bisnis_path)
+                    <div class="sm:col-span-2 p-4 rounded-2xl bg-amber-50/70 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <div>
+                                <span class="block text-xs font-extrabold text-amber-950">Dokumen Proposal Bisnis / Feasibility Study</span>
+                                <span class="block text-[11px] text-amber-800">Dilampirkan pemohon untuk pemanfaatan sewa jangka panjang ({{ $booking->durasi_sewa_tahun }} Tahun)</span>
+                            </div>
+                        </div>
+                        <a href="{{ $booking->proposal_bisnis_url }}" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-extrabold text-xs transition shadow-xs shrink-0 self-start sm:self-auto">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            <span>Unduh Berkas</span>
+                        </a>
+                    </div>
+                    @endif
                     <div class="sm:col-span-2">
                         <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Rencana Konsep Usaha:</span>
                         <div class="p-3.5 bg-gray-50 rounded-2xl text-gray-700 border border-gray-200 leading-relaxed font-medium">

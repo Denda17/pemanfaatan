@@ -118,11 +118,23 @@
                                 {{ $item->asset?->nama_objek ?? 'Aset Tidak Ditemukan' }}
                             </h3>
 
-                            <p class="text-xs text-gray-500 font-medium flex items-center gap-1 mt-0.5">
-                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
-                                <span>{{ $item->asset?->kabupaten_kota ?? '-' }}</span>
+                            <p class="text-xs text-gray-500 font-medium flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                                    <span>{{ $item->asset?->kabupaten_kota ?? '-' }}</span>
+                                </span>
                                 <span class="text-gray-300">&bull;</span>
                                 <span>Durasi: <strong>{{ $item->durasi_sewa_tahun }} Tahun</strong></span>
+                                <span class="text-gray-300">&bull;</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold {{ $item->skema_pembayaran === 'bertahap' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200' }}">
+                                    {{ $item->skema_pembayaran_label }}
+                                </span>
+                                @if($item->durasi_sewa_tahun > 5 && $item->proposal_bisnis_path)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                        <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        <span>Proposal Terlampir</span>
+                                    </span>
+                                @endif
                             </p>
 
                             <!-- Peruntukan preview -->

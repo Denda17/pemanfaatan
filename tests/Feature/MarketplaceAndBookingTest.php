@@ -7,6 +7,8 @@ use App\Models\Booking;
 use App\Models\BookingRequirement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MarketplaceAndBookingTest extends TestCase
@@ -76,6 +78,7 @@ class MarketplaceAndBookingTest extends TestCase
             'email' => 'dedi@kreatifjabar.com',
             'rencana_peruntukan' => 'Pusat Inkubasi Bisnis & Coffee Shop Komunitas',
             'durasi_sewa_tahun' => 2,
+            'skema_pembayaran' => 'bertahap',
         ];
 
         // Tamu tanpa login dialihkan ke halaman login
@@ -90,6 +93,7 @@ class MarketplaceAndBookingTest extends TestCase
         $this->assertEquals($user->id, $booking->user_id);
         $this->assertEquals('pending', $booking->status);
         $this->assertEquals(2, $booking->durasi_sewa_tahun);
+        $this->assertEquals('bertahap', $booking->skema_pembayaran);
         $this->assertStringStartsWith('BK-', $booking->kode_booking);
 
         $response->assertRedirect(route('booking.status', $booking->kode_booking));
@@ -97,6 +101,68 @@ class MarketplaceAndBookingTest extends TestCase
         // Cek status aset otomatis berubah
         $asset->refresh();
         $this->assertEquals('proses_booking', $asset->status_ketersediaan);
+    }
+
+    public function test_booking_more_than_five_years_requires_business_proposal(): void
+    {
+        Storage::fake('public');
+
+        $asset = Asset::where('status_ketersediaan', 'tersedia')->first() ?? Asset::first();
+        $asset->update(['status_ketersediaan' => 'tersedia']);
+
+        $user = User::factory()->create([
+            'role' => 'peminat',
+            'is_active' => true,
+        ]);
+
+        // 1. Durasi > 5 tahun tanpa proposal bisnis ditolak validasi
+        $failResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+            'nama_pemohon' => 'Budi Sudarsono',
+            'nomor_whatsapp' => '081399887766',
+            'rencana_peruntukan' => 'Pusat Distribusi Logistik Regional',
+            'durasi_sewa_tahun' => 10,
+            'skema_pembayaran' => 'sekaligus',
+        ]);
+        $failResponse->assertSessionHasErrors('proposal_bisnis');
+
+        // Durasi sewa > 10 tahun ditolak validasi batas maksimal
+        $overLimitResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+            'nama_pemohon' => 'Budi Sudarsono',
+            'nomor_whatsapp' => '081399887766',
+            'rencana_peruntukan' => 'Pusat Distribusi Logistik Regional',
+            'durasi_sewa_tahun' => 11,
+            'skema_pembayaran' => 'sekaligus',
+        ]);
+        $overLimitResponse->assertSessionHasErrors('durasi_sewa_tahun');
+
+        // 2. Durasi > 5 tahun dengan melampirkan proposal bisnis diterima
+        $file = UploadedFile::fake()->create('proposal_rencana_bisnis.pdf', 1024, 'application/pdf');
+
+        $successResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+            'nama_pemohon' => 'Budi Sudarsono',
+            'nomor_whatsapp' => '081399887766',
+            'rencana_peruntukan' => 'Pusat Distribusi Logistik Regional',
+            'durasi_sewa_tahun' => 10,
+            'skema_pembayaran' => 'sekaligus',
+            'proposal_bisnis' => $file,
+        ]);
+
+        $booking = Booking::where('nomor_whatsapp', '081399887766')->latest()->first();
+        $this->assertNotNull($booking);
+        $this->assertEquals(10, $booking->durasi_sewa_tahun);
+        $this->assertEquals('sekaligus', $booking->skema_pembayaran);
+        $this->assertNotNull($booking->proposal_bisnis_path);
+        Storage::disk('public')->assertExists($booking->proposal_bisnis_path);
+
+        // Dokumen proposal juga otomatis masuk ke tabel booking_documents
+        $proposalReq = BookingRequirement::where('kode', 'REQ_PROPOSAL')->first();
+        $this->assertDatabaseHas('booking_documents', [
+            'booking_id' => $booking->id,
+            'booking_requirement_id' => $proposalReq->id,
+            'file_name' => 'proposal_rencana_bisnis.pdf',
+        ]);
+
+        $successResponse->assertRedirect(route('booking.status', $booking->kode_booking));
     }
 
     public function test_my_bookings_dashboard_and_booking_status_authorization(): void
@@ -198,13 +264,30 @@ class MarketplaceAndBookingTest extends TestCase
         }
         $this->assertNotNull($asset);
 
+        // 1. Publik / Tamu melihat simulasi tarif tanpa diskon kategori dan tanpa teks tarif penuh 100%
         $response = $this->get('/aset/' . $asset->slug);
         $response->assertStatus(200);
         $response->assertSee('Simulasi Tarif Sewa BMD');
         $response->assertSee('Permendagri No. 7/2024');
-        $response->assertSee('Pelaku Usaha Mikro, Kecil', false);
-        $response->assertSee('Insentif Afirmatif');
+        $response->assertDontSee('Tarif Penuh 100%');
+        $response->assertSee('Durasi Sewa');
         $response->assertSee('Gunakan Hasil Simulasi pada Formulir');
+        $response->assertDontSee('Pelaku Usaha Mikro, Kecil');
+        $response->assertDontSee('Insentif Afirmatif');
+
+        // 2. Pemohon terautentikasi dapat melihat formulir booking lengkap dengan skema pembayaran dan proposal bisnis
+        $user = User::factory()->create([
+            'role' => 'peminat',
+            'is_active' => true,
+        ]);
+
+        $authResponse = $this->actingAs($user, 'web')->get('/aset/' . $asset->slug);
+        $authResponse->assertStatus(200);
+        $authResponse->assertSee('Formulir Booking Minat Sewa');
+        $authResponse->assertSee('Skema Pembayaran');
+        $authResponse->assertSee('Dibayar Full Sekaligus');
+        $authResponse->assertSee('Pembayaran Bertahap');
+        $authResponse->assertSee('Dokumen Proposal Bisnis');
     }
 
     public function test_rented_asset_disables_booking_button_and_blocks_submission(): void
@@ -492,8 +575,11 @@ class MarketplaceAndBookingTest extends TestCase
         $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
 
         // 3. Pemohon login via formulir terpadu -> diarahkan ke Pengajuan Saya
-        $peminat = User::where('role', 'peminat')->where('is_active', true)->first();
-        $this->assertNotNull($peminat);
+        $peminat = User::factory()->create([
+            'role' => 'peminat',
+            'is_active' => true,
+            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+        ]);
 
         $peminatPost = $this->post('/masuk', [
             'email' => $peminat->email,

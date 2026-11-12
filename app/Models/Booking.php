@@ -23,6 +23,8 @@ class Booking extends Model
         'email',
         'rencana_peruntukan',
         'durasi_sewa_tahun',
+        'skema_pembayaran',
+        'proposal_bisnis_path',
         'status',
         'catatan_admin',
         'alasan_penolakan',
@@ -113,5 +115,23 @@ class Booking extends Model
             'rejected' => 'danger',
             default => 'gray',
         };
+    }
+
+    public function getSkemaPembayaranLabelAttribute(): string
+    {
+        return match ($this->skema_pembayaran) {
+            'bertahap' => 'Pembayaran Bertahap (Termin Tahunan)',
+            'sekaligus' => 'Dibayar Full Sekaligus',
+            default => ucfirst($this->skema_pembayaran ?? 'Sekaligus'),
+        };
+    }
+
+    public function getProposalBisnisUrlAttribute(): ?string
+    {
+        if (!$this->proposal_bisnis_path) {
+            return null;
+        }
+
+        return asset('storage/' . $this->proposal_bisnis_path);
     }
 }

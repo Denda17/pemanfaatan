@@ -81,8 +81,27 @@ class BookingResource extends Resource
                             ->numeric()
                             ->default(1)
                             ->minValue(1)
-                            ->maxValue(30)
-                            ->suffix('Tahun'),
+                            ->maxValue(10)
+                            ->suffix('Tahun')
+                            ->live(),
+
+                        Forms\Components\Select::make('skema_pembayaran')
+                            ->label('Skema Pembayaran')
+                            ->options([
+                                'sekaligus' => 'Dibayar Full Sekaligus di Awal',
+                                'bertahap' => 'Pembayaran Bertahap (Termin Tahunan)',
+                            ])
+                            ->default('sekaligus')
+                            ->required(),
+
+                        Forms\Components\FileUpload::make('proposal_bisnis_path')
+                            ->label('Dokumen Proposal Bisnis / Feasibility Study')
+                            ->directory('booking-documents')
+                            ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                            ->openable()
+                            ->downloadable()
+                            ->helperText('Wajib dilampirkan oleh pemohon jika durasi sewa lebih dari 5 tahun.')
+                            ->columnSpanFull(),
 
                         Forms\Components\Textarea::make('rencana_peruntukan')
                             ->label('Rencana Penggunaan / Peruntukan Usaha')
@@ -213,6 +232,21 @@ class BookingResource extends Resource
                     ->alignCenter()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('skema_pembayaran')
+                    ->label('Skema Bayar')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'sekaligus' => 'success',
+                        'bertahap' => 'info',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'sekaligus' => 'Full Sekaligus',
+                        'bertahap' => 'Bertahap / Termin',
+                        default => ucfirst($state ?? '-'),
+                    })
+                    ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
