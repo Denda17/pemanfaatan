@@ -68,11 +68,7 @@
                 
                 <!-- Brand / Logo UPTD -->
                 <a href="{{ route('home') }}" class="flex items-center gap-3.5 group">
-                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 group-hover:scale-[1.03] transition-transform duration-300 relative overflow-hidden">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                    </div>
+                    <img src="{{ asset('images/logo-jabar.svg') }}" alt="Logo Pemerintah Provinsi Jawa Barat" class="h-11 w-auto object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-xs">
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="font-extrabold text-xl tracking-tight text-gray-900 group-hover:text-emerald-600 transition">SIP-BMD</span>
@@ -185,9 +181,7 @@
                 <!-- Col 1: Brand & Identity (5 cols) -->
                 <div class="md:col-span-5">
                     <div class="flex items-center gap-3.5 mb-5">
-                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-emerald-500/20">
-                            JB
-                        </div>
+                        <img src="{{ asset('images/logo-jabar.svg') }}" alt="Logo Pemerintah Provinsi Jawa Barat" class="h-12 w-auto object-contain">
                         <div>
                             <div class="flex items-center gap-2">
                                 <span class="text-gray-900 font-extrabold text-lg tracking-tight">SIP-BMD JABAR</span>
