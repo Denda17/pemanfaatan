@@ -418,13 +418,23 @@
                         </div>
                     @else
                         <!-- Form Open for Authenticated Users -->
-                        <div class="mb-4 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center gap-2.5 text-xs text-emerald-900">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                            <div class="truncate">
-                                <span class="font-normal text-emerald-700">Masuk sebagai:</span>
-                                <strong class="font-extrabold text-emerald-950 ml-0.5">{{ Auth::user()->name }}</strong>
-                                <span class="text-emerald-700 text-[11px] block truncate">({{ Auth::user()->email }} &bull; {{ Auth::user()->phone }})</span>
+                        @php
+                            $isBadanUsaha = Auth::user()?->tipe_pemohon === 'badan_usaha';
+                        @endphp
+                        <div class="mb-4 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between gap-2.5 text-xs text-emerald-900">
+                            <div class="flex items-center gap-2.5 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                <div class="truncate">
+                                    <span class="font-normal text-emerald-700">Masuk sebagai:</span>
+                                    <strong class="font-extrabold text-emerald-950 ml-0.5">{{ Auth::user()->name }}</strong>
+                                    <span class="text-emerald-700 text-[11px] block truncate">
+                                        {{ $isBadanUsaha ? (Auth::user()->instansi ?: Auth::user()->email) : Auth::user()->email }} &bull; {{ Auth::user()->phone }}
+                                    </span>
+                                </div>
                             </div>
+                            <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-extrabold shrink-0 {{ $isBadanUsaha ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200' }}">
+                                {{ $isBadanUsaha ? 'Badan Usaha' : 'Perorangan' }}
+                            </span>
                         </div>
 
                         <form action="{{ route('booking.store', $asset->slug) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
@@ -433,9 +443,9 @@
                             <!-- Nama Pemohon -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 mb-1">
-                                    Nama Lengkap Pemohon <span class="text-rose-500">*</span>
+                                    {{ $isBadanUsaha ? 'Nama Penanggung Jawab / Pemohon' : 'Nama Lengkap Pemohon' }} <span class="text-rose-500">*</span>
                                 </label>
-                                <input type="text" name="nama_pemohon" value="{{ old('nama_pemohon', Auth::user()->name) }}" required placeholder="Contoh: Dedi Koswara" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                                <input type="text" name="nama_pemohon" value="{{ old('nama_pemohon', Auth::user()->name) }}" required placeholder="{{ $isBadanUsaha ? 'Contoh: Ahmad Subagja (Direktur)' : 'Contoh: Dedi Koswara' }}" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
                                 @error('nama_pemohon')
                                     <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>
                                 @enderror
@@ -458,11 +468,13 @@
                                 @enderror
                             </div>
 
-                            <!-- NIK & Durasi -->
+                            <!-- NIK / NIB & Durasi -->
                             <div class="grid grid-cols-2 gap-2.5">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">NIK / NIB</label>
-                                    <input type="text" name="nik_atau_nib" value="{{ old('nik_atau_nib', Auth::user()->nik ?? Auth::user()->nib) }}" placeholder="3204..." class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">
+                                        {{ $isBadanUsaha ? 'NIB Perusahaan' : 'NIK Pemohon (KTP)' }}
+                                    </label>
+                                    <input type="text" name="nik_atau_nib" value="{{ old('nik_atau_nib', $isBadanUsaha ? (Auth::user()->nib ?? Auth::user()->nik) : Auth::user()->nik) }}" placeholder="{{ $isBadanUsaha ? 'Nomor Induk Berusaha...' : '3204...' }}" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
@@ -536,11 +548,20 @@
                                 @enderror
                             </div>
 
-                            <!-- Instansi / Perusahaan -->
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">Nama Instansi / Badan Usaha</label>
-                                <input type="text" id="booking_nama_instansi" name="nama_instansi" value="{{ old('nama_instansi', Auth::user()->instansi) }}" placeholder="PT / CV / Koperasi / Perorangan" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
-                            </div>
+                            @if($isBadanUsaha)
+                                <!-- Instansi / Badan Usaha (Hanya Ditampilkan untuk Pemohon Badan Usaha) -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">
+                                        Nama Badan Usaha / Perusahaan <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" id="booking_nama_instansi" name="nama_instansi" value="{{ old('nama_instansi', Auth::user()->instansi) }}" required placeholder="Contoh: PT Pasundan Makmur Sejahtera" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                                    @error('nama_instansi')
+                                        <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @else
+                                <input type="hidden" name="nama_instansi" value="Perorangan">
+                            @endif
 
                             <!-- Rencana Peruntukan Usaha -->
                             <div>

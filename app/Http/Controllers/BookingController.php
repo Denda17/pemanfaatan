@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\BookingDocument;
 use App\Models\BookingRequirement;
 use App\Models\User;
+use App\Services\SuratPermohonanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -51,6 +52,7 @@ class BookingController extends Controller
         ]);
 
         $user = Auth::user();
+        $isBadanUsaha = $user?->tipe_pemohon === 'badan_usaha';
 
         $proposalPath = null;
         if ($request->hasFile('proposal_bisnis')) {
@@ -62,8 +64,8 @@ class BookingController extends Controller
             'asset_id' => $asset->id,
             'user_id' => $user?->id,
             'nama_pemohon' => $validated['nama_pemohon'],
-            'nik_atau_nib' => $validated['nik_atau_nib'] ?? ($user?->nik ?? $user?->nib),
-            'nama_instansi' => $validated['nama_instansi'] ?? $user?->instansi,
+            'nik_atau_nib' => $validated['nik_atau_nib'] ?? ($isBadanUsaha ? ($user?->nib ?? $user?->nik) : $user?->nik),
+            'nama_instansi' => $isBadanUsaha ? ($validated['nama_instansi'] ?? $user?->instansi) : 'Perorangan',
             'nomor_whatsapp' => $validated['nomor_whatsapp'],
             'email' => $validated['email'] ?? $user?->email,
             'rencana_peruntukan' => $validated['rencana_peruntukan'],
@@ -191,5 +193,85 @@ class BookingController extends Controller
         ];
 
         return view('pages.booking-status', compact('booking', 'steps'));
+    }
+
+    public function downloadSuratPermohonan(Request $request, string $kode)
+    {
+        $booking = Booking::with(['user', 'asset'])->where('kode_booking', $kode)->firstOrFail();
+        $user = Auth::user();
+
+        // Otorisasi: hanya pemilik booking atau admin
+        if ($user && !$user->isAdmin()) {
+            $isOwner = ($booking->user_id === $user->id)
+                || ($booking->email && strtolower($booking->email) === strtolower($user->email))
+                || ($booking->nomor_whatsapp && $booking->nomor_whatsapp === $user->phone);
+
+            abort_unless($isOwner, 403, 'Anda tidak memiliki hak akses untuk mengunduh dokumen permohonan ini.');
+        }
+
+        // Mode template mentah
+        if ($request->query('mode') === 'raw') {
+            $templatePath = SuratPermohonanService::getTemplatePath();
+            return response()->download($templatePath, 'DRAFT_Surat_Permohonan_Sewa_BMD_2026.docx');
+        }
+
+        // Mode auto-fill (otomatis terisi)
+        $generatedFile = SuratPermohonanService::generate($booking);
+        $fileName = 'Surat_Permohonan_Sewa_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $booking->kode_booking) . '.docx';
+
+        return response()->download($generatedFile, $fileName);
+    }
+
+    public function uploadDocument(Request $request, string $kode)
+    {
+        $booking = Booking::where('kode_booking', $kode)->firstOrFail();
+        $user = Auth::user();
+
+        // Otorisasi
+        if ($user && !$user->isAdmin()) {
+            $isOwner = ($booking->user_id === $user->id)
+                || ($booking->email && strtolower($booking->email) === strtolower($user->email))
+                || ($booking->nomor_whatsapp && $booking->nomor_whatsapp === $user->phone);
+
+            abort_unless($isOwner, 403, 'Anda tidak memiliki hak akses untuk mengunggah dokumen pada permohonan ini.');
+        }
+
+        $validated = $request->validate([
+            'booking_requirement_id' => 'required|exists:booking_requirements,id',
+            'dokumen_file' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:20480',
+        ], [
+            'booking_requirement_id.required' => 'Jenis persyaratan dokumen wajib ditentukan.',
+            'booking_requirement_id.exists' => 'Jenis persyaratan tidak valid.',
+            'dokumen_file.required' => 'File dokumen wajib dipilih.',
+            'dokumen_file.mimes' => 'Format file yang diperbolehkan adalah PDF, JPG, PNG, atau DOC/DOCX.',
+            'dokumen_file.max' => 'Ukuran file maksimal adalah 20 MB.',
+        ]);
+
+        $requirement = BookingRequirement::findOrFail($validated['booking_requirement_id']);
+        $file = $request->file('dokumen_file');
+        $path = $file->store('booking-documents', 'public');
+
+        BookingDocument::updateOrCreate(
+            [
+                'booking_id' => $booking->id,
+                'booking_requirement_id' => $requirement->id,
+            ],
+            [
+                'nomor_dokumen' => $requirement->kode . '/' . $booking->kode_booking,
+                'tanggal_dokumen' => now(),
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'file_type' => $file->getClientMimeType(),
+                'status_verifikasi' => 'pending',
+                'catatan' => null, // reset catatan revisi saat pemohon mengunggah ulang
+            ]
+        );
+
+        if ($requirement->kode === 'REQ_PROPOSAL') {
+            $booking->update(['proposal_bisnis_path' => $path]);
+        }
+
+        return back()->with('success', 'Dokumen "' . $requirement->nama_persyaratan . '" berhasil diunggah dan sedang menunggu verifikasi Tim UPTD BPKAD Jabar.');
     }
 }

@@ -37,6 +37,14 @@ Route::get('/status-booking/{kode}', [BookingController::class, 'showStatus'])
     ->middleware('auth')
     ->name('booking.status');
 
+Route::get('/status-booking/{kode}/surat-permohonan', [BookingController::class, 'downloadSuratPermohonan'])
+    ->middleware('auth')
+    ->name('booking.surat-permohonan');
+
+Route::post('/status-booking/{kode}/upload-dokumen', [BookingController::class, 'uploadDocument'])
+    ->middleware('auth')
+    ->name('booking.upload-dokumen');
+
 // Pengalihan Login Admin ke Portal Login Terpadu
 Route::get('/admin/login', function () {
     return redirect()->route('login');

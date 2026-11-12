@@ -591,4 +591,119 @@ class MarketplaceAndBookingTest extends TestCase
         $alreadyLoggedInPeminat = $this->get('/masuk');
         $alreadyLoggedInPeminat->assertRedirect(route('booking.my'));
     }
+
+    public function test_booking_form_adapts_for_individual_vs_business_applicant(): void
+    {
+        $asset = Asset::where('status_ketersediaan', 'tersedia')->first() ?? Asset::first();
+
+        // 1. Pemohon perorangan: tidak melihat input teks 'Nama Badan Usaha / Perusahaan', kolom instansi otomatis hidden 'Perorangan'
+        $individual = User::factory()->create([
+            'tipe_pemohon' => 'perorangan',
+            'role' => 'peminat',
+            'nik' => '3273112233445566',
+        ]);
+
+        $resIndiv = $this->actingAs($individual, 'web')->get('/aset/' . $asset->slug);
+        $resIndiv->assertStatus(200);
+        $resIndiv->assertSee('Perorangan');
+        $resIndiv->assertSee('NIK Pemohon (KTP)');
+        $resIndiv->assertDontSee('Nama Badan Usaha / Perusahaan');
+        $resIndiv->assertSee('value="Perorangan"', false);
+
+        // 2. Pemohon badan usaha: melihat input 'Nama Badan Usaha / Perusahaan' dan label NIB
+        $business = User::factory()->create([
+            'tipe_pemohon' => 'badan_usaha',
+            'role' => 'peminat',
+            'instansi' => 'PT Harapan Bangsa Mandiri',
+            'nib' => '0129876543210',
+        ]);
+
+        $resBiz = $this->actingAs($business, 'web')->get('/aset/' . $asset->slug);
+        $resBiz->assertStatus(200);
+        $resBiz->assertSee('Badan Usaha');
+        $resBiz->assertSee('NIB Perusahaan');
+        $resBiz->assertSee('Nama Badan Usaha / Perusahaan');
+        $resBiz->assertSee('PT Harapan Bangsa Mandiri');
+    }
+
+    public function test_applicant_can_download_surat_permohonan_draft_autofill_and_raw(): void
+    {
+        $asset = Asset::first();
+        $applicant = User::factory()->create(['tipe_pemohon' => 'perorangan', 'role' => 'peminat']);
+        $stranger = User::factory()->create(['tipe_pemohon' => 'perorangan', 'role' => 'peminat']);
+        $admin = User::where('role', 'admin')->first();
+
+        $booking = Booking::create([
+            'asset_id' => $asset->id,
+            'user_id' => $applicant->id,
+            'nama_pemohon' => $applicant->name,
+            'nik_atau_nib' => '3201010101900001',
+            'nama_instansi' => 'Perorangan',
+            'nomor_whatsapp' => '081299998888',
+            'email' => $applicant->email,
+            'rencana_peruntukan' => 'Sentra Kuliner Kreatif',
+            'durasi_sewa_tahun' => 3,
+            'skema_pembayaran' => 'sekaligus',
+            'status' => 'pending',
+            'tanggal_booking' => now(),
+        ]);
+
+        // 1. Pemohon berhak mengunduh draf terisi otomatis (.docx)
+        $downloadRes = $this->actingAs($applicant, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan');
+        $downloadRes->assertStatus(200);
+        $this->assertStringContainsString('Surat_Permohonan_Sewa_', (string) $downloadRes->headers->get('Content-Disposition'));
+
+        // 2. Pemohon dapat mengunduh mode template mentah (?mode=raw)
+        $rawRes = $this->actingAs($applicant, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan?mode=raw');
+        $rawRes->assertStatus(200);
+        $this->assertStringContainsString('DRAFT_Surat_Permohonan_Sewa_BMD_2026.docx', (string) $rawRes->headers->get('Content-Disposition'));
+
+        // 3. User asing dilarang mengunduh dokumen permohonan orang lain (403)
+        $forbiddenRes = $this->actingAs($stranger, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan');
+        $forbiddenRes->assertStatus(403);
+
+        // 4. Admin UPTD diperbolehkan mengunduh dokumen pemohon manapun
+        $adminRes = $this->actingAs($admin, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan');
+        $adminRes->assertStatus(200);
+    }
+
+    public function test_applicant_can_upload_scanned_documents_and_status_becomes_pending(): void
+    {
+        Storage::fake('public');
+
+        $asset = Asset::first();
+        $applicant = User::factory()->create(['tipe_pemohon' => 'perorangan', 'role' => 'peminat']);
+        $reqSurat = BookingRequirement::where('kode', 'REQ_SURAT_PERMOHONAN')->first();
+
+        $booking = Booking::create([
+            'asset_id' => $asset->id,
+            'user_id' => $applicant->id,
+            'nama_pemohon' => $applicant->name,
+            'nik_atau_nib' => '3201010101900001',
+            'nama_instansi' => 'Perorangan',
+            'nomor_whatsapp' => '081299998888',
+            'email' => $applicant->email,
+            'rencana_peruntukan' => 'Kafe Literasi',
+            'durasi_sewa_tahun' => 2,
+            'skema_pembayaran' => 'bertahap',
+            'status' => 'pending',
+            'tanggal_booking' => now(),
+        ]);
+
+        $file = UploadedFile::fake()->create('surat_permohonan_bertandatangan.pdf', 800, 'application/pdf');
+
+        $uploadResponse = $this->actingAs($applicant, 'web')->post('/status-booking/' . $booking->kode_booking . '/upload-dokumen', [
+            'booking_requirement_id' => $reqSurat->id,
+            'dokumen_file' => $file,
+        ]);
+
+        $uploadResponse->assertSessionHas('success');
+
+        $this->assertDatabaseHas('booking_documents', [
+            'booking_id' => $booking->id,
+            'booking_requirement_id' => $reqSurat->id,
+            'file_name' => 'surat_permohonan_bertandatangan.pdf',
+            'status_verifikasi' => 'pending',
+        ]);
+    }
 }
