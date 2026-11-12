@@ -63,6 +63,11 @@ class MarketplaceAndBookingTest extends TestCase
             $asset->update(['status_ketersediaan' => 'tersedia']);
         }
 
+        $user = User::factory()->create([
+            'role' => 'peminat',
+            'is_active' => true,
+        ]);
+
         $postData = [
             'nama_pemohon' => 'Dedi Koswara',
             'nomor_whatsapp' => '08122334455',
@@ -73,10 +78,16 @@ class MarketplaceAndBookingTest extends TestCase
             'durasi_sewa_tahun' => 2,
         ];
 
-        $response = $this->post('/aset/' . $asset->slug . '/booking', $postData);
+        // Tamu tanpa login dialihkan ke halaman login
+        $guestResponse = $this->post('/aset/' . $asset->slug . '/booking', $postData);
+        $guestResponse->assertRedirect(route('login'));
+
+        // Pengguna terautentikasi berhasil mengirim pengajuan booking
+        $response = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', $postData);
 
         $booking = Booking::where('nomor_whatsapp', '08122334455')->latest()->first();
         $this->assertNotNull($booking);
+        $this->assertEquals($user->id, $booking->user_id);
         $this->assertEquals('pending', $booking->status);
         $this->assertEquals(2, $booking->durasi_sewa_tahun);
         $this->assertStringStartsWith('BK-', $booking->kode_booking);
@@ -132,7 +143,11 @@ class MarketplaceAndBookingTest extends TestCase
 
     public function test_asset_detail_page_contains_permendagri_calculator(): void
     {
-        $asset = Asset::where('status_ketersediaan', 'tersedia')->first() ?? Asset::first();
+        $asset = Asset::where('status_ketersediaan', 'tersedia')->first();
+        if (!$asset) {
+            $asset = Asset::first();
+            $asset->update(['status_ketersediaan' => 'tersedia']);
+        }
         $this->assertNotNull($asset);
 
         $response = $this->get('/aset/' . $asset->slug);
@@ -166,13 +181,14 @@ class MarketplaceAndBookingTest extends TestCase
         $catalogResponse->assertSee('Detail Aset');
 
         // 3. Pengajuan booking untuk aset berstatus tersewa diblokir
+        $user = User::factory()->create(['role' => 'peminat']);
         $postData = [
             'nama_pemohon' => 'Ujang Rented Test',
             'nomor_whatsapp' => '081999888777',
             'rencana_peruntukan' => 'Uji Coba Booking Aset Tersewa',
             'durasi_sewa_tahun' => 1,
         ];
-        $bookingResponse = $this->post('/aset/' . $rentedAsset->slug . '/booking', $postData);
+        $bookingResponse = $this->actingAs($user, 'web')->post('/aset/' . $rentedAsset->slug . '/booking', $postData);
         $bookingResponse->assertSessionHas('error', 'Maaf, aset ini sedang dalam masa sewa aktif.');
     }
 
@@ -271,26 +287,28 @@ class MarketplaceAndBookingTest extends TestCase
         $createPage->assertStatus(200);
 
         // Buat record SOP baru
-        $sop = \App\Models\Regulation::create([
-            'slug' => 'sop-survei-lapangan-2026',
-            'nomor' => 'SOP/05/UPTD/2026',
-            'tahun' => 2026,
-            'jenis' => 'Standar Operasional Prosedur (SOP)',
-            'tingkat' => 'sop',
-            'penerbit' => 'UPTD Pengamanan dan Pemanfaatan Aset Jabar',
-            'judul' => 'SOP Pelaksanaan Survei Lapangan dan Verifikasi Fisik Aset Sewa',
-            'deskripsi' => 'Panduan alur petugas lapangan dan peminat sewa dalam pengecekan fisik tanah dan bangunan.',
-            'poin_kunci' => [
-                'Waktu survei maksimal 3 hari kerja setelah pengajuan booking',
-                'Berita Acara Peninjauan Lapangan (BAPL) ditandatangani kedua pihak',
-            ],
-            'file_path' => 'regulasi-docs/Perda Provinsi Jawa Barat Nomor 3 Tahun 2026.pdf',
-            'disk' => 'public',
-            'download_name' => 'SOP-Survei-Lapangan-UPTD-2026.pdf',
-            'badge_color' => 'amber',
-            'urutan' => 7,
-            'is_active' => true,
-        ]);
+        $sop = \App\Models\Regulation::updateOrCreate(
+            ['slug' => 'sop-survei-lapangan-2026'],
+            [
+                'nomor' => 'SOP/05/UPTD/2026',
+                'tahun' => 2026,
+                'jenis' => 'Standar Operasional Prosedur (SOP)',
+                'tingkat' => 'sop',
+                'penerbit' => 'UPTD Pengamanan dan Pemanfaatan Aset Jabar',
+                'judul' => 'SOP Pelaksanaan Survei Lapangan dan Verifikasi Fisik Aset Sewa',
+                'deskripsi' => 'Panduan alur petugas lapangan dan peminat sewa dalam pengecekan fisik tanah dan bangunan.',
+                'poin_kunci' => [
+                    'Waktu survei maksimal 3 hari kerja setelah pengajuan booking',
+                    'Berita Acara Peninjauan Lapangan (BAPL) ditandatangani kedua pihak',
+                ],
+                'file_path' => 'regulasi-docs/Perda Provinsi Jawa Barat Nomor 3 Tahun 2026.pdf',
+                'disk' => 'public',
+                'download_name' => 'SOP-Survei-Lapangan-UPTD-2026.pdf',
+                'badge_color' => 'amber',
+                'urutan' => 7,
+                'is_active' => true,
+            ]
+        );
 
         // Pastikan tampil di portal publik kategori SOP
         $publicSop = $this->get('/dasar-hukum?kategori=sop');
@@ -303,5 +321,91 @@ class MarketplaceAndBookingTest extends TestCase
         $sopPreview = $this->get('/dasar-hukum/preview/' . $sop->slug);
         $sopPreview->assertStatus(200);
         $sopPreview->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_user_registration_requires_login_and_does_not_auto_login(): void
+    {
+        $regResponse = $this->get('/daftar');
+        $regResponse->assertStatus(200);
+        $regResponse->assertSee('Buat Akun Portal Pemanfaatan');
+        $regResponse->assertSee('Perorangan / Pribadi');
+
+        $email = 'ahmad_' . uniqid() . '@ptpasundan.co.id';
+        $registerData = [
+            'tipe_pemohon' => 'badan_usaha',
+            'name' => 'Ahmad Subagja',
+            'email' => $email,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'phone' => '081298765432',
+            'instansi' => 'PT Pasundan Investama Mandiri',
+            'nib' => '9120001234567',
+            'npwp' => '01.234.567.8-423.000',
+            'alamat' => 'Jl. Asia Afrika No. 100, Bandung',
+        ];
+
+        $postResponse = $this->post('/daftar', $registerData);
+
+        // 1. Harus dialihkan ke halaman login, BUKAN langsung login
+        $postResponse->assertRedirect(route('login'));
+        $postResponse->assertSessionHas('success');
+        $this->assertFalse(\Illuminate\Support\Facades\Auth::check(), 'User tidak boleh langsung login otomatis setelah mendaftar.');
+
+        // 2. Data tersimpan di database dengan role peminat
+        $createdUser = User::where('email', $email)->first();
+        $this->assertNotNull($createdUser);
+        $this->assertEquals('peminat', $createdUser->role);
+        $this->assertEquals('badan_usaha', $createdUser->tipe_pemohon);
+        $this->assertEquals('PT Pasundan Investama Mandiri', $createdUser->instansi);
+
+        // 3. User sekarang dapat login manual di halaman login
+        $loginPage = $this->get('/masuk');
+        $loginPage->assertStatus(200);
+        $loginPage->assertSee('Masuk ke Akun Anda');
+
+        $loginResponse = $this->post('/masuk', [
+            'email' => $email,
+            'password' => 'password123',
+        ]);
+        $loginResponse->assertRedirect(route('catalog.index'));
+        $this->assertTrue(\Illuminate\Support\Facades\Auth::check());
+        $this->assertEquals($createdUser->id, \Illuminate\Support\Facades\Auth::id());
+
+        // 4. Logout
+        $logoutResponse = $this->post('/keluar');
+        $logoutResponse->assertRedirect(route('home'));
+        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+    }
+
+    public function test_inactive_user_cannot_login(): void
+    {
+        $email = 'suspended_' . uniqid() . '@mitra.com';
+        $inactiveUser = User::factory()->create([
+            'email' => $email,
+            'password' => bcrypt('password123'),
+            'is_active' => false,
+            'role' => 'peminat',
+        ]);
+
+        $loginResponse = $this->post('/masuk', [
+            'email' => $email,
+            'password' => 'password123',
+        ]);
+
+        $loginResponse->assertSessionHasErrors('email');
+        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+    }
+
+    public function test_admin_can_access_user_management_in_filament(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->assertNotNull($admin);
+
+        $response = $this->actingAs($admin, 'web')->get('/admin/users');
+        $response->assertStatus(200);
+        $response->assertSee('Manajemen Pengguna');
+
+        $createResponse = $this->actingAs($admin, 'web')->get('/admin/users/create');
+        $createResponse->assertStatus(200);
     }
 }

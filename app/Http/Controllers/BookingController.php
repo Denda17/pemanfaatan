@@ -33,21 +33,16 @@ class BookingController extends Controller
             'durasi_sewa_tahun.required' => 'Rencana durasi sewa wajib dipilih.',
         ]);
 
-        // Cek jika pemohon login atau cari user berdasarkan email/telepon
-        $userId = Auth::id();
-        if (!$userId && !empty($validated['email'])) {
-            $existingUser = User::where('email', $validated['email'])->first();
-            $userId = $existingUser?->id;
-        }
+        $user = Auth::user();
 
         $booking = Booking::create([
             'asset_id' => $asset->id,
-            'user_id' => $userId,
+            'user_id' => $user?->id,
             'nama_pemohon' => $validated['nama_pemohon'],
-            'nik_atau_nib' => $validated['nik_atau_nib'] ?? null,
-            'nama_instansi' => $validated['nama_instansi'] ?? null,
+            'nik_atau_nib' => $validated['nik_atau_nib'] ?? ($user?->nik ?? $user?->nib),
+            'nama_instansi' => $validated['nama_instansi'] ?? $user?->instansi,
             'nomor_whatsapp' => $validated['nomor_whatsapp'],
-            'email' => $validated['email'] ?? null,
+            'email' => $validated['email'] ?? $user?->email,
             'rencana_peruntukan' => $validated['rencana_peruntukan'],
             'durasi_sewa_tahun' => (int) $validated['durasi_sewa_tahun'],
             'status' => 'pending',

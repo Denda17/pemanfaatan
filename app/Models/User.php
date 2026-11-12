@@ -18,8 +18,14 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'role',
+        'tipe_pemohon',
+        'nik',
+        'nib',
+        'npwp',
         'phone',
         'instansi',
+        'alamat',
+        'is_active',
     ];
 
     protected $hidden = [
@@ -32,17 +38,23 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role === 'admin' || str_ends_with($this->email, '@pemanfaatan.jabarprov.go.id');
+        return ($this->role === 'admin' || str_ends_with($this->email, '@pemanfaatan.jabarprov.go.id')) && $this->is_active;
     }
 
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isPemohon(): bool
+    {
+        return $this->role === 'peminat';
     }
 
     public function bookings(): HasMany

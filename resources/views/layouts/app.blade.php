@@ -101,16 +101,40 @@
                     </a>
                 </div>
 
-                <!-- Call To Action Buttons (Behance Pop-Up Accent) -->
-                <div class="flex items-center gap-2.5">
-                    <a href="{{ route('booking.tracker') }}" class="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-2xs">
-                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <span>Cek Status</span>
-                    </a>
-                    <a href="{{ route('catalog.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 hover:shadow-lg hover:shadow-emerald-600/30 transition-all duration-200 active:scale-[0.98]">
-                        <span>Jelajahi Aset</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                    </a>
+                <!-- Call To Action & Auth Buttons -->
+                <div class="flex items-center gap-2">
+                    @guest
+                        <a href="{{ route('login') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all duration-200">
+                            <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                            <span>Masuk</span>
+                        </a>
+                        <a href="{{ route('register') }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 transition-all duration-200 active:scale-[0.98]">
+                            <span>Daftar Akun</span>
+                        </a>
+                    @else
+                        <!-- Logged-in User Profile Pill -->
+                        <div class="inline-flex items-center gap-2 pl-3 pr-1 py-1 rounded-full bg-gray-100 border border-gray-200/80">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span class="text-xs font-extrabold text-gray-800 max-w-[120px] truncate" title="{{ Auth::user()->name }}">
+                                    {{ Auth::user()->name }}
+                                </span>
+                            </div>
+
+                            @if(Auth::user()->isAdmin())
+                                <a href="{{ url('/admin') }}" class="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 transition" title="Buka Panel Admin">
+                                    Admin
+                                </a>
+                            @endif
+
+                            <form action="{{ route('logout') }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit" class="p-1 rounded-full text-gray-400 hover:text-rose-600 hover:bg-white transition" title="Keluar Akun">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                    @endguest
                 </div>
             </div>
         </nav>
