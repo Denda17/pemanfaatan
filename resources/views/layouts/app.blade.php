@@ -269,7 +269,7 @@
                             </div>
                             <p class="text-xs leading-relaxed">
                                 <strong class="text-gray-900 block font-bold mb-0.5">UPTD Pengamanan & Pemanfaatan Aset</strong>
-                                Jl. Kawaluyaan No. 4, Jatisari, Kec. Buahbatu, Kota Bandung, Jawa Barat 40286
+                                Jl. Cilaki No. 51, Kota Bandung, Jawa Barat.
                             </p>
                         </div>
 
