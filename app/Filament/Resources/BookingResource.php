@@ -101,7 +101,11 @@ class BookingResource extends Resource
                                 'bertahap' => 'Pembayaran Bertahap (Termin Tahunan)',
                             ])
                             ->default('sekaligus')
-                            ->required(),
+                            ->required()
+                            ->live()
+                            ->helperText(fn ($get) => $get('skema_pembayaran') === 'bertahap' 
+                                ? 'Skema Bertahap: Termin 1 wajib lunas sebelum penandatanganan PKS. Jadwal termin tahun ke-2 dst. wajib dicantumkan dalam klausul naskah PKS.' 
+                                : 'Skema Sekaligus: Pelunasan 100% penuh di awal sebelum penandatanganan naskah PKS.'),
 
                         Forms\Components\FileUpload::make('proposal_bisnis_path')
                             ->label('Dokumen Proposal Bisnis / Feasibility Study')

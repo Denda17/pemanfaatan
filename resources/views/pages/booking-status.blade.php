@@ -560,6 +560,124 @@
                 </div>
             </div>
 
+            <!-- Rencana Mekanisme Pembayaran Bertahap (HANYA Berlaku Khusus Skema Bertahap) -->
+            @if($booking->skema_pembayaran === 'bertahap')
+                <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-blue-200/90 relative overflow-hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-gray-100 gap-3">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0 shadow-2xs">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200 uppercase tracking-wider">
+                                        Khusus Skema Bertahap
+                                    </span>
+                                    <span class="text-xs text-gray-400 font-bold">&bull;</span>
+                                    <span class="text-xs font-bold text-gray-600">{{ $booking->durasi_sewa_tahun }} Termin Tahunan</span>
+                                </div>
+                                <h3 class="text-base font-extrabold text-gray-900 leading-snug">
+                                    Ketentuan &amp; Mekanisme Pembayaran Bertahap
+                                </h3>
+                                <p class="text-xs text-gray-500 mt-0.5 font-medium">
+                                    Sesuai Permendagri No. 19/2016 jo. No. 7/2024 dan Perda Jabar No. 3/2026, pembayaran sewa bertahap dituangkan secara mengikat dalam naskah Perjanjian Kerja Sama (PKS).
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="shrink-0 self-start sm:self-auto">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-extrabold">
+                                <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                                <span>Termin 1 Wajib Sebelum PKS</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Ringkasan Alur Prinsip Bertahap -->
+                    <div class="p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-blue-50/20 border border-blue-200/80 mb-6">
+                        <div class="flex items-start gap-3 text-xs leading-relaxed text-blue-950">
+                            <svg class="w-5 h-5 text-blue-700 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <div>
+                                <strong class="font-extrabold text-blue-950 block mb-0.5">Aturan Pokok Pembayaran Bertahap Sewa BMD:</strong>
+                                <span>
+                                    Uang sewa <strong>Termin Pertama (Tahun ke-1) wajib disetorkan lunas ke Kas Daerah</strong> sebelum penandatanganan PKS dan Berita Acara Serah Terima (BAST). Pembayaran termin tahun ke-2 dan seterusnya dibayarkan paling lambat <strong>30 (tiga puluh) hari kalender</strong> sebelum masa sewa tahun berjalan dimulai, sesuai tanggal jatuh tempo yang ditetapkan resmi pada naskah PKS.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Jadwal Termin -->
+                    <div class="space-y-3.5 mb-6">
+                        <h4 class="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                            <span>Simulasi Jadwal Pembayaran Termin (Durasi {{ $booking->durasi_sewa_tahun }} Tahun)</span>
+                        </h4>
+
+                        <div class="grid grid-cols-1 gap-3">
+                            @for($t = 1; $t <= $booking->durasi_sewa_tahun; $t++)
+                                <div class="p-3.5 sm:p-4 rounded-2xl border {{ $t === 1 ? 'bg-emerald-50/40 border-emerald-200' : 'bg-gray-50/70 border-gray-200' }} flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 {{ $t === 1 ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-blue-600 text-white shadow-2xs' }}">
+                                            T{{ $t }}
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <h5 class="text-xs font-extrabold text-gray-900">
+                                                    Termin ke-{{ $t }} (Sewa Tahun ke-{{ $t }})
+                                                </h5>
+                                                @if($t === 1)
+                                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                        Syarat Mutlak Akad &amp; Kunci
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                                                        Jatuh Tempo Tahunan
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <p class="text-[11px] text-gray-500 mt-0.5 leading-normal font-medium">
+                                                @if($t === 1)
+                                                    Wajib disetor lunas setelah persetujuan Sekda terbit, sebelum tanda tangan naskah PKS dan serah terima kunci/fisik aset.
+                                                @else
+                                                    Jatuh tempo paling lambat H-30 hari sebelum masa sewa Tahun ke-{{ $t - 1 }} berakhir (sekitar bulan ke-{{ (($t - 1) * 12) - 1 }} masa sewa).
+                                                @endif
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-left sm:text-right shrink-0">
+                                        <span class="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Jatuh Tempo:</span>
+                                        <span class="text-xs font-extrabold {{ $t === 1 ? 'text-emerald-700' : 'text-blue-800' }}">
+                                            {{ $t === 1 ? 'Sebelum Penandatanganan PKS' : 'H-30 Hari Tahun ke-' . $t }}
+                                        </span>
+                                    </div>
+                                </div>
+                            @endfor
+                        </div>
+                    </div>
+
+                    <!-- Rekening Resmi Kas Daerah & Tata Cara -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-gray-50 border border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">Bank Penampung Resmi:</span>
+                                <strong class="text-gray-900 block font-bold text-sm">PT Bank Pembangunan Daerah Jawa Barat &amp; Banten (Bank BJB)</strong>
+                                <span class="text-[11px] text-gray-500 block mt-0.5">Rekening Kas Umum Daerah (RKUD) Pemerintah Provinsi Jawa Barat</span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1">Instrumen Penyetoran:</span>
+                                <strong class="text-gray-900 block font-bold text-sm">Surat Tanda Setoran (STS) / Kode Billing BPKAD Jabar</strong>
+                                <span class="text-[11px] text-gray-500 block mt-0.5">Diterbitkan oleh tim UPTD BPKAD Jabar pada tahapan verifikasi</span>
+                            </div>
+                            <div class="md:col-span-2 pt-3 border-t border-gray-200/80 text-[11px] text-gray-600 leading-relaxed font-medium">
+                                <strong class="text-gray-900 font-bold">Catatan Kepatuhan PKS:</strong> Apabila penyewa terlambat menyetorkan termin tahunan melewati tanggal jatuh tempo yang tertuang dalam PKS, berlaku denda keterlambatan sebesar <strong>1‰ (satu permil) per hari kalender</strong> serta peringatan tertulis (SP 1, SP 2, SP 3). Jika kewajiban tidak diselesaikan, Pemprov Jabar berhak memutus PKS secara sepihak dan menarik kembali penguasaan aset.
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            @endif
+
         </div>
 
         <!-- Right Column: Asset Summary & Helpdesk (4 cols) -->

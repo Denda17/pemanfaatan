@@ -869,5 +869,17 @@ class MarketplaceAndBookingTest extends TestCase
         $viewResponse->assertSee('Unduh Template Surat Pernyataan (.docx)');
         $viewResponse->assertSee('Unduh Template Badan Hukum/Usaha (.docx)');
         $viewResponse->assertSee('25%');
+        // Pembayaran sekaligus TIDAK menampilkan card termin bertahap
+        $viewResponse->assertDontSee('Ketentuan & Mekanisme Pembayaran Bertahap');
+
+        // 4. Pembayaran bertahap menampilkan card simulasi termin dan panduan Kasda BJB
+        $viewBertahap = $this->actingAs($userBisnis, 'web')->get('/status-booking/' . $bookingBisnis->kode_booking);
+        $viewBertahap->assertStatus(200);
+        $viewBertahap->assertSee('Ketentuan & Mekanisme Pembayaran Bertahap');
+        $viewBertahap->assertSee('Khusus Skema Bertahap');
+        $viewBertahap->assertSee('Simulasi Jadwal Pembayaran Termin (Durasi 7 Tahun)');
+        $viewBertahap->assertSee('Termin ke-1 (Sewa Tahun ke-1)');
+        $viewBertahap->assertSee('Syarat Mutlak Akad & Kunci');
+        $viewBertahap->assertSee('Bank BJB');
     }
 }
