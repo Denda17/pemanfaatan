@@ -399,6 +399,7 @@ class BookingResource extends Resource
     {
         return [
             RelationManagers\DocumentsRelationManager::class,
+            RelationManagers\TerminPaymentsRelationManager::class,
         ];
     }
 

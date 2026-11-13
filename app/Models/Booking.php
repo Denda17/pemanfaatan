@@ -73,6 +73,11 @@ class Booking extends Model
         return $this->hasMany(BookingDocument::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(BookingPayment::class)->orderBy('termin_ke');
+    }
+
     public function getWhatsappUrlAttribute(): string
     {
         $phone = preg_replace('/[^0-9]/', '', $this->nomor_whatsapp);

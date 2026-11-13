@@ -53,6 +53,10 @@ Route::post('/status-booking/{kode}/upload-dokumen', [BookingController::class, 
     ->middleware('auth')
     ->name('booking.upload-dokumen');
 
+Route::post('/status-booking/{kode}/upload-termin', [BookingController::class, 'uploadTerminPayment'])
+    ->middleware('auth')
+    ->name('booking.upload-termin');
+
 // Pengalihan Login Admin ke Portal Login Terpadu
 Route::get('/admin/login', function () {
     return redirect()->route('login');

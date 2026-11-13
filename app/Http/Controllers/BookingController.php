@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\Booking;
 use App\Models\BookingDocument;
+use App\Models\BookingPayment;
 use App\Models\BookingRequirement;
 use App\Models\User;
 use App\Services\SuratPermohonanService;
@@ -145,7 +146,7 @@ class BookingController extends Controller
     public function showStatus(string $kode)
     {
         $booking = Booking::where('kode_booking', $kode)
-            ->with(['asset', 'documents.requirement', 'petugasUptd'])
+            ->with(['asset', 'documents.requirement', 'petugasUptd', 'payments.verifier'])
             ->firstOrFail();
 
         $user = Auth::user();
@@ -297,6 +298,91 @@ class BookingController extends Controller
             $booking->update(['proposal_bisnis_path' => $path]);
         }
 
+        if ($requirement->kode === 'REQ_BUKTI_BAYAR' && $booking->skema_pembayaran === 'bertahap') {
+            BookingPayment::updateOrCreate(
+                [
+                    'booking_id' => $booking->id,
+                    'termin_ke' => 1,
+                ],
+                [
+                    'tahun_ke' => 'Tahun ke-1',
+                    'file_path' => $path,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_size' => $file->getSize(),
+                    'tanggal_bayar' => now(),
+                    'status_pembayaran' => 'pending_verifikasi',
+                    'catatan' => null,
+                ]
+            );
+        }
+
         return back()->with('success', 'Dokumen "' . $requirement->nama_persyaratan . '" berhasil diunggah dan sedang menunggu verifikasi Tim UPTD BPKAD Jabar.');
+    }
+
+    public function uploadTerminPayment(Request $request, string $kode)
+    {
+        $booking = Booking::where('kode_booking', $kode)->firstOrFail();
+        $user = Auth::user();
+
+        abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk mengunggah setoran termin pada permohonan ini.');
+
+        $validated = $request->validate([
+            'termin_ke' => 'required|integer|min:1|max:' . max(1, (int) $booking->durasi_sewa_tahun),
+            'nomor_sts' => 'nullable|string|max:100',
+            'tanggal_bayar' => 'nullable|date',
+            'nominal_disetor' => 'nullable|numeric|min:0',
+            'bukti_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:20480',
+        ], [
+            'termin_ke.required' => 'Nomor termin sewa wajib ditentukan.',
+            'bukti_file.required' => 'File bukti setor Bank BJB wajib dipilih.',
+            'bukti_file.mimes' => 'Format file yang diperbolehkan adalah PDF, JPG, atau PNG.',
+            'bukti_file.max' => 'Ukuran file maksimal adalah 20 MB.',
+        ]);
+
+        $file = $request->file('bukti_file');
+        $path = $file->store('booking-termin-payments', 'public');
+
+        BookingPayment::updateOrCreate(
+            [
+                'booking_id' => $booking->id,
+                'termin_ke' => $validated['termin_ke'],
+            ],
+            [
+                'tahun_ke' => 'Tahun ke-' . $validated['termin_ke'],
+                'nominal_disetor' => $validated['nominal_disetor'] ?? null,
+                'nomor_sts' => $validated['nomor_sts'] ?? null,
+                'tanggal_bayar' => $validated['tanggal_bayar'] ?? now(),
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'status_pembayaran' => 'pending_verifikasi',
+                'catatan' => null,
+            ]
+        );
+
+        // Jika termin_ke === 1, sinkronkan juga dengan REQ_BUKTI_BAYAR
+        if ((int) $validated['termin_ke'] === 1) {
+            $reqBukti = BookingRequirement::where('kode', 'REQ_BUKTI_BAYAR')->first();
+            if ($reqBukti) {
+                BookingDocument::updateOrCreate(
+                    [
+                        'booking_id' => $booking->id,
+                        'booking_requirement_id' => $reqBukti->id,
+                    ],
+                    [
+                        'nomor_dokumen' => $validated['nomor_sts'] ?? ($reqBukti->kode . '/' . $booking->kode_booking),
+                        'tanggal_dokumen' => $validated['tanggal_bayar'] ?? now(),
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_size' => $file->getSize(),
+                        'file_type' => $file->getClientMimeType(),
+                        'status_verifikasi' => 'pending',
+                        'catatan' => null,
+                    ]
+                );
+            }
+        }
+
+        return back()->with('success', 'Bukti setor Kasda Termin ke-' . $validated['termin_ke'] . ' berhasil diunggah! Petugas UPTD BPKAD Jabar akan segera memverifikasi transaksi Anda.');
     }
 }

@@ -280,7 +280,7 @@
                             </div>
                         @endif
 
-                        <div class="p-4 sm:p-5 rounded-2xl border {{ $isVerified ? 'bg-emerald-50/40 border-emerald-200' : ($isRevision ? 'bg-rose-50/40 border-rose-200' : ($doc ? 'bg-amber-50/30 border-amber-200' : 'bg-gray-50/70 border-gray-200')) }} transition">
+                        <div id="requirement-{{ $req->kode }}" class="p-4 sm:p-5 rounded-2xl border {{ $isVerified ? 'bg-emerald-50/40 border-emerald-200' : ($isRevision ? 'bg-rose-50/40 border-rose-200' : ($doc ? 'bg-amber-50/30 border-amber-200' : 'bg-gray-50/70 border-gray-200')) }} transition">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex items-start gap-3">
                                     <div class="mt-0.5 min-w-[28px] h-7 px-1.5 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 {{ $isVerified ? 'bg-emerald-600 text-white shadow-xs' : ($isRevision ? 'bg-rose-600 text-white shadow-xs' : ($doc ? 'bg-amber-500 text-white shadow-xs' : 'bg-gray-200 text-gray-500')) }}">
@@ -292,7 +292,17 @@
                                     </div>
                                     <div>
                                         <h4 class="text-xs sm:text-sm font-extrabold text-gray-900 leading-snug flex items-center gap-1.5 flex-wrap">
-                                            <span>{{ $req->nama_persyaratan }}</span>
+                                            <span>
+                                                @if($req->kode === 'REQ_BUKTI_BAYAR')
+                                                    @if($booking->skema_pembayaran === 'bertahap')
+                                                        Bukti Setor PAD (Termin Ke-1 - Tahun Pertama)
+                                                    @else
+                                                        Bukti Setor PAD (Pelunasan 100% Sewa)
+                                                    @endif
+                                                @else
+                                                    {{ $req->nama_persyaratan }}
+                                                @endif
+                                            </span>
 
                                             @if($req->kode === 'REQ_SURAT_PERMOHONAN' || $req->kode === 'REQ_SURAT_PERNYATAAN' || $req->kode === 'REQ_KTP' || $req->kode === 'REQ_NPWP')
                                                 <span class="text-[10px] text-rose-500 font-bold">*Wajib</span>
@@ -320,11 +330,23 @@
                                                 @else
                                                     <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">Tidak Diwajibkan (&le; 5 Tahun)</span>
                                                 @endif
+                                            @elseif($req->kode === 'REQ_BUKTI_BAYAR')
+                                                <span class="text-[10px] text-emerald-800 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">Diunggah Setelah PKS Siap</span>
                                             @elseif($req->is_required)
                                                 <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">Diterbitkan UPTD</span>
                                             @endif
                                         </h4>
-                                        <p class="text-[11px] text-gray-500 mt-0.5 leading-normal font-medium">{{ $req->deskripsi }}</p>
+                                        <p class="text-[11px] text-gray-500 mt-0.5 leading-normal font-medium">
+                                            @if($req->kode === 'REQ_BUKTI_BAYAR')
+                                                @if($booking->skema_pembayaran === 'bertahap')
+                                                    Uang sewa tahun pertama wajib disetorkan ke Kasda (RKUD) Pemprov Jabar sebelum penandatanganan naskah PKS &amp; serah terima fisik aset. Bukti setor termin tahun ke-2 dan seterusnya diunggah pada tabel jadwal termin di bawah.
+                                                @else
+                                                    Surat Tanda Setoran (STS) lunas ke Rekening Kas Umum Daerah (RKUD) Pemprov Jawa Barat sebelum penandatanganan naskah PKS.
+                                                @endif
+                                            @else
+                                                {{ $req->deskripsi }}
+                                            @endif
+                                        </p>
 
                                         @if($doc)
                                             <div class="mt-2.5 text-[11px] text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -613,43 +635,202 @@
                             <span>Simulasi Jadwal Pembayaran Termin (Durasi {{ $booking->durasi_sewa_tahun }} Tahun)</span>
                         </h4>
 
-                        <div class="grid grid-cols-1 gap-3">
+                        <div class="grid grid-cols-1 gap-3.5">
                             @for($t = 1; $t <= $booking->durasi_sewa_tahun; $t++)
-                                <div class="p-3.5 sm:p-4 rounded-2xl border {{ $t === 1 ? 'bg-emerald-50/40 border-emerald-200' : 'bg-gray-50/70 border-gray-200' }} flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <div class="flex items-start gap-3">
-                                        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 {{ $t === 1 ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-blue-600 text-white shadow-2xs' }}">
-                                            T{{ $t }}
-                                        </div>
-                                        <div>
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                <h5 class="text-xs font-extrabold text-gray-900">
-                                                    Termin ke-{{ $t }} (Sewa Tahun ke-{{ $t }})
-                                                </h5>
-                                                @if($t === 1)
-                                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                                        Syarat Mutlak Akad &amp; Kunci
-                                                    </span>
+                                @php
+                                    $terminPayment = $booking->payments->firstWhere('termin_ke', $t);
+                                    $hasUploaded = false;
+                                    $filePath = null;
+                                    $fileName = null;
+                                    $stsNumber = null;
+                                    $paymentDate = null;
+                                    $statusKey = 'menunggu_pembayaran';
+                                    $catatanTermin = null;
+
+                                    if ($t === 1) {
+                                        $reqBukti = $allReqs->firstWhere('kode', 'REQ_BUKTI_BAYAR');
+                                        $docBukti1 = $reqBukti ? $uploadedDocs->get($reqBukti->id) : null;
+                                        if ($terminPayment && $terminPayment->file_path) {
+                                            $hasUploaded = true;
+                                            $filePath = $terminPayment->bukti_url;
+                                            $fileName = $terminPayment->file_name;
+                                            $stsNumber = $terminPayment->nomor_sts;
+                                            $paymentDate = $terminPayment->tanggal_bayar;
+                                            $statusKey = $terminPayment->status_pembayaran;
+                                            $catatanTermin = $terminPayment->catatan;
+                                        } elseif ($docBukti1 && $docBukti1->file_path) {
+                                            $hasUploaded = true;
+                                            $filePath = asset('storage/' . $docBukti1->file_path);
+                                            $fileName = $docBukti1->file_name;
+                                            $stsNumber = $docBukti1->nomor_dokumen;
+                                            $paymentDate = $docBukti1->tanggal_dokumen;
+                                            $statusKey = ($docBukti1->status_verifikasi === 'verified' ? 'lunas' : ($docBukti1->status_verifikasi === 'revision' ? 'ditolak' : 'pending_verifikasi'));
+                                            $catatanTermin = $docBukti1->catatan;
+                                        }
+                                    } else {
+                                        if ($terminPayment && $terminPayment->file_path) {
+                                            $hasUploaded = true;
+                                            $filePath = $terminPayment->bukti_url;
+                                            $fileName = $terminPayment->file_name;
+                                            $stsNumber = $terminPayment->nomor_sts;
+                                            $paymentDate = $terminPayment->tanggal_bayar;
+                                            $statusKey = $terminPayment->status_pembayaran;
+                                            $catatanTermin = $terminPayment->catatan;
+                                        }
+                                    }
+                                @endphp
+
+                                <div class="p-4 sm:p-5 rounded-2xl border {{ $statusKey === 'lunas' ? 'bg-emerald-50/40 border-emerald-200' : ($statusKey === 'pending_verifikasi' ? 'bg-amber-50/40 border-amber-200' : ($statusKey === 'ditolak' ? 'bg-rose-50/40 border-rose-200' : ($t === 1 ? 'bg-emerald-50/20 border-emerald-200/80' : 'bg-gray-50/70 border-gray-200'))) }} transition">
+                                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                        <div class="flex items-start gap-3">
+                                            <div class="mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 {{ $statusKey === 'lunas' ? 'bg-emerald-600 text-white shadow-2xs' : ($statusKey === 'pending_verifikasi' ? 'bg-amber-500 text-white shadow-2xs' : ($statusKey === 'ditolak' ? 'bg-rose-600 text-white shadow-2xs' : ($t === 1 ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-blue-600 text-white shadow-2xs'))) }}">
+                                                @if($statusKey === 'lunas')
+                                                    ✓
                                                 @else
-                                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
-                                                        Jatuh Tempo Tahunan
-                                                    </span>
+                                                    T{{ $t }}
                                                 @endif
                                             </div>
-                                            <p class="text-[11px] text-gray-500 mt-0.5 leading-normal font-medium">
-                                                @if($t === 1)
-                                                    Wajib disetor lunas setelah persetujuan Sekda terbit, sebelum tanda tangan naskah PKS dan serah terima kunci/fisik aset.
-                                                @else
-                                                    Jatuh tempo paling lambat H-30 hari sebelum masa sewa Tahun ke-{{ $t - 1 }} berakhir (sekitar bulan ke-{{ (($t - 1) * 12) - 1 }} masa sewa).
+                                            <div>
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <h5 class="text-xs sm:text-sm font-extrabold text-gray-900">
+                                                        Termin ke-{{ $t }} (Sewa Tahun ke-{{ $t }})
+                                                    </h5>
+                                                    @if($t === 1)
+                                                        <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                            Syarat Mutlak Akad &amp; Kunci
+                                                        </span>
+                                                    @else
+                                                        <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                                                            Jatuh Tempo Tahunan
+                                                        </span>
+                                                    @endif
+
+                                                    <!-- Status Setoran Badge -->
+                                                    @if($statusKey === 'lunas')
+                                                        <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                            ✓ Lunas (Disetor Kasda)
+                                                        </span>
+                                                    @elseif($statusKey === 'pending_verifikasi')
+                                                        <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                                                            Menunggu Verifikasi Kasda
+                                                        </span>
+                                                    @elseif($statusKey === 'ditolak')
+                                                        <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">
+                                                            Perlu Perbaikan / Ditolak
+                                                        </span>
+                                                    @else
+                                                        <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
+                                                            Belum Ada Setoran
+                                                        </span>
+                                                    @endif
+                                                </div>
+
+                                                <p class="text-[11px] text-gray-500 mt-1 leading-normal font-medium">
+                                                    @if($t === 1)
+                                                        Wajib disetor lunas setelah persetujuan Sekda terbit, sebelum tanda tangan naskah PKS dan serah terima kunci/fisik aset.
+                                                    @else
+                                                        Jatuh tempo paling lambat H-30 hari sebelum masa sewa Tahun ke-{{ $t - 1 }} berakhir (sekitar bulan ke-{{ (($t - 1) * 12) - 1 }} masa sewa).
+                                                    @endif
+                                                </p>
+
+                                                @if($hasUploaded)
+                                                    <div class="mt-2.5 p-2.5 rounded-xl bg-white/80 border border-gray-200/90 text-[11px] text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1">
+                                                        @if($fileName)
+                                                            <span>Berkas: <strong class="text-gray-800">{{ $fileName }}</strong></span>
+                                                        @endif
+                                                        @if($paymentDate)
+                                                            <span>Tgl Setor: <strong>{{ \Carbon\Carbon::parse($paymentDate)->format('d/m/Y') }}</strong></span>
+                                                        @endif
+                                                        @if($stsNumber)
+                                                            <span>No. STS: <strong>{{ $stsNumber }}</strong></span>
+                                                        @endif
+                                                        @if($filePath)
+                                                            <a href="{{ $filePath }}" target="_blank" class="text-blue-700 font-extrabold hover:underline flex items-center gap-1">
+                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                                <span>Lihat Bukti Setor Bank BJB</span>
+                                                            </a>
+                                                        @endif
+                                                    </div>
+
+                                                    @if($catatanTermin)
+                                                        <div class="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900">
+                                                            <strong class="font-bold">Catatan Verifikator Kasda:</strong> {{ $catatanTermin }}
+                                                        </div>
+                                                    @endif
                                                 @endif
-                                            </p>
+                                            </div>
+                                        </div>
+
+                                        <div class="text-left sm:text-right shrink-0">
+                                            <span class="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Jatuh Tempo:</span>
+                                            <span class="text-xs font-extrabold {{ $t === 1 ? 'text-emerald-700' : 'text-blue-800' }}">
+                                                {{ $t === 1 ? 'Sebelum Penandatanganan PKS' : 'H-30 Hari Tahun ke-' . $t }}
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <div class="text-left sm:text-right shrink-0">
-                                        <span class="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Jatuh Tempo:</span>
-                                        <span class="text-xs font-extrabold {{ $t === 1 ? 'text-emerald-700' : 'text-blue-800' }}">
-                                            {{ $t === 1 ? 'Sebelum Penandatanganan PKS' : 'H-30 Hari Tahun ke-' . $t }}
-                                        </span>
+                                    <!-- Bagian Tombol & Formulir Unggah Bukti Setor -->
+                                    <div class="mt-3.5 pt-3 border-t border-gray-200/70">
+                                        @if($t === 1)
+                                            <div class="flex items-center justify-between text-xs text-gray-500 font-medium">
+                                                <div class="flex items-center gap-1.5 text-emerald-800 text-[11px]">
+                                                    <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    <span>Terhubung dengan <strong>Berkas Persyaratan No. 9</strong> (Bukti Setor PAD Termin ke-1).</span>
+                                                </div>
+                                                <a href="#requirement-REQ_BUKTI_BAYAR" class="text-emerald-700 hover:text-emerald-900 font-extrabold text-[11px] hover:underline shrink-0">
+                                                    Lihat Slot Berkas No. 9 &uarr;
+                                                </a>
+                                            </div>
+                                        @else
+                                            <!-- Form Upload Bukti Setor Termin Lanjutan (Termin 2 dst.) -->
+                                            @if($statusKey !== 'lunas')
+                                                <details class="group">
+                                                    <summary class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl {{ $hasUploaded ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700' }} active:scale-[0.98] text-white font-extrabold text-xs transition cursor-pointer select-none shadow-2xs">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                        <span>{{ $hasUploaded ? 'Unggah Ulang Bukti Setor Termin ke-' . $t : 'Unggah Bukti Setor Termin ke-' . $t }}</span>
+                                                    </summary>
+
+                                                    <form action="{{ route('booking.upload-termin', $booking->kode_booking) }}" method="POST" enctype="multipart/form-data" class="mt-3 p-4 rounded-2xl bg-white border border-blue-200/90 shadow-2xs space-y-3">
+                                                        @csrf
+                                                        <input type="hidden" name="termin_ke" value="{{ $t }}">
+                                                        
+                                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                                            <div class="sm:col-span-2">
+                                                                <label class="block font-bold text-gray-700 mb-1">
+                                                                    File Slip Setoran / Bukti Transfer Bank BJB <span class="text-rose-500">*</span>
+                                                                </label>
+                                                                <input type="file" name="bukti_file" required accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer file:transition cursor-pointer bg-gray-50 p-1 rounded-xl border border-gray-200 focus:outline-none">
+                                                                <span class="text-[10px] text-gray-400 mt-0.5 block">Format yang diterima: PDF, JPG, PNG (Maksimal 20 MB)</span>
+                                                            </div>
+                                                            <div>
+                                                                <label class="block font-bold text-gray-700 mb-1">
+                                                                    Nomor STS / NTPD / No. Referensi BJB <span class="text-gray-400 font-normal">(Opsional)</span>
+                                                                </label>
+                                                                <input type="text" name="nomor_sts" value="{{ old('nomor_sts', $stsNumber) }}" placeholder="Contoh: STS-2026/BPKAD/045" class="w-full text-xs px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                            </div>
+                                                            <div>
+                                                                <label class="block font-bold text-gray-700 mb-1">
+                                                                    Tanggal Penyetoran ke Kasda <span class="text-gray-400 font-normal">(Opsional)</span>
+                                                                </label>
+                                                                <input type="date" name="tanggal_bayar" value="{{ old('tanggal_bayar', now()->format('Y-m-d')) }}" class="w-full text-xs px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="pt-2 flex justify-end">
+                                                            <button type="submit" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5">
+                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                                                <span>Kirim Bukti Setor Termin ke-{{ $t }}</span>
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </details>
+                                            @else
+                                                <div class="flex items-center gap-1.5 text-emerald-800 text-xs font-bold">
+                                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                    <span>Setoran Kasda Termin ke-{{ $t }} telah diverifikasi sah dan lunas.</span>
+                                                </div>
+                                            @endif
+                                        @endif
                                     </div>
                                 </div>
                             @endfor

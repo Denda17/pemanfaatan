@@ -882,4 +882,105 @@ class MarketplaceAndBookingTest extends TestCase
         $viewBertahap->assertSee('Syarat Mutlak Akad & Kunci');
         $viewBertahap->assertSee('Bank BJB');
     }
+
+    public function test_gradual_termin_payments_and_dynamic_pad_label(): void
+    {
+        Storage::fake('public');
+
+        $asset = Asset::first();
+        $userBertahap = User::factory()->create(['tipe_pemohon' => 'perorangan', 'role' => 'peminat']);
+        $userSekaligus = User::factory()->create(['tipe_pemohon' => 'perorangan', 'role' => 'peminat']);
+        $stranger = User::factory()->create(['tipe_pemohon' => 'perorangan', 'role' => 'peminat']);
+        $admin = User::where('role', 'admin')->first();
+
+        // 1. Booking bertahap (3 tahun)
+        $bookingBertahap = Booking::create([
+            'asset_id' => $asset->id,
+            'user_id' => $userBertahap->id,
+            'nama_pemohon' => 'Pemohon Bertahap',
+            'nama_instansi' => 'Perorangan',
+            'nomor_whatsapp' => '081234567890',
+            'rencana_peruntukan' => 'Kafe',
+            'durasi_sewa_tahun' => 3,
+            'skema_pembayaran' => 'bertahap',
+            'status' => 'pending',
+            'tanggal_booking' => now(),
+        ]);
+
+        // 2. Booking sekaligus (1 tahun)
+        $bookingSekaligus = Booking::create([
+            'asset_id' => $asset->id,
+            'user_id' => $userSekaligus->id,
+            'nama_pemohon' => 'Pemohon Sekaligus',
+            'nama_instansi' => 'Perorangan',
+            'nomor_whatsapp' => '081234567891',
+            'rencana_peruntukan' => 'Kios',
+            'durasi_sewa_tahun' => 1,
+            'skema_pembayaran' => 'sekaligus',
+            'status' => 'pending',
+            'tanggal_booking' => now(),
+        ]);
+
+        // Verifikasi label dinamis persyaratan no. 9
+        $resSekaligus = $this->actingAs($userSekaligus, 'web')->get('/status-booking/' . $bookingSekaligus->kode_booking);
+        $resSekaligus->assertStatus(200);
+        $resSekaligus->assertSee('Bukti Setor PAD (Pelunasan 100% Sewa)');
+
+        $resBertahap = $this->actingAs($userBertahap, 'web')->get('/status-booking/' . $bookingBertahap->kode_booking);
+        $resBertahap->assertStatus(200);
+        $resBertahap->assertSee('Bukti Setor PAD (Termin Ke-1 - Tahun Pertama)');
+
+        // Unggah berkas no 9 (REQ_BUKTI_BAYAR) pada booking bertahap -> sinkron ke termin 1
+        $reqBukti = BookingRequirement::where('kode', 'REQ_BUKTI_BAYAR')->first();
+        $fileTermin1 = UploadedFile::fake()->create('bukti_bayar_termin1.pdf', 300, 'application/pdf');
+
+        $uploadDoc1 = $this->actingAs($userBertahap, 'web')->post('/status-booking/' . $bookingBertahap->kode_booking . '/upload-dokumen', [
+            'booking_requirement_id' => $reqBukti->id,
+            'dokumen_file' => $fileTermin1,
+        ]);
+        $uploadDoc1->assertSessionHas('success');
+
+        $this->assertDatabaseHas('booking_payments', [
+            'booking_id' => $bookingBertahap->id,
+            'termin_ke' => 1,
+            'status_pembayaran' => 'pending_verifikasi',
+        ]);
+
+        // Unggah mandiri bukti setor termin ke-2 oleh pemohon
+        $fileTermin2 = UploadedFile::fake()->create('slip_bjb_termin2.jpg', 400, 'image/jpeg');
+        $uploadTermin2 = $this->actingAs($userBertahap, 'web')->post('/status-booking/' . $bookingBertahap->kode_booking . '/upload-termin', [
+            'termin_ke' => 2,
+            'nomor_sts' => 'STS-2026-TERM-02',
+            'tanggal_bayar' => '2026-11-20',
+            'nominal_disetor' => 50000000,
+            'bukti_file' => $fileTermin2,
+        ]);
+        $uploadTermin2->assertSessionHas('success');
+
+        $this->assertDatabaseHas('booking_payments', [
+            'booking_id' => $bookingBertahap->id,
+            'termin_ke' => 2,
+            'nomor_sts' => 'STS-2026-TERM-02',
+            'status_pembayaran' => 'pending_verifikasi',
+        ]);
+
+        // User lain ditolak mengunggah termin pemohon lain (403)
+        $fileStranger = UploadedFile::fake()->create('hack.pdf', 100, 'application/pdf');
+        $forbiddenTermin = $this->actingAs($stranger, 'web')->post('/status-booking/' . $bookingBertahap->kode_booking . '/upload-termin', [
+            'termin_ke' => 3,
+            'bukti_file' => $fileStranger,
+        ]);
+        $forbiddenTermin->assertStatus(403);
+
+        // Halaman status pemohon kini memuat info termin 2 dan tombol lihat bukti
+        $resUpdated = $this->actingAs($userBertahap, 'web')->get('/status-booking/' . $bookingBertahap->kode_booking);
+        $resUpdated->assertStatus(200);
+        $resUpdated->assertSee('STS-2026-TERM-02');
+        $resUpdated->assertSee('Menunggu Verifikasi Kasda');
+
+        // Filament relation manager dapat dibuka oleh admin
+        $filamentEdit = $this->actingAs($admin, 'web')->get('/admin/bookings/' . $bookingBertahap->id . '/edit');
+        $filamentEdit->assertStatus(200);
+        $filamentEdit->assertSee('Riwayat Setoran Termin Kasda');
+    }
 }
