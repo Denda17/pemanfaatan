@@ -142,6 +142,26 @@ class Booking extends Model
     }
 
     /**
+     * Cek apakah booking ini dimiliki oleh user tertentu (atau admin).
+     */
+    public function isOwnedBy(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($this->user_id !== null) {
+            return (int) $this->user_id === (int) $user->id;
+        }
+
+        return !empty($this->email) && strtolower($this->email) === strtolower($user->email);
+    }
+
+    /**
      * Dapatkan daftar kode persyaratan yang wajib dipenuhi bagi booking ini.
      */
     public function getRequiredRequirementCodes(): array

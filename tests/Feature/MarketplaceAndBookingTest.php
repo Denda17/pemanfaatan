@@ -227,8 +227,14 @@ class MarketplaceAndBookingTest extends TestCase
         $statusDetail->assertSee('Daftar Berkas Persyaratan Sewa');
 
         // 4. Pemohon 2 TIDAK BISA mengakses status booking milik Pemohon 1 (403 Forbidden)
+        // Bahkan jika Pemohon 2 memiliki nomor telepon / WA yang sama dengan Pemohon 1
+        $applicant2->update(['phone' => $applicant1->phone]);
         $forbiddenResponse = $this->actingAs($applicant2, 'web')->get('/status-booking/' . $booking->kode_booking);
         $forbiddenResponse->assertStatus(403);
+
+        $applicant2MyBookings = $this->actingAs($applicant2, 'web')->get('/pengajuan-saya');
+        $applicant2MyBookings->assertStatus(200);
+        $applicant2MyBookings->assertDontSee($booking->kode_booking);
 
         // 5. Admin UPTD dapat mengakses status booking pemohon manapun
         $admin = User::where('role', 'admin')->first();
