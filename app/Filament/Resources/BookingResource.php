@@ -52,8 +52,17 @@ class BookingResource extends Resource
                             ->searchable()
                             ->preload(),
 
+                        Forms\Components\Select::make('tipe_pemohon')
+                            ->label('Kategori Pemohon')
+                            ->options([
+                                'perorangan' => 'Perorangan / Pribadi',
+                                'badan_usaha' => 'Badan Usaha / Badan Hukum',
+                            ])
+                            ->default('perorangan')
+                            ->required(),
+
                         Forms\Components\TextInput::make('nama_pemohon')
-                            ->label('Nama Lengkap Pemohon')
+                            ->label('Nama Lengkap Pemohon / Penanggung Jawab')
                             ->required()
                             ->maxLength(255),
 
@@ -180,8 +189,20 @@ class BookingResource extends Resource
                     ->label('Pemohon')
                     ->weight('medium')
                     ->wrap()
-                    ->description(fn (Booking $record): string => ($record->nama_instansi ? $record->nama_instansi . ' • ' : '') . $record->nomor_whatsapp)
+                    ->description(fn (Booking $record): string => ($record->nama_instansi && $record->nama_instansi !== 'Perorangan' ? $record->nama_instansi . ' • ' : '') . $record->nomor_whatsapp)
                     ->searchable(),
+
+                Tables\Columns\TextColumn::make('tipe_pemohon')
+                    ->label('Tipe')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'badan_usaha' => 'info',
+                        default => 'success',
+                    })
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'badan_usaha' => 'Badan Usaha',
+                        default => 'Perorangan',
+                    }),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
@@ -250,6 +271,13 @@ class BookingResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                Tables\Filters\SelectFilter::make('tipe_pemohon')
+                    ->label('Kategori Pemohon')
+                    ->options([
+                        'perorangan' => 'Perorangan / Pribadi',
+                        'badan_usaha' => 'Badan Usaha / Badan Hukum',
+                    ]),
+
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Filter Status')
                     ->options([

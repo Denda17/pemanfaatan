@@ -73,10 +73,12 @@ class MarketplaceAndBookingTest extends TestCase
         ]);
 
         $postData = [
+            'tipe_pemohon' => 'badan_usaha',
             'nama_pemohon' => 'Dedi Koswara',
             'nomor_whatsapp' => '08122334455',
             'nik_atau_nib' => '3273101010880002',
             'nama_instansi' => 'CV Kreatif Sinergi Jabar',
+            'jabatan_pemohon' => 'Direktur Utama',
             'email' => 'dedi@kreatifjabar.com',
             'rencana_peruntukan' => 'Pusat Inkubasi Bisnis & Coffee Shop Komunitas',
             'durasi_sewa_tahun' => 2,
@@ -93,6 +95,9 @@ class MarketplaceAndBookingTest extends TestCase
         $booking = Booking::where('nomor_whatsapp', '08122334455')->latest()->first();
         $this->assertNotNull($booking);
         $this->assertEquals($user->id, $booking->user_id);
+        $this->assertEquals('badan_usaha', $booking->tipe_pemohon);
+        $this->assertEquals('CV Kreatif Sinergi Jabar', $booking->nama_instansi);
+        $this->assertEquals('Direktur Utama', $booking->jabatan_pemohon);
         $this->assertEquals('pending', $booking->status);
         $this->assertEquals(2, $booking->durasi_sewa_tahun);
         $this->assertEquals('bertahap', $booking->skema_pembayaran);
@@ -119,6 +124,7 @@ class MarketplaceAndBookingTest extends TestCase
 
         // 1. Durasi > 5 tahun tanpa proposal bisnis ditolak validasi
         $failResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+            'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Budi Sudarsono',
             'nomor_whatsapp' => '081399887766',
             'rencana_peruntukan' => 'Pusat Distribusi Logistik Regional',
@@ -129,6 +135,7 @@ class MarketplaceAndBookingTest extends TestCase
 
         // Durasi sewa > 10 tahun ditolak validasi batas maksimal
         $overLimitResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+            'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Budi Sudarsono',
             'nomor_whatsapp' => '081399887766',
             'rencana_peruntukan' => 'Pusat Distribusi Logistik Regional',
@@ -141,6 +148,7 @@ class MarketplaceAndBookingTest extends TestCase
         $file = UploadedFile::fake()->create('proposal_rencana_bisnis.pdf', 1024, 'application/pdf');
 
         $successResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+            'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Budi Sudarsono',
             'nomor_whatsapp' => '081399887766',
             'rencana_peruntukan' => 'Pusat Distribusi Logistik Regional',
@@ -316,10 +324,12 @@ class MarketplaceAndBookingTest extends TestCase
         // 3. Pengajuan booking untuk aset berstatus tersewa diblokir
         $user = User::factory()->create(['role' => 'peminat']);
         $postData = [
+            'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Ujang Rented Test',
             'nomor_whatsapp' => '081999888777',
             'rencana_peruntukan' => 'Uji Coba Booking Aset Tersewa',
             'durasi_sewa_tahun' => 1,
+            'skema_pembayaran' => 'sekaligus',
         ];
         $bookingResponse = $this->actingAs($user, 'web')->post('/aset/' . $rentedAsset->slug . '/booking', $postData);
         $bookingResponse->assertSessionHas('error', 'Maaf, aset ini sedang dalam masa sewa aktif.');
@@ -461,22 +471,19 @@ class MarketplaceAndBookingTest extends TestCase
         $regResponse = $this->get('/daftar');
         $regResponse->assertStatus(200);
         $regResponse->assertSee('Buat Akun Portal Pemanfaatan');
-        $regResponse->assertSee('Perorangan / Pribadi');
+        $regResponse->assertSee('Nama Lengkap');
+        $regResponse->assertSee('Nomor WhatsApp Aktif');
+        $regResponse->assertDontSee('Kategori Pemohon');
         $regResponse->assertSee('Pernyataan Keabsahan Data', false);
         $regResponse->assertSee('disabled', false);
 
         $email = 'ahmad_' . uniqid() . '@ptpasundan.co.id';
         $registerData = [
-            'tipe_pemohon' => 'badan_usaha',
             'name' => 'Ahmad Subagja',
             'email' => $email,
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'phone' => '081298765432',
-            'instansi' => 'PT Pasundan Investama Mandiri',
-            'nib' => '9120001234567',
-            'npwp' => '01.234.567.8-423.000',
-            'alamat' => 'Jl. Asia Afrika No. 100, Bandung',
         ];
 
         // 1. Tanpa ceklis pernyataan keabsahan, registrasi ditolak
@@ -496,8 +503,8 @@ class MarketplaceAndBookingTest extends TestCase
         $createdUser = User::where('email', $email)->first();
         $this->assertNotNull($createdUser);
         $this->assertEquals('peminat', $createdUser->role);
-        $this->assertEquals('badan_usaha', $createdUser->tipe_pemohon);
-        $this->assertEquals('PT Pasundan Investama Mandiri', $createdUser->instansi);
+        $this->assertEquals('Ahmad Subagja', $createdUser->name);
+        $this->assertEquals('081298765432', $createdUser->phone);
 
         // 4. User pemohon login manual di formulir terpadu -> diarahkan ke Pengajuan Saya
         $loginPage = $this->get('/masuk');
@@ -597,35 +604,73 @@ class MarketplaceAndBookingTest extends TestCase
     public function test_booking_form_adapts_for_individual_vs_business_applicant(): void
     {
         $asset = Asset::where('status_ketersediaan', 'tersedia')->first() ?? Asset::first();
+        $asset->update(['status_ketersediaan' => 'tersedia']);
 
-        // 1. Pemohon perorangan: tidak melihat input teks 'Nama Badan Usaha / Perusahaan', kolom instansi otomatis hidden 'Perorangan'
-        $individual = User::factory()->create([
-            'tipe_pemohon' => 'perorangan',
+        $user = User::factory()->create([
             'role' => 'peminat',
-            'nik' => '3273112233445566',
+            'is_active' => true,
         ]);
 
-        $resIndiv = $this->actingAs($individual, 'web')->get('/aset/' . $asset->slug);
-        $resIndiv->assertStatus(200);
-        $resIndiv->assertSee('Perorangan');
-        $resIndiv->assertSee('NIK Pemohon (KTP)');
-        $resIndiv->assertDontSee('Nama Badan Usaha / Perusahaan');
-        $resIndiv->assertSee('value="Perorangan"', false);
+        // 1. Tampilan formulir memuat pemilih kategori pemohon (Perorangan vs Badan Usaha) secara dinamis
+        $res = $this->actingAs($user, 'web')->get('/aset/' . $asset->slug);
+        $res->assertStatus(200);
+        $res->assertSee('Kategori Pemohon Sewa');
+        $res->assertSee('Perorangan');
+        $res->assertSee('Badan Usaha');
+        $res->assertSee('Nama Badan Usaha / Perusahaan');
+        $res->assertSee('Jabatan Pemohon dalam Badan Usaha');
 
-        // 2. Pemohon badan usaha: melihat input 'Nama Badan Usaha / Perusahaan' dan label NIB
-        $business = User::factory()->create([
+        // 2. Pemohon memilih Badan Usaha tetapi tidak mengisi nama instansi/perusahaan -> ditolak validasi
+        $failBusiness = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
             'tipe_pemohon' => 'badan_usaha',
-            'role' => 'peminat',
-            'instansi' => 'PT Harapan Bangsa Mandiri',
-            'nib' => '0129876543210',
+            'nama_pemohon' => 'Ahmad Subagja',
+            'nomor_whatsapp' => '081298765432',
+            'nama_instansi' => '', // kosong
+            'rencana_peruntukan' => 'Pengembangan Kantor Cabang',
+            'durasi_sewa_tahun' => 2,
+            'skema_pembayaran' => 'sekaligus',
+        ]);
+        $failBusiness->assertSessionHasErrors('nama_instansi');
+
+        // 3. Pemohon memilih Badan Usaha dengan nama instansi lengkap -> berhasil tersimpan
+        $successBusiness = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+            'tipe_pemohon' => 'badan_usaha',
+            'nama_pemohon' => 'Ahmad Subagja',
+            'nomor_whatsapp' => '081298765432',
+            'nama_instansi' => 'PT Pasundan Investama Mandiri',
+            'jabatan_pemohon' => 'Direktur Utama',
+            'nik_atau_nib' => '0129876543210',
+            'rencana_peruntukan' => 'Pengembangan Kantor Cabang',
+            'durasi_sewa_tahun' => 2,
+            'skema_pembayaran' => 'sekaligus',
         ]);
 
-        $resBiz = $this->actingAs($business, 'web')->get('/aset/' . $asset->slug);
-        $resBiz->assertStatus(200);
-        $resBiz->assertSee('Badan Usaha');
-        $resBiz->assertSee('NIB Perusahaan');
-        $resBiz->assertSee('Nama Badan Usaha / Perusahaan');
-        $resBiz->assertSee('PT Harapan Bangsa Mandiri');
+        $bookingBiz = Booking::where('nomor_whatsapp', '081298765432')->latest()->first();
+        $this->assertNotNull($bookingBiz);
+        $this->assertEquals('badan_usaha', $bookingBiz->tipe_pemohon);
+        $this->assertEquals('PT Pasundan Investama Mandiri', $bookingBiz->nama_instansi);
+        $this->assertEquals('Direktur Utama', $bookingBiz->jabatan_pemohon);
+        $this->assertTrue($bookingBiz->isBadanUsaha());
+
+        // Kembalikan ketersediaan aset untuk perorangan test
+        $asset->update(['status_ketersediaan' => 'tersedia']);
+
+        // 4. Pemohon memilih Perorangan -> otomatis nama_instansi menjadi 'Perorangan'
+        $successIndiv = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+            'tipe_pemohon' => 'perorangan',
+            'nama_pemohon' => 'Dedi Pribadi',
+            'nomor_whatsapp' => '081311223344',
+            'nik_atau_nib' => '3273112233445566',
+            'rencana_peruntukan' => 'Usaha Percetakan dan Sablon',
+            'durasi_sewa_tahun' => 1,
+            'skema_pembayaran' => 'sekaligus',
+        ]);
+
+        $bookingIndiv = Booking::where('nomor_whatsapp', '081311223344')->latest()->first();
+        $this->assertNotNull($bookingIndiv);
+        $this->assertEquals('perorangan', $bookingIndiv->tipe_pemohon);
+        $this->assertEquals('Perorangan', $bookingIndiv->nama_instansi);
+        $this->assertFalse($bookingIndiv->isBadanUsaha());
     }
 
     public function test_applicant_can_download_surat_permohonan_draft_autofill_and_raw(): void

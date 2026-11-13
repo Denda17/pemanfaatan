@@ -325,6 +325,12 @@
                 </h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
+                        <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Kategori Pemohon:</span>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold {{ $booking->isBadanUsaha() ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200' }}">
+                            {{ $booking->tipe_pemohon_label }}
+                        </span>
+                    </div>
+                    <div>
                         <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Nama Pemohon:</span>
                         <span class="font-extrabold text-gray-900 text-sm">{{ $booking->nama_pemohon }}</span>
                     </div>

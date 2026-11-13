@@ -23,10 +23,17 @@ class BookingController extends Controller
         }
 
         $validated = $request->validate([
+            'tipe_pemohon' => 'required|in:perorangan,badan_usaha',
             'nama_pemohon' => 'required|string|max:255',
             'nomor_whatsapp' => 'required|string|min:9|max:20',
             'nik_atau_nib' => 'nullable|string|max:100',
-            'nama_instansi' => 'nullable|string|max:255',
+            'nama_instansi' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::requiredIf(fn () => $request->input('tipe_pemohon') === 'badan_usaha'),
+            ],
+            'jabatan_pemohon' => 'nullable|string|max:100',
             'email' => 'nullable|email|max:255',
             'rencana_peruntukan' => 'required|string|max:1000',
             'durasi_sewa_tahun' => 'required|integer|min:1|max:10',
@@ -39,7 +46,10 @@ class BookingController extends Controller
                 'max:20480',
             ],
         ], [
-            'nama_pemohon.required' => 'Nama lengkap pemohon wajib diisi.',
+            'tipe_pemohon.required' => 'Pilih kategori pemohon sewa (Perorangan atau Badan Usaha).',
+            'tipe_pemohon.in' => 'Kategori pemohon tidak valid.',
+            'nama_pemohon.required' => 'Nama lengkap pemohon / penanggung jawab wajib diisi.',
+            'nama_instansi.required' => 'Nama Badan Usaha / Perusahaan wajib diisi untuk kategori Badan Usaha.',
             'nomor_whatsapp.required' => 'Nomor WhatsApp aktif wajib diisi agar petugas UPTD dapat menghubungi Anda.',
             'rencana_peruntukan.required' => 'Rencana peruntukan / jenis usaha wajib dijelaskan.',
             'durasi_sewa_tahun.required' => 'Rencana durasi sewa wajib dipilih.',
@@ -52,7 +62,7 @@ class BookingController extends Controller
         ]);
 
         $user = Auth::user();
-        $isBadanUsaha = $user?->tipe_pemohon === 'badan_usaha';
+        $isBadanUsaha = $validated['tipe_pemohon'] === 'badan_usaha';
 
         $proposalPath = null;
         if ($request->hasFile('proposal_bisnis')) {
@@ -63,9 +73,11 @@ class BookingController extends Controller
         $booking = Booking::create([
             'asset_id' => $asset->id,
             'user_id' => $user?->id,
+            'tipe_pemohon' => $validated['tipe_pemohon'],
             'nama_pemohon' => $validated['nama_pemohon'],
-            'nik_atau_nib' => $validated['nik_atau_nib'] ?? ($isBadanUsaha ? ($user?->nib ?? $user?->nik) : $user?->nik),
-            'nama_instansi' => $isBadanUsaha ? ($validated['nama_instansi'] ?? $user?->instansi) : 'Perorangan',
+            'nik_atau_nib' => $validated['nik_atau_nib'] ?? ($user?->nik ?? $user?->nib),
+            'nama_instansi' => $isBadanUsaha ? $validated['nama_instansi'] : 'Perorangan',
+            'jabatan_pemohon' => $isBadanUsaha ? ($validated['jabatan_pemohon'] ?? 'Pimpinan / Penanggung Jawab') : 'Pemohon Perseorangan',
             'nomor_whatsapp' => $validated['nomor_whatsapp'],
             'email' => $validated['email'] ?? $user?->email,
             'rencana_peruntukan' => $validated['rencana_peruntukan'],

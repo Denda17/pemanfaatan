@@ -91,9 +91,10 @@ class SuratPermohonanService
         $user = $booking->user;
         $asset = $booking->asset;
 
-        $isBadanUsaha = ($user && $user->tipe_pemohon === 'badan_usaha') || (!empty($booking->nama_instansi) && $booking->nama_instansi !== 'Perorangan');
+        $isBadanUsaha = $booking->tipe_pemohon === 'badan_usaha' || (!empty($booking->nama_instansi) && $booking->nama_instansi !== 'Perorangan');
         $namaPemohon = $booking->nama_pemohon;
-        $namaInstansi = $isBadanUsaha ? ($booking->nama_instansi ?: $user?->instansi ?: '-') : 'Perorangan';
+        $namaInstansi = $isBadanUsaha ? ($booking->nama_instansi ?: '-') : 'Perorangan';
+        $jabatan = $booking->jabatan_pemohon ?: ($isBadanUsaha ? 'Pimpinan / Penanggung Jawab' : 'Pemohon Perseorangan');
         $nikNib = $booking->nik_atau_nib ?: ($user?->nik ?? $user?->nib ?? '-');
         $alamat = $user?->alamat ?: 'Sesuai KTP / Dokumen Domisili Pemohon';
         $nomorKontak = $booking->nomor_whatsapp ?: ($user?->phone ?: '-');
@@ -175,7 +176,7 @@ class SuratPermohonanService
                 self::setParagraphText($doc, $p, 'Badan Hukum/Usaha : ' . $namaInstansi);
             }
             if ($i === 57) {
-                self::setParagraphText($doc, $p, 'Jabatan : ' . ($isBadanUsaha ? 'Pimpinan / Penanggung Jawab' : 'Pemohon Perseorangan'));
+                self::setParagraphText($doc, $p, 'Jabatan : ' . $jabatan);
             }
             if ($i === 58) {
                 self::setParagraphText($doc, $p, 'Alamat : ' . $alamat);
@@ -200,7 +201,7 @@ class SuratPermohonanService
                 self::setParagraphText($doc, $p, 'Nama : ' . $namaPemohon);
             }
             if ($i === 84) {
-                self::setParagraphText($doc, $p, 'Jabatan : ' . ($isBadanUsaha ? 'Pimpinan / Direktur' : '-'));
+                self::setParagraphText($doc, $p, 'Jabatan : ' . ($isBadanUsaha ? $jabatan : '-'));
             }
             if ($i === 85) {
                 self::setParagraphText($doc, $p, 'Badan Hukum/Usaha : ' . $namaInstansi);

@@ -418,9 +418,6 @@
                         </div>
                     @else
                         <!-- Form Open for Authenticated Users -->
-                        @php
-                            $isBadanUsaha = Auth::user()?->tipe_pemohon === 'badan_usaha';
-                        @endphp
                         <div class="mb-4 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between gap-2.5 text-xs text-emerald-900">
                             <div class="flex items-center gap-2.5 truncate">
                                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
@@ -428,24 +425,70 @@
                                     <span class="font-normal text-emerald-700">Masuk sebagai:</span>
                                     <strong class="font-extrabold text-emerald-950 ml-0.5">{{ Auth::user()->name }}</strong>
                                     <span class="text-emerald-700 text-[11px] block truncate">
-                                        {{ $isBadanUsaha ? (Auth::user()->instansi ?: Auth::user()->email) : Auth::user()->email }} &bull; {{ Auth::user()->phone }}
+                                        {{ Auth::user()->email }} &bull; {{ Auth::user()->phone }}
                                     </span>
                                 </div>
                             </div>
-                            <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-extrabold shrink-0 {{ $isBadanUsaha ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200' }}">
-                                {{ $isBadanUsaha ? 'Badan Usaha' : 'Perorangan' }}
+                            <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-extrabold shrink-0 bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Akun Terverifikasi
                             </span>
                         </div>
 
-                        <form action="{{ route('booking.store', $asset->slug) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                        <form id="form-booking" action="{{ route('booking.store', $asset->slug) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                             @csrf
+
+                            <!-- Pemilihan Kategori Pemohon untuk Permohonan Ini -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                                    <span>Kategori Pemohon Sewa <span class="text-rose-500">*</span></span>
+                                    <span class="text-[10px] text-gray-400">Pilih entitas pengajuan</span>
+                                </label>
+                                <div class="grid grid-cols-2 gap-2.5">
+                                    <label class="relative flex items-center gap-2.5 p-3 rounded-2xl border border-gray-200 bg-gray-50/60 hover:bg-emerald-50/40 hover:border-emerald-300 transition cursor-pointer select-none group has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/60 has-[:checked]:ring-1 has-[:checked]:ring-emerald-500">
+                                        <input type="radio" name="tipe_pemohon" value="perorangan" class="text-emerald-600 focus:ring-emerald-500 border-gray-300" {{ old('tipe_pemohon', 'perorangan') === 'perorangan' ? 'checked' : '' }} onchange="updateTipePemohonUI('perorangan')">
+                                        <div class="text-xs">
+                                            <span class="block font-extrabold text-gray-900 group-has-[:checked]:text-emerald-950">Perorangan</span>
+                                            <span class="block text-[10px] text-gray-500 leading-tight">Pribadi / Individu</span>
+                                        </div>
+                                    </label>
+                                    <label class="relative flex items-center gap-2.5 p-3 rounded-2xl border border-gray-200 bg-gray-50/60 hover:bg-emerald-50/40 hover:border-emerald-300 transition cursor-pointer select-none group has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/60 has-[:checked]:ring-1 has-[:checked]:ring-emerald-500">
+                                        <input type="radio" name="tipe_pemohon" value="badan_usaha" class="text-emerald-600 focus:ring-emerald-500 border-gray-300" {{ old('tipe_pemohon') === 'badan_usaha' ? 'checked' : '' }} onchange="updateTipePemohonUI('badan_usaha')">
+                                        <div class="text-xs">
+                                            <span class="block font-extrabold text-gray-900 group-has-[:checked]:text-emerald-950">Badan Usaha</span>
+                                            <span class="block text-[10px] text-gray-500 leading-tight">PT / CV / Koperasi</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                @error('tipe_pemohon')
+                                    <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Bidang Khusus Badan Usaha (Muncul Real-Time jika memilih Badan Usaha) -->
+                            <div id="container-badan-usaha" class="{{ old('tipe_pemohon') === 'badan_usaha' ? '' : 'hidden' }} space-y-3 p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200/80 transition-all">
+                                <div>
+                                    <label class="block text-xs font-bold text-blue-950 mb-1">
+                                        Nama Badan Usaha / Perusahaan <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" id="booking_nama_instansi" name="nama_instansi" value="{{ old('nama_instansi') }}" placeholder="Contoh: PT Pasundan Makmur Sejahtera" class="w-full px-3.5 py-2.5 bg-white border border-blue-200 rounded-xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                                    @error('nama_instansi')
+                                        <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-blue-950 mb-1">
+                                        Jabatan Pemohon dalam Badan Usaha
+                                    </label>
+                                    <input type="text" id="booking_jabatan_pemohon" name="jabatan_pemohon" value="{{ old('jabatan_pemohon') }}" placeholder="Contoh: Direktur Utama / Kuasa Direksi" class="w-full px-3.5 py-2.5 bg-white border border-blue-200 rounded-xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                                </div>
+                            </div>
 
                             <!-- Nama Pemohon -->
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">
-                                    {{ $isBadanUsaha ? 'Nama Penanggung Jawab / Pemohon' : 'Nama Lengkap Pemohon' }} <span class="text-rose-500">*</span>
+                                <label id="label-nama-pemohon" class="block text-xs font-bold text-gray-700 mb-1">
+                                    <span>{{ old('tipe_pemohon') === 'badan_usaha' ? 'Nama Penanggung Jawab / Direktur' : 'Nama Lengkap Pemohon' }}</span> <span class="text-rose-500">*</span>
                                 </label>
-                                <input type="text" name="nama_pemohon" value="{{ old('nama_pemohon', Auth::user()->name) }}" required placeholder="{{ $isBadanUsaha ? 'Contoh: Ahmad Subagja (Direktur)' : 'Contoh: Dedi Koswara' }}" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                                <input type="text" id="input_nama_pemohon" name="nama_pemohon" value="{{ old('nama_pemohon', Auth::user()->name) }}" required placeholder="{{ old('tipe_pemohon') === 'badan_usaha' ? 'Contoh: Ahmad Subagja (Direktur Utama)' : 'Contoh: Dedi Koswara' }}" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
                                 @error('nama_pemohon')
                                     <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>
                                 @enderror
@@ -471,10 +514,10 @@
                             <!-- NIK / NIB & Durasi -->
                             <div class="grid grid-cols-2 gap-2.5">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">
-                                        {{ $isBadanUsaha ? 'NIB Perusahaan' : 'NIK Pemohon (KTP)' }}
+                                    <label id="label-nik-nib" class="block text-xs font-bold text-gray-700 mb-1">
+                                        {{ old('tipe_pemohon') === 'badan_usaha' ? 'NIB Perusahaan / NPWP' : 'NIK Pemohon (KTP)' }}
                                     </label>
-                                    <input type="text" name="nik_atau_nib" value="{{ old('nik_atau_nib', $isBadanUsaha ? (Auth::user()->nib ?? Auth::user()->nik) : Auth::user()->nik) }}" placeholder="{{ $isBadanUsaha ? 'Nomor Induk Berusaha...' : '3204...' }}" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                                    <input type="text" id="input_nik_nib" name="nik_atau_nib" value="{{ old('nik_atau_nib', Auth::user()->nik ?? Auth::user()->nib) }}" placeholder="{{ old('tipe_pemohon') === 'badan_usaha' ? 'Nomor Induk Berusaha...' : '3204...' }}" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
@@ -548,21 +591,6 @@
                                 @enderror
                             </div>
 
-                            @if($isBadanUsaha)
-                                <!-- Instansi / Badan Usaha (Hanya Ditampilkan untuk Pemohon Badan Usaha) -->
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">
-                                        Nama Badan Usaha / Perusahaan <span class="text-rose-500">*</span>
-                                    </label>
-                                    <input type="text" id="booking_nama_instansi" name="nama_instansi" value="{{ old('nama_instansi', Auth::user()->instansi) }}" required placeholder="Contoh: PT Pasundan Makmur Sejahtera" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
-                                    @error('nama_instansi')
-                                        <p class="text-[11px] text-rose-500 mt-1">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                            @else
-                                <input type="hidden" name="nama_instansi" value="Perorangan">
-                            @endif
-
                             <!-- Rencana Peruntukan Usaha -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 mb-1">
@@ -620,6 +648,34 @@
 
 @push('scripts')
 <script>
+    function updateTipePemohonUI(tipe) {
+        const containerBadanUsaha = document.getElementById('container-badan-usaha');
+        const inputInstansi = document.getElementById('booking_nama_instansi');
+        const labelNama = document.getElementById('label-nama-pemohon');
+        const inputNama = document.getElementById('input_nama_pemohon');
+        const labelNikNib = document.getElementById('label-nik-nib');
+        const inputNikNib = document.getElementById('input_nik_nib');
+
+        if (tipe === 'badan_usaha') {
+            if (containerBadanUsaha) containerBadanUsaha.classList.remove('hidden');
+            if (inputInstansi) inputInstansi.required = true;
+            if (labelNama) labelNama.innerHTML = '<span>Nama Penanggung Jawab / Direktur</span> <span class="text-rose-500">*</span>';
+            if (inputNama) inputNama.placeholder = 'Contoh: Ahmad Subagja (Direktur Utama)';
+            if (labelNikNib) labelNikNib.textContent = 'NIB Perusahaan / NPWP';
+            if (inputNikNib) inputNikNib.placeholder = 'Nomor Induk Berusaha...';
+        } else {
+            if (containerBadanUsaha) containerBadanUsaha.classList.add('hidden');
+            if (inputInstansi) {
+                inputInstansi.required = false;
+                inputInstansi.value = '';
+            }
+            if (labelNama) labelNama.innerHTML = '<span>Nama Lengkap Pemohon</span> <span class="text-rose-500">*</span>';
+            if (inputNama) inputNama.placeholder = 'Contoh: Dedi Koswara';
+            if (labelNikNib) labelNikNib.textContent = 'NIK Pemohon (KTP)';
+            if (inputNikNib) inputNikNib.placeholder = '3204...';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const inputTarifPokok = document.getElementById('simulasi-tarif-pokok');
         const rangeDurasi = document.getElementById('simulasi-durasi-range');

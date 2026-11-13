@@ -29,28 +29,19 @@ class AuthController extends Controller
     public function register(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'tipe_pemohon' => ['required', 'in:perorangan,badan_usaha'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'phone' => ['required', 'string', 'max:25'],
-            'nik' => ['nullable', 'string', 'max:20', 'required_if:tipe_pemohon,perorangan'],
-            'instansi' => ['nullable', 'string', 'max:255', 'required_if:tipe_pemohon,badan_usaha'],
-            'nib' => ['nullable', 'string', 'max:30'],
-            'npwp' => ['nullable', 'string', 'max:30'],
-            'alamat' => ['nullable', 'string', 'max:1000'],
             'agree' => ['required', 'accepted'],
         ], [
-            'tipe_pemohon.required' => 'Pilih kategori pemohon (Perorangan atau Badan Usaha).',
-            'name.required' => 'Nama lengkap penanggung jawab wajib diisi.',
+            'name.required' => 'Nama lengkap wajib diisi.',
             'email.required' => 'Alamat email wajib diisi.',
             'email.unique' => 'Alamat email ini sudah terdaftar. Silakan masuk menggunakan akun tersebut.',
             'password.required' => 'Kata sandi wajib diisi.',
             'password.min' => 'Kata sandi minimal terdiri dari 8 karakter.',
             'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
             'phone.required' => 'Nomor WhatsApp aktif wajib diisi untuk koordinasi survei lapangan.',
-            'nik.required_if' => 'NIK wajib diisi untuk pemohon kategori Perorangan.',
-            'instansi.required_if' => 'Nama instansi/perusahaan wajib diisi untuk pemohon Badan Usaha.',
             'agree.required' => 'Pernyataan keabsahan data dan kepatuhan regulasi wajib disetujui.',
             'agree.accepted' => 'Pernyataan keabsahan data dan kepatuhan regulasi wajib disetujui.',
         ]);
@@ -60,13 +51,7 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => $validated['password'], // Eloquent cast 'hashed' hashes this
             'role' => 'peminat',
-            'tipe_pemohon' => $validated['tipe_pemohon'],
-            'nik' => $validated['nik'] ?? null,
-            'nib' => $validated['nib'] ?? null,
-            'npwp' => $validated['npwp'] ?? null,
             'phone' => $validated['phone'],
-            'instansi' => $validated['instansi'] ?? null,
-            'alamat' => $validated['alamat'] ?? null,
             'is_active' => true,
         ]);
 

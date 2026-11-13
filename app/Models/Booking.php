@@ -16,9 +16,11 @@ class Booking extends Model
         'kode_booking',
         'asset_id',
         'user_id',
+        'tipe_pemohon',
         'nama_pemohon',
         'nik_atau_nib',
         'nama_instansi',
+        'jabatan_pemohon',
         'nomor_whatsapp',
         'email',
         'rencana_peruntukan',
@@ -124,6 +126,19 @@ class Booking extends Model
             'sekaligus' => 'Dibayar Full Sekaligus',
             default => ucfirst($this->skema_pembayaran ?? 'Sekaligus'),
         };
+    }
+
+    public function getTipePemohonLabelAttribute(): string
+    {
+        return match ($this->tipe_pemohon) {
+            'badan_usaha' => 'Badan Usaha / Badan Hukum',
+            default => 'Perorangan / Pribadi',
+        };
+    }
+
+    public function isBadanUsaha(): bool
+    {
+        return $this->tipe_pemohon === 'badan_usaha';
     }
 
     public function getProposalBisnisUrlAttribute(): ?string
