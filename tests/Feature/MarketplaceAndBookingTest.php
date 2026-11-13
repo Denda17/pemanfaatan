@@ -6,13 +6,15 @@ use App\Models\Asset;
 use App\Models\Booking;
 use App\Models\BookingRequirement;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MarketplaceAndBookingTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_home_page_is_accessible_and_displays_stats(): void
     {
         $response = $this->get('/');
