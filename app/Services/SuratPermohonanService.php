@@ -46,7 +46,18 @@ class SuratPermohonanService
      */
     public static function getTemplatePath(): string
     {
-        return base_path('docs/data/DRAFT Surat permohonan_Sewa_Calon_penyewa (Pengelola Barang) 2026.docx');
+        $candidates = [
+            base_path('docs/data/Template Surat Permohonan Sewa Calon Penyewa.docx'),
+            base_path('docs/data/DRAFT Surat permohonan_Sewa_Calon_penyewa (Pengelola Barang) 2026.docx'),
+        ];
+
+        foreach ($candidates as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        return $candidates[0];
     }
 
     /**
