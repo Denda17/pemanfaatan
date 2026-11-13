@@ -234,6 +234,48 @@ class BookingController extends Controller
         return response()->download($generatedFile, $fileName);
     }
 
+    public function downloadSuratPernyataan(Request $request, string $kode)
+    {
+        $booking = Booking::where('kode_booking', $kode)->firstOrFail();
+        $user = Auth::user();
+
+        if ($user && !$user->isAdmin()) {
+            $isOwner = ($booking->user_id === $user->id)
+                || ($booking->email && strtolower($booking->email) === strtolower($user->email))
+                || ($booking->nomor_whatsapp && $booking->nomor_whatsapp === $user->phone);
+
+            abort_unless($isOwner, 403, 'Anda tidak memiliki hak akses untuk mengunduh template permohonan ini.');
+        }
+
+        $templatePath = base_path('docs/data/Template Surat Pernyataan.docx');
+        if (!file_exists($templatePath)) {
+            abort(404, 'File template surat pernyataan tidak ditemukan di server.');
+        }
+
+        return response()->download($templatePath, 'Template_Surat_Pernyataan_Sewa_BMD.docx');
+    }
+
+    public function downloadSuratBadanHukum(Request $request, string $kode)
+    {
+        $booking = Booking::where('kode_booking', $kode)->firstOrFail();
+        $user = Auth::user();
+
+        if ($user && !$user->isAdmin()) {
+            $isOwner = ($booking->user_id === $user->id)
+                || ($booking->email && strtolower($booking->email) === strtolower($user->email))
+                || ($booking->nomor_whatsapp && $booking->nomor_whatsapp === $user->phone);
+
+            abort_unless($isOwner, 403, 'Anda tidak memiliki hak akses untuk mengunduh template permohonan ini.');
+        }
+
+        $templatePath = base_path('docs/data/Template Surat Keterangan Badan Hukum_Usaha.docx');
+        if (!file_exists($templatePath)) {
+            abort(404, 'File template surat keterangan badan hukum tidak ditemukan di server.');
+        }
+
+        return response()->download($templatePath, 'Template_Surat_Keterangan_Badan_Hukum_Usaha.docx');
+    }
+
     public function uploadDocument(Request $request, string $kode)
     {
         $booking = Booking::where('kode_booking', $kode)->firstOrFail();

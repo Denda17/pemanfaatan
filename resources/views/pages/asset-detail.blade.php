@@ -391,35 +391,48 @@
                             <strong class="text-gray-900 block mb-1">Objek ini Berstatus Tersewa Aktif</strong>
                             <span>Anda dapat mencari opsi aset lain di katalog yang masih tersedia.</span>
                         </div>
-                    @else
-                        <!-- Form Open for All Users (Authenticated & Guest) -->
-                        @auth
-                            <div class="mb-4 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between gap-2.5 text-xs text-emerald-900">
-                                <div class="flex items-center gap-2.5 truncate">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                                    <div class="truncate">
-                                        <span class="font-normal text-emerald-700">Masuk sebagai:</span>
-                                        <strong class="font-extrabold text-emerald-950 ml-0.5">{{ Auth::user()->name }}</strong>
-                                        <span class="text-emerald-700 text-[11px] block truncate">
-                                            {{ Auth::user()->email }} &bull; {{ Auth::user()->phone }}
-                                        </span>
-                                    </div>
-                                </div>
-                                <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-extrabold shrink-0 bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                    Akun Terverifikasi
-                                </span>
+                    @elseif(!Auth::check())
+                        <!-- Gatekeeping Card for Unauthenticated Guests -->
+                        <div class="bg-emerald-50/50 p-6 rounded-2xl text-center border border-emerald-200/80 shadow-2xs">
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center mx-auto mb-3 shadow-md shadow-emerald-600/20">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                             </div>
-                        @else
-                            <div class="mb-4 p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 flex items-start gap-2.5 text-xs text-emerald-950">
-                                <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <div class="leading-relaxed">
-                                    <span class="font-extrabold block text-emerald-950">Formulir Peminatan Sewa Terbuka</span>
-                                    <span class="text-emerald-800 text-[11px] block mt-0.5">
-                                        Sudah memiliki akun? <a href="{{ route('login') }}" class="font-extrabold underline text-emerald-700 hover:text-emerald-900">Masuk di sini</a> agar riwayat pengajuan tersimpan di akun Anda.
+                            <h3 class="text-sm font-extrabold text-gray-900 mb-1">Wajib Masuk Akun Pemohon</h3>
+                            <p class="text-xs text-gray-600 leading-relaxed mb-5">
+                                Untuk menjamin validitas identitas dan ketertiban proses telaah berkas sewa BMD, Anda wajib memiliki akun terdaftar sebelum dapat mengajukan permohonan minat pada aset ini.
+                            </p>
+                            
+                            <div class="space-y-2.5">
+                                <a href="{{ route('login') }}" class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                                    <span>Masuk ke Akun Anda</span>
+                                </a>
+                                <a href="{{ route('register') }}" class="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow-2xs">
+                                    <span>Belum Punya Akun? Daftar Baru</span>
+                                </a>
+                            </div>
+
+                            <p class="text-[10px] text-gray-400 mt-4 leading-relaxed">
+                                Setelah masuk, formulir pengajuan minat akan terbuka otomatis dengan data profil Anda yang sudah terisi.
+                            </p>
+                        </div>
+                    @else
+                        <!-- Form Open for Authenticated Users -->
+                        <div class="mb-4 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between gap-2.5 text-xs text-emerald-900">
+                            <div class="flex items-center gap-2.5 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                <div class="truncate">
+                                    <span class="font-normal text-emerald-700">Masuk sebagai:</span>
+                                    <strong class="font-extrabold text-emerald-950 ml-0.5">{{ Auth::user()->name }}</strong>
+                                    <span class="text-emerald-700 text-[11px] block truncate">
+                                        {{ Auth::user()->email }} &bull; {{ Auth::user()->phone }}
                                     </span>
                                 </div>
                             </div>
-                        @endauth
+                            <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-extrabold shrink-0 bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Akun Terverifikasi
+                            </span>
+                        </div>
 
                         <form id="form-booking" action="{{ route('booking.store', $asset->slug) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                             @csrf

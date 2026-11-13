@@ -705,13 +705,29 @@ class MarketplaceAndBookingTest extends TestCase
         $rawRes->assertStatus(200);
         $this->assertStringContainsString('DRAFT_Surat_Permohonan_Sewa_BMD_2026.docx', (string) $rawRes->headers->get('Content-Disposition'));
 
-        // 3. User asing dilarang mengunduh dokumen permohonan orang lain (403)
+        // 3. Pemohon dapat mengunduh template surat pernyataan (.docx)
+        $pernyataanRes = $this->actingAs($applicant, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-pernyataan');
+        $pernyataanRes->assertStatus(200);
+        $this->assertStringContainsString('Template_Surat_Pernyataan_Sewa_BMD.docx', (string) $pernyataanRes->headers->get('Content-Disposition'));
+
+        // 4. Pemohon dapat mengunduh template surat keterangan badan hukum/usaha (.docx)
+        $badanHukumRes = $this->actingAs($applicant, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-badan-hukum');
+        $badanHukumRes->assertStatus(200);
+        $this->assertStringContainsString('Template_Surat_Keterangan_Badan_Hukum_Usaha.docx', (string) $badanHukumRes->headers->get('Content-Disposition'));
+
+        // 5. User asing dilarang mengunduh dokumen permohonan orang lain (403)
         $forbiddenRes = $this->actingAs($stranger, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan');
         $forbiddenRes->assertStatus(403);
 
-        // 4. Admin UPTD diperbolehkan mengunduh dokumen pemohon manapun
+        $forbiddenPernyataan = $this->actingAs($stranger, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-pernyataan');
+        $forbiddenPernyataan->assertStatus(403);
+
+        // 6. Admin UPTD diperbolehkan mengunduh dokumen pemohon manapun
         $adminRes = $this->actingAs($admin, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan');
         $adminRes->assertStatus(200);
+
+        $adminPernyataanRes = $this->actingAs($admin, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-pernyataan');
+        $adminPernyataanRes->assertStatus(200);
     }
 
     public function test_applicant_can_upload_scanned_documents_and_status_becomes_pending(): void
@@ -752,5 +768,75 @@ class MarketplaceAndBookingTest extends TestCase
             'file_name' => 'surat_permohonan_bertandatangan.pdf',
             'status_verifikasi' => 'pending',
         ]);
+    }
+
+    public function test_completeness_percentage_and_document_checklists_adapt_to_applicant_type_and_duration(): void
+    {
+        Storage::fake('public');
+
+        $asset = Asset::first();
+        $userIndividu = User::factory()->create(['tipe_pemohon' => 'perorangan', 'role' => 'peminat']);
+        $userBisnis = User::factory()->create(['tipe_pemohon' => 'badan_usaha', 'role' => 'peminat']);
+
+        // 1. Pemohon Perorangan dengan durasi <= 5 tahun (wajib 4 dokumen: Permohonan, Pernyataan, KTP, NPWP)
+        $bookingIndividu = Booking::create([
+            'asset_id' => $asset->id,
+            'user_id' => $userIndividu->id,
+            'tipe_pemohon' => 'perorangan',
+            'nama_pemohon' => 'Ahmad Individu',
+            'nama_instansi' => 'Perorangan',
+            'nomor_whatsapp' => '081333444555',
+            'rencana_peruntukan' => 'Toko Buku',
+            'durasi_sewa_tahun' => 3,
+            'skema_pembayaran' => 'sekaligus',
+            'status' => 'pending',
+            'tanggal_booking' => now(),
+        ]);
+
+        $statsAwal = $bookingIndividu->getCompletenessStats();
+        $this->assertEquals(4, $statsAwal['total_wajib']);
+        $this->assertEquals(0, $statsAwal['total_terunggah']);
+        $this->assertEquals(0, $statsAwal['persentase']);
+        $this->assertFalse($statsAwal['is_complete']);
+
+        // Unggah 1 dokumen (KTP) -> 1/4 = 25%
+        $reqKtp = BookingRequirement::where('kode', 'REQ_KTP')->first();
+        $fileKtp = UploadedFile::fake()->create('ktp_ahmad.pdf', 500, 'application/pdf');
+        $this->actingAs($userIndividu, 'web')->post('/status-booking/' . $bookingIndividu->kode_booking . '/upload-dokumen', [
+            'booking_requirement_id' => $reqKtp->id,
+            'dokumen_file' => $fileKtp,
+        ]);
+
+        $stats1 = $bookingIndividu->fresh()->getCompletenessStats();
+        $this->assertEquals(1, $stats1['total_terunggah']);
+        $this->assertEquals(25, $stats1['persentase']);
+
+        // 2. Pemohon Badan Usaha dengan durasi > 5 tahun (wajib 8 dokumen)
+        $bookingBisnis = Booking::create([
+            'asset_id' => $asset->id,
+            'user_id' => $userBisnis->id,
+            'tipe_pemohon' => 'badan_usaha',
+            'nama_pemohon' => 'PT Harapan Bangsa',
+            'nama_instansi' => 'PT Harapan Bangsa Mandiri',
+            'nomor_whatsapp' => '081999777666',
+            'rencana_peruntukan' => 'Pusat Logistik Terpadu',
+            'durasi_sewa_tahun' => 7,
+            'skema_pembayaran' => 'bertahap',
+            'status' => 'pending',
+            'tanggal_booking' => now(),
+        ]);
+
+        $statsBisnis = $bookingBisnis->getCompletenessStats();
+        $this->assertEquals(8, $statsBisnis['total_wajib']);
+
+        // 3. Tampilan halaman status memuat progress bar dan kelompok dokumen
+        $viewResponse = $this->actingAs($userIndividu, 'web')->get('/status-booking/' . $bookingIndividu->kode_booking);
+        $viewResponse->assertStatus(200);
+        $viewResponse->assertSee('Patokan Kelengkapan Dokumen');
+        $viewResponse->assertSee('Berkas Template Persyaratan Resmi');
+        $viewResponse->assertSee('Dokumen Pendukung Lainnya');
+        $viewResponse->assertSee('Unduh Template Surat Pernyataan (.docx)');
+        $viewResponse->assertSee('Unduh Template Badan Hukum/Usaha (.docx)');
+        $viewResponse->assertSee('25%');
     }
 }

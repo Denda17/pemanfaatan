@@ -146,8 +146,15 @@
 
                     <!-- Right: Status Badge & Action Button -->
                     <div class="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-3 shrink-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100">
-                        <div class="flex items-center gap-2">
-                            <span class="px-3.5 py-1.5 rounded-full text-xs font-extrabold border {{ $badgeStyle }} shadow-2xs flex items-center gap-1.5">
+                        @php
+                            $compPct = $item->completeness_percentage;
+                        @endphp
+                        <div class="flex items-center gap-2 flex-wrap justify-end">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-extrabold border {{ $compPct === 100 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200' }}">
+                                <span class="w-1.5 h-1.5 rounded-full {{ $compPct === 100 ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
+                                <span>Berkas: {{ $compPct }}%</span>
+                            </span>
+                            <span class="px-3 py-1 rounded-full text-xs font-extrabold border {{ $badgeStyle }} shadow-2xs flex items-center gap-1.5">
                                 <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
                                 <span>{{ $item->status_label }}</span>
                             </span>

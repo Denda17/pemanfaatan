@@ -71,7 +71,7 @@ class BookingSeeder extends Seeder
             $assetTersedia->update(['status_ketersediaan' => 'proses_booking']);
 
             // Input beberapa berkas oleh Admin UPTD
-            $reqKtp = $requirements->where('kode', 'REQ_KTP_NIB')->first();
+            $reqKtp = $requirements->where('kode', 'REQ_KTP')->first() ?? $requirements->where('kode', 'REQ_KTP_NIB')->first();
             if ($reqKtp) {
                 BookingDocument::updateOrCreate(
                     [

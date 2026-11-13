@@ -141,6 +141,103 @@ class Booking extends Model
         return $this->tipe_pemohon === 'badan_usaha';
     }
 
+    /**
+     * Dapatkan daftar kode persyaratan yang wajib dipenuhi bagi booking ini.
+     */
+    public function getRequiredRequirementCodes(): array
+    {
+        $codes = [
+            'REQ_SURAT_PERMOHONAN',
+            'REQ_SURAT_PERNYATAAN',
+            'REQ_KTP',
+            'REQ_NPWP',
+        ];
+
+        if ($this->isBadanUsaha()) {
+            $codes[] = 'REQ_SURAT_BADAN_HUKUM';
+            $codes[] = 'REQ_NIB';
+            $codes[] = 'REQ_AKTA_PENDIRIAN';
+        }
+
+        if ($this->durasi_sewa_tahun > 5) {
+            $codes[] = 'REQ_PROPOSAL';
+        }
+
+        return $codes;
+    }
+
+    /**
+     * Dapatkan daftar kode persyaratan yang relevan bagi pemohon ini.
+     */
+    public function getApplicableRequirementCodes(): array
+    {
+        $codes = [
+            'REQ_SURAT_PERMOHONAN',
+            'REQ_SURAT_PERNYATAAN',
+            'REQ_KTP',
+            'REQ_NPWP',
+            'REQ_NIB',
+            'REQ_PROPOSAL',
+        ];
+
+        if ($this->isBadanUsaha()) {
+            $codes[] = 'REQ_SURAT_BADAN_HUKUM';
+            $codes[] = 'REQ_AKTA_PENDIRIAN';
+        }
+
+        return $codes;
+    }
+
+    /**
+     * Hitung statistik kelengkapan berkas wajib pemohon.
+     * Mengembalikan array dengan persentase kelengkapan berkas sebagai patokan user.
+     */
+    public function getCompletenessStats(): array
+    {
+        $requiredCodes = $this->getRequiredRequirementCodes();
+        $totalWajib = count($requiredCodes);
+
+        if ($totalWajib === 0) {
+            return [
+                'total_wajib' => 0,
+                'total_terunggah' => 0,
+                'persentase' => 100,
+                'is_complete' => true,
+                'total_terverifikasi' => 0,
+            ];
+        }
+
+        // Ambil dokumen booking yang sudah diunggah dan termasuk dalam syarat wajib
+        $docs = $this->documents()->with('requirement')->get();
+        $uploadedCodes = $docs->filter(function ($doc) use ($requiredCodes) {
+            return !empty($doc->file_path)
+                && $doc->requirement
+                && in_array($doc->requirement->kode, $requiredCodes);
+        })->pluck('requirement.kode')->unique();
+
+        $totalTerunggah = $uploadedCodes->count();
+        $persentase = (int) round(($totalTerunggah / $totalWajib) * 100);
+        $persentase = min(100, max(0, $persentase));
+
+        $totalTerverifikasi = $docs->filter(fn ($doc) => $doc->status_verifikasi === 'verified')->count();
+
+        return [
+            'total_wajib' => $totalWajib,
+            'total_terunggah' => $totalTerunggah,
+            'persentase' => $persentase,
+            'is_complete' => ($totalTerunggah >= $totalWajib),
+            'total_terverifikasi' => $totalTerverifikasi,
+        ];
+    }
+
+    /**
+     * Accessor persentase kelengkapan berkas.
+     */
+    public function getCompletenessPercentageAttribute(): int
+    {
+        return $this->getCompletenessStats()['persentase'];
+    }
+
     public function getProposalBisnisUrlAttribute(): ?string
     {
         if (!$this->proposal_bisnis_path) {

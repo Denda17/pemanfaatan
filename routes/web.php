@@ -41,6 +41,14 @@ Route::get('/status-booking/{kode}/surat-permohonan', [BookingController::class,
     ->middleware('auth')
     ->name('booking.surat-permohonan');
 
+Route::get('/status-booking/{kode}/surat-pernyataan', [BookingController::class, 'downloadSuratPernyataan'])
+    ->middleware('auth')
+    ->name('booking.surat-pernyataan');
+
+Route::get('/status-booking/{kode}/surat-badan-hukum', [BookingController::class, 'downloadSuratBadanHukum'])
+    ->middleware('auth')
+    ->name('booking.surat-badan-hukum');
+
 Route::post('/status-booking/{kode}/upload-dokumen', [BookingController::class, 'uploadDocument'])
     ->middleware('auth')
     ->name('booking.upload-dokumen');

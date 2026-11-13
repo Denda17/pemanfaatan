@@ -155,55 +155,173 @@
                             <span>Daftar Berkas Persyaratan Sewa (Permendagri 7/2024)</span>
                         </h2>
                         <p class="text-xs text-gray-500 mt-1 font-medium">
-                            Lengkapi berkas permohonan Anda di bawah ini. Anda dapat mengunduh draf surat permohonan resmi yang sudah terisi otomatis, membubuhkan tanda tangan basah & meterai, lalu mengunggah hasil scan di portal ini.
+                            Lengkapi berkas permohonan Anda di bawah ini sesuai tahapan dan format resmi yang telah ditentukan.
                         </p>
                     </div>
 
-                    <div class="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200 shrink-0 self-start sm:self-auto">
-                        {{ $booking->documents->where('status_verifikasi', 'verified')->count() }} dari 8 Persyaratan Sah
+                    @php
+                        $completeness = $booking->getCompletenessStats();
+                        $percentage = $completeness['persentase'];
+                        $totalWajib = $completeness['total_wajib'];
+                        $totalTerunggah = $completeness['total_terunggah'];
+                        $isAllComplete = $completeness['is_complete'];
+                        $allReqs = \App\Models\BookingRequirement::orderBy('urutan')->get();
+                        $uploadedDocs = $booking->documents->keyBy('booking_requirement_id');
+                        $requiredCodes = $booking->getRequiredRequirementCodes();
+                        $isApplicantUploadable = fn($kode) => in_array($kode, [
+                            'REQ_SURAT_PERMOHONAN', 
+                            'REQ_SURAT_PERNYATAAN', 
+                            'REQ_SURAT_BADAN_HUKUM', 
+                            'REQ_KTP', 
+                            'REQ_NPWP', 
+                            'REQ_NIB', 
+                            'REQ_AKTA_PENDIRIAN', 
+                            'REQ_PROPOSAL', 
+                            'REQ_BUKTI_BAYAR'
+                        ]);
+                        $displayNumberMap = [
+                            'REQ_SURAT_PERMOHONAN' => '1',
+                            'REQ_SURAT_PERNYATAAN' => '2',
+                            'REQ_SURAT_BADAN_HUKUM' => '3',
+                            'REQ_KTP' => '4.a',
+                            'REQ_NPWP' => '4.b',
+                            'REQ_NIB' => '4.c',
+                            'REQ_AKTA_PENDIRIAN' => '4.d',
+                            'REQ_PROPOSAL' => '4.e',
+                            'REQ_SURVEY_LAPANGAN' => '5',
+                            'REQ_PENILAIAN_TARIF' => '6',
+                            'REQ_PERSETUJUAN_SEKDA' => '7',
+                            'REQ_DRAFT_PKS' => '8',
+                            'REQ_BUKTI_BAYAR' => '9',
+                        ];
+                    @endphp
+
+                    <div class="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200 shrink-0 self-start sm:self-auto flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full {{ $isAllComplete ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse' }}"></span>
+                        <span>{{ $completeness['total_terverifikasi'] }} Berkas Terverifikasi Sah</span>
+                    </div>
+                </div>
+
+                <!-- Card Progres & Persentase Kelengkapan Dokumen (Patokan User) -->
+                <div class="mb-8 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-white border border-emerald-200/90 shadow-2xs">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-2.5 h-2.5 rounded-full {{ $isAllComplete ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
+                                <span class="text-[11px] uppercase font-extrabold tracking-wider text-emerald-800">Patokan Kelengkapan Dokumen</span>
+                            </div>
+                            <h3 class="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
+                                <span>{{ $isAllComplete ? 'Dokumen Persyaratan Wajib Lengkap (100%)' : 'Dokumen Persyaratan Belum Lengkap' }}</span>
+                            </h3>
+                            <p class="text-xs text-gray-600 mt-1 max-w-xl leading-relaxed">
+                                @if($isAllComplete)
+                                    Seluruh <strong>{{ $totalWajib }} dokumen persyaratan wajib</strong> telah berhasil Anda unggah. Tim verifikator UPTD BPKAD Jabar akan segera memeriksa dan menelaah keabsahan berkas Anda.
+                                @else
+                                    Anda telah mengunggah <strong>{{ $totalTerunggah }}</strong> dari <strong>{{ $totalWajib }} dokumen wajib</strong> ({{ $percentage }}%). Silakan lengkapi sisa {{ $totalWajib - $totalTerunggah }} dokumen di bawah ini agar permohonan dapat segera diproses ke tahap verifikasi.
+                                @endif
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-3 shrink-0 self-start sm:self-auto">
+                            <div class="text-right">
+                                <div class="text-3xl sm:text-4xl font-black {{ $isAllComplete ? 'text-emerald-700' : ($percentage >= 50 ? 'text-teal-700' : 'text-amber-700') }} font-mono tracking-tight">
+                                    {{ $percentage }}%
+                                </div>
+                                <div class="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
+                                    {{ $totalTerunggah }}/{{ $totalWajib }} Berkas Wajib
+                                </div>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl {{ $isAllComplete ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white' }} flex items-center justify-center shadow-md {{ $isAllComplete ? 'shadow-emerald-600/20' : 'shadow-amber-500/20' }}">
+                                @if($isAllComplete)
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                @else
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar Track -->
+                    <div class="w-full bg-gray-200/80 rounded-full h-3 overflow-hidden p-0.5">
+                        <div class="h-full rounded-full transition-all duration-700 ease-out {{ $isAllComplete ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : ($percentage >= 50 ? 'bg-gradient-to-r from-amber-500 to-emerald-500' : 'bg-gradient-to-r from-amber-500 to-orange-500') }}" style="width: {{ $percentage }}%"></div>
                     </div>
                 </div>
 
                 <!-- Document List Items -->
-                @php
-                    $allReqs = \App\Models\BookingRequirement::orderBy('urutan')->get();
-                    $uploadedDocs = $booking->documents->keyBy('booking_requirement_id');
-                    $isApplicantUploadable = fn($kode) => in_array($kode, ['REQ_SURAT_PERMOHONAN', 'REQ_KTP_NIB', 'REQ_PROPOSAL', 'REQ_BUKTI_BAYAR']);
-                @endphp
-
                 <div class="space-y-4">
                     @foreach($allReqs as $req)
                         @php
                             $doc = $uploadedDocs->get($req->id);
                             $canUpload = $isApplicantUploadable($req->kode);
+                            $isMandatory = in_array($req->kode, $requiredCodes);
                             $isProposal = ($req->kode === 'REQ_PROPOSAL');
                             $proposalRequired = ($isProposal && $booking->durasi_sewa_tahun > 5);
+                            $isNotApplicable = (!$booking->isBadanUsaha() && in_array($req->kode, ['REQ_AKTA_PENDIRIAN']));
                             $isVerified = ($doc && $doc->status_verifikasi === 'verified');
                             $isRevision = ($doc && $doc->status_verifikasi === 'revision');
                             $isPending = ($doc && $doc->status_verifikasi === 'pending');
+                            $itemNumber = $displayNumberMap[$req->kode] ?? (string)$req->urutan;
                         @endphp
+
+                        @if($req->kode === 'REQ_SURAT_PERMOHONAN')
+                            <div class="pt-2 pb-1 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-800">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                                <span>1. Berkas Template Persyaratan Resmi (Unduh & Bubuhkan Meterai)</span>
+                            </div>
+                        @elseif($req->kode === 'REQ_KTP')
+                            <div class="pt-6 pb-1 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-blue-800 border-t border-gray-100">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                                <span>2. Dokumen Pendukung Lainnya (Unggah Terpisah)</span>
+                            </div>
+                        @elseif($req->kode === 'REQ_SURVEY_LAPANGAN')
+                            <div class="pt-6 pb-1 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-700 border-t border-gray-100">
+                                <span class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
+                                <span>3. Dokumen Proses Telaah & Administrasi Lanjutan oleh Tim UPTD BPKAD Jabar</span>
+                            </div>
+                        @endif
 
                         <div class="p-4 sm:p-5 rounded-2xl border {{ $isVerified ? 'bg-emerald-50/40 border-emerald-200' : ($isRevision ? 'bg-rose-50/40 border-rose-200' : ($doc ? 'bg-amber-50/30 border-amber-200' : 'bg-gray-50/70 border-gray-200')) }} transition">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex items-start gap-3">
-                                    <div class="mt-0.5 w-7 h-7 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 {{ $isVerified ? 'bg-emerald-600 text-white shadow-xs' : ($isRevision ? 'bg-rose-600 text-white shadow-xs' : ($doc ? 'bg-amber-500 text-white shadow-xs' : 'bg-gray-200 text-gray-500')) }}">
+                                    <div class="mt-0.5 min-w-[28px] h-7 px-1.5 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 {{ $isVerified ? 'bg-emerald-600 text-white shadow-xs' : ($isRevision ? 'bg-rose-600 text-white shadow-xs' : ($doc ? 'bg-amber-500 text-white shadow-xs' : 'bg-gray-200 text-gray-500')) }}">
                                         @if($isVerified)
                                             ✓
                                         @else
-                                            {{ $req->urutan }}
+                                            {{ $itemNumber }}
                                         @endif
                                     </div>
                                     <div>
                                         <h4 class="text-xs sm:text-sm font-extrabold text-gray-900 leading-snug flex items-center gap-1.5 flex-wrap">
                                             <span>{{ $req->nama_persyaratan }}</span>
-                                            @if($isProposal)
+
+                                            @if($req->kode === 'REQ_SURAT_PERMOHONAN' || $req->kode === 'REQ_SURAT_PERNYATAAN' || $req->kode === 'REQ_KTP' || $req->kode === 'REQ_NPWP')
+                                                <span class="text-[10px] text-rose-500 font-bold">*Wajib</span>
+                                            @elseif($req->kode === 'REQ_SURAT_BADAN_HUKUM')
+                                                @if($booking->isBadanUsaha())
+                                                    <span class="text-[10px] text-rose-600 font-extrabold bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">*Wajib (Badan Usaha)</span>
+                                                @else
+                                                    <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">Opsional / Khusus Badan Usaha</span>
+                                                @endif
+                                            @elseif($req->kode === 'REQ_NIB')
+                                                @if($booking->isBadanUsaha())
+                                                    <span class="text-[10px] text-rose-600 font-extrabold bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">*Wajib (Badan Usaha)</span>
+                                                @else
+                                                    <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">Opsional (Izin Usaha Mikro)</span>
+                                                @endif
+                                            @elseif($req->kode === 'REQ_AKTA_PENDIRIAN')
+                                                @if($booking->isBadanUsaha())
+                                                    <span class="text-[10px] text-rose-600 font-extrabold bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">*Wajib (Badan Usaha)</span>
+                                                @else
+                                                    <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">Tidak Berlaku (Perorangan)</span>
+                                                @endif
+                                            @elseif($req->kode === 'REQ_PROPOSAL')
                                                 @if($proposalRequired)
                                                     <span class="text-[10px] text-rose-600 font-extrabold bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">*Wajib (Sewa > 5 Tahun)</span>
                                                 @else
                                                     <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">Tidak Diwajibkan (&le; 5 Tahun)</span>
                                                 @endif
                                             @elseif($req->is_required)
-                                                <span class="text-[10px] text-rose-500 font-bold">*Wajib</span>
+                                                <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">Diterbitkan UPTD</span>
                                             @endif
                                         </h4>
                                         <p class="text-[11px] text-gray-500 mt-0.5 leading-normal font-medium">{{ $req->deskripsi }}</p>
@@ -255,6 +373,10 @@
                                         <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
                                             Sedang Ditelaah UPTD
                                         </span>
+                                    @elseif($isNotApplicable)
+                                        <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
+                                            Tidak Diperlukan
+                                        </span>
                                     @elseif($canUpload)
                                         <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                                             Belum Diunggah
@@ -267,7 +389,7 @@
                                 </div>
                             </div>
 
-                            <!-- Khusus Surat Permohonan: Sediakan Tombol Download Template Resmi (Auto-Fill & Raw) -->
+                            <!-- 1. Khusus Surat Permohonan: Sediakan Tombol Download Template Resmi (Auto-Fill & Raw) -->
                             @if($req->kode === 'REQ_SURAT_PERMOHONAN')
                                 <div class="mt-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-emerald-50/40 border border-emerald-200/80">
                                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
@@ -294,8 +416,56 @@
                                 </div>
                             @endif
 
+                            <!-- 2. Khusus Surat Pernyataan: Sediakan Tombol Download Template Resmi -->
+                            @if($req->kode === 'REQ_SURAT_PERNYATAAN')
+                                <div class="mt-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-teal-50 via-emerald-50/70 to-teal-50/40 border border-teal-200/80">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0"></span>
+                                            <div>
+                                                <h5 class="text-xs font-extrabold text-teal-950">Template Resmi Surat Pernyataan Sewa BMD</h5>
+                                                <span class="text-[10px] text-teal-700 font-semibold">Format Standar Kepatuhan Sewa BMD Pemprov Jawa Barat</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <a href="{{ route('booking.surat-pernyataan', $booking->kode_booking) }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-xs transition" title="Unduh template resmi Surat Pernyataan (.docx)">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                <span>Unduh Template Surat Pernyataan (.docx)</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <p class="text-[11px] text-teal-950/80 leading-relaxed font-medium">
+                                        <strong>Petunjuk Alur:</strong> 1) Unduh format template dokumen resmi di atas. 2) Lengkapi data pernyataan, cetak, bubuhkan tanda tangan di atas <strong>meterai Rp 10.000</strong>. 3) Scan atau foto dokumen tersebut untuk diunggah pada formulir di bawah ini.
+                                    </p>
+                                </div>
+                            @endif
+
+                            <!-- 3. Khusus Surat Keterangan Badan Hukum/Usaha: Sediakan Tombol Download Template Resmi -->
+                            @if($req->kode === 'REQ_SURAT_BADAN_HUKUM')
+                                <div class="mt-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/60 to-blue-50/40 border border-blue-200/80">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span>
+                                            <div>
+                                                <h5 class="text-xs font-extrabold text-blue-950">Template Resmi Surat Keterangan Badan Hukum / Usaha</h5>
+                                                <span class="text-[10px] text-blue-700 font-semibold">{{ $booking->isBadanUsaha() ? 'Wajib bagi Pemohon Badan Usaha' : 'Khusus Pemohon Badan Usaha (Opsional / Tidak Wajib bagi Perorangan)' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <a href="{{ route('booking.surat-badan-hukum', $booking->kode_booking) }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-xs transition" title="Unduh template resmi Surat Keterangan Badan Hukum/Usaha (.docx)">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                <span>Unduh Template Badan Hukum/Usaha (.docx)</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <p class="text-[11px] text-blue-950/80 leading-relaxed font-medium">
+                                        <strong>Petunjuk Alur:</strong> 1) Unduh format template dokumen. 2) Diisi lengkap oleh direktur/pimpinan instansi dan dibubuhi stempel resmi perusahaan. 3) Scan dan unggah hasil dokumen di bawah.
+                                    </p>
+                                </div>
+                            @endif
+
                             <!-- Form Upload Berkas (Jika Termasuk Berkas Pemohon dan Belum Terverifikasi) -->
-                            @if($canUpload && (!$isProposal || $proposalRequired))
+                            @if($canUpload && !$isNotApplicable)
                                 @if(!$isVerified)
                                     <form action="{{ route('booking.upload-dokumen', $booking->kode_booking) }}" method="POST" enctype="multipart/form-data" class="mt-3.5 pt-3 border-t border-gray-200/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                                         @csrf
@@ -311,6 +481,10 @@
                                         </button>
                                     </form>
                                 @endif
+                            @elseif($isNotApplicable)
+                                <div class="mt-3 pt-2.5 border-t border-gray-200/60 text-[11px] text-gray-400 italic">
+                                    Dokumen ini khusus Badan Usaha/Hukum dan tidak diwajibkan untuk pemohon perorangan.
+                                </div>
                             @endif
 
                         </div>
