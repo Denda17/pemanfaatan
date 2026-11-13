@@ -45,10 +45,18 @@ class Booking extends Model
     {
         static::creating(function ($booking) {
             if (empty($booking->kode_booking)) {
-                $count = static::whereYear('created_at', now()->year)
-                    ->whereMonth('created_at', now()->month)
-                    ->count() + 1;
-                $booking->kode_booking = 'BK-' . now()->format('Ym') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+                $prefix = 'BK-' . now()->format('Ym') . '-';
+                $latest = static::where('kode_booking', 'like', $prefix . '%')
+                    ->orderBy('kode_booking', 'desc')
+                    ->first();
+
+                $lastNumber = 0;
+                if ($latest && preg_match('/' . preg_quote($prefix, '/') . '(\d+)/', $latest->kode_booking, $matches)) {
+                    $lastNumber = (int) $matches[1];
+                }
+
+                $nextNumber = $lastNumber + 1;
+                $booking->kode_booking = $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
             }
         });
     }
