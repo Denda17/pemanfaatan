@@ -259,6 +259,31 @@ class MarketplaceAndBookingTest extends TestCase
         $bookingList = $this->actingAs($admin, 'web')->get('/admin/bookings');
         $bookingList->assertStatus(200);
 
+        $booking = Booking::first();
+        if ($booking) {
+            $bookingEdit = $this->actingAs($admin, 'web')->get('/admin/bookings/' . $booking->id . '/edit');
+            $bookingEdit->assertStatus(200);
+            $bookingEdit->assertSee('Petugas Verifikator UPTD');
+
+            // Verifikasi dropdown petugas_uptd_id hanya memuat user dengan role admin
+            $component = \Livewire\Livewire::actingAs($admin)
+                ->test(\App\Filament\Resources\BookingResource\Pages\EditBooking::class, ['record' => $booking->id]);
+            
+            $form = $component->instance()->form;
+            $petugasField = $form->getFlatFields()['petugas_uptd_id'] ?? null;
+            $this->assertNotNull($petugasField);
+            
+            $options = $petugasField->getOptions();
+            $adminIds = User::where('role', 'admin')->pluck('id')->toArray();
+            $peminatIds = User::where('role', 'peminat')->pluck('id')->toArray();
+
+            $this->assertNotEmpty($options);
+            foreach (array_keys($options) as $optId) {
+                $this->assertContains((int) $optId, $adminIds, "ID {$optId} pada opsi petugas_uptd_id harus ber-role admin.");
+                $this->assertNotContains((int) $optId, $peminatIds, "ID peminat {$optId} tidak boleh muncul di opsi petugas verifikator.");
+            }
+        }
+
         $assetList = $this->actingAs($admin, 'web')->get('/admin/assets');
         $assetList->assertStatus(200);
 

@@ -138,7 +138,7 @@ class BookingResource extends Resource
 
                         Forms\Components\Select::make('petugas_uptd_id')
                             ->label('Petugas Verifikator UPTD')
-                            ->relationship('petugasUptd', 'name')
+                            ->relationship('petugasUptd', 'name', fn ($query) => $query->where('role', 'admin'))
                             ->searchable()
                             ->preload()
                             ->default(fn () => Auth::id()),

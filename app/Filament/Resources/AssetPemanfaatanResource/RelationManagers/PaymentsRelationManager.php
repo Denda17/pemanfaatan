@@ -79,7 +79,7 @@ class PaymentsRelationManager extends RelationManager
 
                         Forms\Components\Select::make('verified_by')
                             ->label('Diverifikasi oleh Petugas')
-                            ->relationship('verifier', 'name')
+                            ->relationship('verifier', 'name', fn ($query) => $query->where('role', 'admin'))
                             ->default(fn () => Auth::id())
                             ->searchable()
                             ->preload(),
