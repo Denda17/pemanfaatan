@@ -13,10 +13,15 @@ use Filament\Tables\Table;
 class BookingRequirementResource extends Resource
 {
     protected static ?string $model = BookingRequirement::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
+
     protected static ?string $navigationGroup = 'Pengaturan';
+
     protected static ?string $modelLabel = 'Checklist Persyaratan';
+
     protected static ?string $pluralModelLabel = 'Master Persyaratan Sewa';
+
     protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
@@ -33,6 +38,25 @@ class BookingRequirementResource extends Resource
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
+
+                Forms\Components\Select::make('kategori')
+                    ->label('Kategori Dokumen')
+                    ->options([
+                        'administrasi' => 'Berkas Proses Administrasi & Penetapan Sewa',
+                        'pemohon' => 'Berkas Pengajuan Awal Pemohon',
+                    ])
+                    ->default('administrasi')
+                    ->required(),
+
+                Forms\Components\Select::make('diunggah_oleh')
+                    ->label('Pihak Pengunggah Berkas')
+                    ->options([
+                        'admin' => 'Diinput oleh Admin UPTD BPKAD Jabar',
+                        'mitra' => 'Khusus Diinput oleh Mitra Penyewa',
+                        'pemohon' => 'Diinput oleh Pemohon / Mitra',
+                    ])
+                    ->default('admin')
+                    ->required(),
 
                 Forms\Components\Textarea::make('deskripsi')
                     ->label('Deskripsi / Dasar Ketentuan')
@@ -64,6 +88,21 @@ class BookingRequirementResource extends Resource
                     ->searchable()
                     ->description(fn (BookingRequirement $record) => $record->kode),
 
+                Tables\Columns\TextColumn::make('diunggah_oleh')
+                    ->label('Pengunggah')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'admin' => 'info',
+                        'mitra' => 'success',
+                        default => 'warning',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'admin' => 'Admin UPTD',
+                        'mitra' => 'Mitra Penyewa',
+                        'pemohon' => 'Pemohon',
+                        default => $state,
+                    }),
+
                 Tables\Columns\IconColumn::make('is_required')
                     ->label('Wajib')
                     ->boolean(),
@@ -74,6 +113,21 @@ class BookingRequirementResource extends Resource
                     ->badge(),
             ])
             ->defaultSort('urutan', 'asc')
+            ->filters([
+                Tables\Filters\SelectFilter::make('diunggah_oleh')
+                    ->label('Pengunggah')
+                    ->options([
+                        'admin' => 'Admin UPTD',
+                        'mitra' => 'Mitra Penyewa',
+                        'pemohon' => 'Pemohon',
+                    ]),
+                Tables\Filters\SelectFilter::make('kategori')
+                    ->label('Kategori')
+                    ->options([
+                        'administrasi' => 'Administrasi & Sewa',
+                        'pemohon' => 'Pengajuan Pemohon',
+                    ]),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])

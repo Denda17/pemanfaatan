@@ -45,4 +45,22 @@ class BookingDocument extends Model implements HasMedia
     {
         return $this->belongsTo(User::class, 'admin_id');
     }
+
+    public function getDownloadUrlAttribute(): ?string
+    {
+        if (! $this->file_path) {
+            return null;
+        }
+
+        return route('booking.documents.view', $this);
+    }
+
+    public function getDirectDownloadUrlAttribute(): ?string
+    {
+        if (! $this->file_path) {
+            return null;
+        }
+
+        return route('booking.documents.download', $this);
+    }
 }
