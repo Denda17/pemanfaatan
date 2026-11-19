@@ -82,11 +82,71 @@
             </ul>
         </div>
     @endif
+
+    <!-- 5-Day Booking Window Countdown Banner -->
+    @if($booking->asset && $booking->asset->isBookingOpen())
+        <div class="mb-8 bg-gradient-to-br from-amber-500/10 via-amber-50/80 to-white rounded-3xl p-6 sm:p-7 border-2 border-amber-300 shadow-md shadow-amber-500/5 relative overflow-hidden">
+            <div class="absolute -right-8 -top-8 w-40 h-40 bg-amber-400/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/25 mt-0.5">
+                        <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2.5 flex-wrap mb-1">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-amber-500 text-white uppercase tracking-wider">
+                                Masa Pendaftaran Terbuka (5 Hari Kerja)
+                            </span>
+                            <span class="text-xs text-amber-900 font-bold">
+                                Permendagri No. 7 Tahun 2024
+                            </span>
+                        </div>
+                        <h3 class="text-base sm:text-lg font-extrabold text-gray-900">
+                            Objek Sedang Menghitung Mundur Masa Minat Terbuka
+                        </h3>
+                        <p class="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                            Permohonan Anda tercatat sebagai peminat objek <strong class="text-gray-900">{{ $booking->asset->nama_objek }}</strong>. Sesuai regulasi, pendaftaran dibuka selama 5 hari kerja bagi calon mitra lain sebelum masuk ke tahap verifikasi berkas dan survei lapangan secara serentak.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Live Countdown Box -->
+                <div class="bg-white rounded-2xl p-4 border border-amber-200 shadow-xs shrink-0 md:min-w-[260px] text-center md:text-right">
+                    <span class="text-[10.5px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">
+                        Sisa Waktu Pendaftaran
+                    </span>
+                    <div class="text-lg sm:text-xl font-black font-mono text-amber-600" data-countdown-deadline="{{ $booking->asset->booking_deadline_iso }}">
+                        Sisa {{ $booking->asset->remaining_booking_time }}
+                    </div>
+                    <span class="text-[11px] text-gray-500 font-medium block mt-1">
+                        Batas: <strong class="text-gray-800">{{ $booking->asset->formatted_booking_deadline }}</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+    @elseif($booking->asset && $booking->asset->isBookingClosed() && $booking->asset->booking_deadline_at)
+        <div class="mb-8 bg-gray-50 rounded-3xl p-5 sm:p-6 border border-gray-200 shadow-xs flex items-center justify-between gap-4 flex-wrap">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-slate-600 text-white flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <span class="text-xs font-extrabold text-gray-900 block">Jendela Pendaftaran Minat Telah Berakhir</span>
+                    <p class="text-[11px] text-gray-500">Pendaftaran ditutup pada {{ $booking->asset->formatted_booking_deadline }}. Tim UPTD BPKAD sedang melakukan telaah berkas seluruh peminat.</p>
+                </div>
+            </div>
+            <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-slate-100 text-slate-800 border border-slate-300">
+                Tahap Seleksi Berkas
+            </span>
+        </div>
+    @endif
     
     <!-- 6-Step Stepper Progress Bar (Clean White Behance Card) -->
     <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/90 mb-10 overflow-x-auto">
         <div class="flex items-center justify-between mb-8 pb-3 border-b border-gray-100">
             <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Timeline Progres Permohonan (Permendagri No. 7 Tahun 2024)
                 Linimasa Progres Permohonan (Permendagri No. 7 Tahun 2024)
             </h2>
             <span class="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-3.5 py-1 rounded-full border border-emerald-200">
@@ -193,6 +253,13 @@
                             'REQ_PERSETUJUAN_SEKDA' => '7',
                             'REQ_DRAFT_PKS' => '8',
                             'REQ_BUKTI_BAYAR' => '9',
+                            'REQ_LAPORAN_PENILAIAN' => '1',
+                            'REQ_BA_NEGOSIASI' => '2',
+                            'REQ_FASILITASI_KEPGUB' => '3',
+                            'REQ_KEPUTUSAN_GUBERNUR' => '4',
+                            'REQ_PEMBERITAHUAN_PEMBAYARAN' => '5',
+                            'REQ_BUKTI_BAYAR' => '6',
+                            'REQ_PERJANJIAN_SEWA' => '7',
                         ];
                     @endphp
 
@@ -245,6 +312,17 @@
                     <div class="w-full bg-gray-200/80 rounded-full h-3 overflow-hidden p-0.5">
                         <div class="h-full rounded-full transition-all duration-700 ease-out {{ $isAllComplete ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : ($percentage >= 50 ? 'bg-gradient-to-r from-amber-500 to-emerald-500' : 'bg-gradient-to-r from-amber-500 to-orange-500') }}" style="width: {{ $percentage }}%"></div>
                     </div>
+
+                    <!-- Jaminan Keamanan & Pelindungan Data Pribadi (UU PDP) -->
+                    <div class="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/80 flex items-start sm:items-center gap-3 shadow-2xs">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5 sm:mt-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        </div>
+                        <div class="text-xs text-gray-700 leading-relaxed">
+                            <span class="font-extrabold text-emerald-950 block sm:inline">Pelindungan Data Pribadi (UU PDP No. 27/2022):</span>
+                            <span class="text-gray-600">Seluruh dokumen identitas (KTP, NPWP, NIB) disimpan di media penyimpanan privat dengan watermark pengamanan dinamis, dan hanya dapat diakses oleh Anda serta Tim Verifikator Resmi UPTD BPKAD Jabar.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Document List Items -->
@@ -277,6 +355,13 @@
                             <div class="pt-6 pb-1 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-700 border-t border-gray-100">
                                 <span class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
                                 <span>3. Dokumen Proses Telaah & Administrasi Lanjutan oleh Tim UPTD BPKAD Jabar</span>
+                        @elseif($req->kode === 'REQ_LAPORAN_PENILAIAN')
+                            <div class="pt-6 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-black uppercase tracking-wider text-gray-800 border-t border-gray-200">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                                    <span>3. Berkas Administrasi &amp; Penetapan Sewa (7 Dokumen)</span>
+                                </div>
+                                <span class="text-[10px] font-extrabold text-emerald-800 normal-case bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">Diinput Admin UPTD &amp; Khusus Bukti Bayar oleh Mitra</span>
                             </div>
                         @endif
 
@@ -293,6 +378,7 @@
                                     <div>
                                         <h4 class="text-xs sm:text-sm font-extrabold text-gray-900 leading-snug flex items-center gap-1.5 flex-wrap">
                                             <span>
+                                                {{ $req->nama_persyaratan }}
                                                 @if($req->kode === 'REQ_BUKTI_BAYAR')
                                                     @if($booking->skema_pembayaran === 'bertahap')
                                                         Bukti Setor PAD (Termin Ke-1 - Tahun Pertama)
@@ -301,6 +387,9 @@
                                                     @endif
                                                 @else
                                                     {{ $req->nama_persyaratan }}
+                                                    <span class="text-xs font-semibold text-gray-500">
+                                                        - {{ $booking->skema_pembayaran === 'bertahap' ? 'Bukti Setor PAD (Termin Ke-1 - Tahun Pertama)' : 'Bukti Setor PAD (Pelunasan 100% Sewa)' }}
+                                                    </span>
                                                 @endif
                                             </span>
 
@@ -330,8 +419,21 @@
                                                 @else
                                                     <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">Tidak Diwajibkan (&le; 5 Tahun)</span>
                                                 @endif
+                                            @elseif($req->kode === 'REQ_LAPORAN_PENILAIAN')
+                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">1. Diinput Admin UPTD</span>
+                                            @elseif($req->kode === 'REQ_BA_NEGOSIASI')
+                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">2. Diinput Admin UPTD</span>
+                                            @elseif($req->kode === 'REQ_FASILITASI_KEPGUB')
+                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">3. Diinput Admin UPTD</span>
+                                            @elseif($req->kode === 'REQ_KEPUTUSAN_GUBERNUR')
+                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">4. Diinput Admin UPTD</span>
+                                            @elseif($req->kode === 'REQ_PEMBERITAHUAN_PEMBAYARAN')
+                                                <span class="text-[10px] text-amber-800 font-extrabold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">5. Diinput Admin UPTD (Tagihan)</span>
                                             @elseif($req->kode === 'REQ_BUKTI_BAYAR')
                                                 <span class="text-[10px] text-emerald-800 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">Diunggah Setelah PKS Siap</span>
+                                                <span class="text-[10px] text-emerald-800 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">6. Khusus Diinput Mitra Penyewa</span>
+                                            @elseif($req->kode === 'REQ_PERJANJIAN_SEWA')
+                                                <span class="text-[10px] text-purple-700 font-extrabold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">7. Diinput Admin UPTD (Akad PKS)</span>
                                             @elseif($req->is_required)
                                                 <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">Diterbitkan UPTD</span>
                                             @endif
@@ -357,7 +459,7 @@
                                                     <span>Diunggah: {{ $doc->tanggal_dokumen->format('d/m/Y') }}</span>
                                                 @endif
                                                 @if($doc->file_path)
-                                                    <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="text-emerald-700 font-extrabold hover:underline flex items-center gap-1">
+                                                    <a href="{{ route('booking.documents.view', $doc) }}" target="_blank" class="text-emerald-700 font-extrabold hover:underline flex items-center gap-1">
                                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                                         <span>Lihat Berkas Scan</span>
                                                     </a>
@@ -406,6 +508,8 @@
                                     @else
                                         <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
                                             Diterbitkan Tim UPTD
+                                        <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                            Menunggu Terbit UPTD
                                         </span>
                                     @endif
                                 </div>
@@ -500,6 +604,13 @@
                                         <button type="submit" class="px-4 py-2 rounded-xl {{ $isRevision ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700' }} active:scale-[0.98] text-white font-extrabold text-xs shadow-xs transition shrink-0 flex items-center justify-center gap-1.5 cursor-pointer">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                                             <span>{{ $doc ? 'Unggah Ulang Berkas' : 'Unggah Berkas Scan' }}</span>
+                                            <span>
+                                                @if($req->kode === 'REQ_BUKTI_BAYAR')
+                                                    {{ $doc ? 'Unggah Ulang Bukti Bayar (STS)' : 'Unggah Bukti Bayar Kasda (STS)' }}
+                                                @else
+                                                    {{ $doc ? 'Unggah Ulang Berkas' : 'Unggah Berkas Scan' }}
+                                                @endif
+                                            </span>
                                         </button>
                                     </form>
                                 @endif
@@ -539,8 +650,8 @@
                         <span class="font-extrabold text-emerald-700 text-sm">{{ $booking->nomor_whatsapp }}</span>
                     </div>
                     <div>
-                        <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px] block mb-1">NIK / NIB:</span>
-                        <span class="font-bold text-gray-800">{{ $booking->nik_atau_nib ?: '-' }}</span>
+                        <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px] block mb-1">NIK / NIB (Dilindungi UU PDP):</span>
+                        <span class="font-bold text-gray-800 font-mono tracking-wider">{{ $booking->masked_nik_atau_nib }}</span>
                     </div>
                     <div>
                         <span class="text-gray-400 font-bold uppercase tracking-wider text-[10px] block mb-1">Rencana Durasi Sewa:</span>
@@ -660,7 +771,7 @@
                                             $catatanTermin = $terminPayment->catatan;
                                         } elseif ($docBukti1 && $docBukti1->file_path) {
                                             $hasUploaded = true;
-                                            $filePath = asset('storage/' . $docBukti1->file_path);
+                                            $filePath = route('booking.documents.view', $docBukti1);
                                             $fileName = $docBukti1->file_name;
                                             $stsNumber = $docBukti1->nomor_dokumen;
                                             $paymentDate = $docBukti1->tanggal_dokumen;
@@ -874,6 +985,14 @@
                         <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 block mb-1">
                             Objek Yang Diajukan
                         </span>
+                        @if($booking->unit_names_text)
+                            <div class="mb-2">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                    <span>Unit Ruko: {{ $booking->unit_names_text }}</span>
+                                </span>
+                            </div>
+                        @endif
                         <h3 class="font-extrabold text-sm text-gray-900 leading-snug mb-2">
                             <a href="{{ route('catalog.show', $booking->asset->slug) }}" class="hover:text-emerald-700 transition">
                                 {{ $booking->asset->nama_objek }}

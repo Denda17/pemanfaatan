@@ -118,6 +118,14 @@
                                 {{ $item->asset?->nama_objek ?? 'Aset Tidak Ditemukan' }}
                             </h3>
 
+                            @if($item->unit_names_text)
+                                <div class="mt-1">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        Unit: {{ $item->unit_names_text }}
+                                    </span>
+                                </div>
+                            @endif
+
                             <p class="text-xs text-gray-500 font-medium flex items-center gap-1.5 mt-0.5 flex-wrap">
                                 <span class="flex items-center gap-1">
                                     <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
@@ -150,6 +158,12 @@
                             $compPct = $item->completeness_percentage;
                         @endphp
                         <div class="flex items-center gap-2 flex-wrap justify-end">
+                            @if($item->asset && $item->asset->isBookingOpen())
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                    <span data-countdown-deadline="{{ $item->asset->booking_deadline_iso }}">Sisa {{ $item->asset->remaining_booking_time }}</span>
+                                </span>
+                            @endif
                             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-extrabold border {{ $compPct === 100 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200' }}">
                                 <span class="w-1.5 h-1.5 rounded-full {{ $compPct === 100 ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
                                 <span>Berkas: {{ $compPct }}%</span>

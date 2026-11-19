@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
 
 class Booking extends Model
 {
@@ -15,6 +14,8 @@ class Booking extends Model
     protected $fillable = [
         'kode_booking',
         'asset_id',
+        'asset_unit_id',
+        'selected_unit_ids',
         'user_id',
         'tipe_pemohon',
         'nama_pemohon',
@@ -37,6 +38,7 @@ class Booking extends Model
 
     protected $casts = [
         'durasi_sewa_tahun' => 'integer',
+        'selected_unit_ids' => 'array',
         'tanggal_booking' => 'datetime',
         'tanggal_dihubungi' => 'datetime',
     ];
@@ -45,25 +47,65 @@ class Booking extends Model
     {
         static::creating(function ($booking) {
             if (empty($booking->kode_booking)) {
-                $prefix = 'BK-' . now()->format('Ym') . '-';
-                $latest = static::where('kode_booking', 'like', $prefix . '%')
+                $prefix = 'BK-'.now()->format('Ym').'-';
+                $latest = static::where('kode_booking', 'like', $prefix.'%')
                     ->orderBy('kode_booking', 'desc')
                     ->first();
 
                 $lastNumber = 0;
-                if ($latest && preg_match('/' . preg_quote($prefix, '/') . '(\d+)/', $latest->kode_booking, $matches)) {
+                if ($latest && preg_match('/'.preg_quote($prefix, '/').'(\d+)/', $latest->kode_booking, $matches)) {
                     $lastNumber = (int) $matches[1];
                 }
 
                 $nextNumber = $lastNumber + 1;
-                $booking->kode_booking = $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+                $booking->kode_booking = $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
             }
+        });
+
+        static::saved(function ($booking) {
+            if ($booking->wasChanged('status')) {
+                $booking->asset?->syncBookingStatus();
+            }
+        });
+
+        static::deleted(function ($booking) {
+            $booking->asset?->syncBookingStatus();
         });
     }
 
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    public function assetUnit(): BelongsTo
+    {
+        return $this->belongsTo(AssetUnit::class, 'asset_unit_id');
+    }
+
+    public function getSelectedUnitsAttribute()
+    {
+        if (! empty($this->selected_unit_ids) && is_array($this->selected_unit_ids)) {
+            return AssetUnit::whereIn('id', $this->selected_unit_ids)->get();
+        }
+
+        if ($this->asset_unit_id) {
+            $unit = $this->assetUnit;
+
+            return $unit ? collect([$unit]) : collect();
+        }
+
+        return collect();
+    }
+
+    public function getUnitNamesTextAttribute(): string
+    {
+        $units = $this->selected_units;
+        if ($units->isNotEmpty()) {
+            return $units->pluck('nomor_unit')->map(fn ($num) => 'Blok '.$num)->join(', ');
+        }
+
+        return 'Seluruh Objek';
     }
 
     public function user(): BelongsTo
@@ -90,15 +132,15 @@ class Booking extends Model
     {
         $phone = preg_replace('/[^0-9]/', '', $this->nomor_whatsapp);
         if (str_starts_with($phone, '0')) {
-            $phone = '62' . substr($phone, 1);
+            $phone = '62'.substr($phone, 1);
         }
 
         $assetName = $this->asset?->nama_objek ?? 'Aset BMD';
         $message = rawurlencode(
-            "Halo Bapak/Ibu {$this->nama_pemohon},\n\n" .
-            "Kami dari UPTD Pengamanan dan Pemanfaatan Aset Pemprov Jawa Barat menindaklanjuti permohonan booking pemanfaatan aset:\n" .
-            "*{$assetName}* (Kode Booking: {$this->kode_booking}).\n\n" .
-            "Apakah berkas persyaratan sewa sudah dapat dikoordinasikan untuk proses verifikasi lebih lanjut? Terima kasih."
+            "Halo Bapak/Ibu {$this->nama_pemohon},\n\n".
+            "Kami dari UPTD Pengamanan dan Pemanfaatan Aset Pemprov Jawa Barat menindaklanjuti permohonan booking pemanfaatan aset:\n".
+            "*{$assetName}* (Kode Booking: {$this->kode_booking}).\n\n".
+            'Apakah berkas persyaratan sewa sudah dapat dikoordinasikan untuk proses verifikasi lebih lanjut? Terima kasih.'
         );
 
         return "https://wa.me/{$phone}?text={$message}";
@@ -159,7 +201,7 @@ class Booking extends Model
      */
     public function isOwnedBy(?User $user): bool
     {
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -171,7 +213,7 @@ class Booking extends Model
             return (int) $this->user_id === (int) $user->id;
         }
 
-        return !empty($this->email) && strtolower($this->email) === strtolower($user->email);
+        return ! empty($this->email) && strtolower($this->email) === strtolower($user->email);
     }
 
     /**
@@ -243,7 +285,7 @@ class Booking extends Model
         // Ambil dokumen booking yang sudah diunggah dan termasuk dalam syarat wajib
         $docs = $this->documents()->with('requirement')->get();
         $uploadedCodes = $docs->filter(function ($doc) use ($requiredCodes) {
-            return !empty($doc->file_path)
+            return ! empty($doc->file_path)
                 && $doc->requirement
                 && in_array($doc->requirement->kode, $requiredCodes);
         })->pluck('requirement.kode')->unique();
@@ -273,10 +315,33 @@ class Booking extends Model
 
     public function getProposalBisnisUrlAttribute(): ?string
     {
-        if (!$this->proposal_bisnis_path) {
+        if (! $this->proposal_bisnis_path) {
             return null;
         }
 
-        return asset('storage/' . $this->proposal_bisnis_path);
+        return route('booking.proposal.view', $this);
+    }
+
+    /**
+     * Tampilan tersamar (masking) NIK/NIB untuk pelindungan data pribadi (UU PDP).
+     */
+    public function getMaskedNikAtauNibAttribute(): string
+    {
+        if (empty($this->nik_atau_nib)) {
+            return '-';
+        }
+
+        $clean = trim((string) $this->nik_atau_nib);
+        $len = strlen($clean);
+
+        if ($len >= 12) {
+            return substr($clean, 0, 4).' •••• •••• '.substr($clean, -4);
+        }
+
+        if ($len >= 6) {
+            return substr($clean, 0, 2).' •••• '.substr($clean, -2);
+        }
+
+        return '••••';
     }
 }

@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\AssetUnit;
 use App\Models\Booking;
 use App\Models\BookingDocument;
 use App\Models\BookingPayment;
 use App\Models\BookingRequirement;
-use App\Models\User;
+use App\Services\DocumentWatermarkService;
 use App\Services\SuratPermohonanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,9 +19,76 @@ class BookingController extends Controller
     public function store(Request $request, string $slug)
     {
         $asset = Asset::where('slug', $slug)->firstOrFail();
+        $user = Auth::user();
 
         if ($asset->status_ketersediaan === 'tersewa') {
             return back()->with('error', 'Maaf, aset ini sedang dalam masa sewa aktif.');
+        }
+
+        // Handle unit validation jika aset bertipe multi-unit
+        $unitIds = [];
+        $validUnits = collect();
+        if ($asset->isMultiUnit()) {
+            $rawUnits = $request->input('selected_units', []);
+            if (! is_array($rawUnits) && ! empty($rawUnits)) {
+                $rawUnits = explode(',', (string) $rawUnits);
+            }
+            if (empty($rawUnits) && $request->filled('asset_unit_id')) {
+                $rawUnits = [(int) $request->input('asset_unit_id')];
+            }
+
+            $unitIds = array_values(array_filter(array_map('intval', (array) $rawUnits)));
+
+            if (empty($unitIds)) {
+                return back()->withInput()->with('error', 'Silakan pilih minimal 1 unit ruko pada denah atau daftar unit sebelum mengirimkan permohonan.');
+            }
+
+            $validUnits = AssetUnit::where('asset_id', $asset->id)
+                ->whereIn('id', $unitIds)
+                ->get();
+
+            if ($validUnits->isEmpty()) {
+                return back()->withInput()->with('error', 'Unit ruko yang dipilih tidak valid.');
+            }
+
+            foreach ($validUnits as $vu) {
+                if ($vu->status_ketersediaan === 'tersewa') {
+                    return back()->withInput()->with('error', "Unit {$vu->nomor_unit} telah berstatus tersewa aktif.");
+                }
+                if ($vu->isBookingClosed()) {
+                    return back()->withInput()->with('error', "Masa pendaftaran minat untuk Unit {$vu->nomor_unit} telah berakhir.");
+                }
+            }
+        } elseif ($asset->isBookingClosed()) {
+            // Cek apakah jendela pengajuan minat (5 hari kerja sejak peminat pertama) telah ditutup untuk aset reguler
+            return back()->with('error', 'Mohon maaf, batas waktu pendaftaran minat (5 hari kerja) untuk aset ini telah ditutup.');
+        }
+
+        // Cek anti-spam: 1 akun pemohon hanya boleh memiliki 1 pengajuan aktif per aset (atau per unit jika multi-unit)
+        $existingBookingQuery = Booking::where('asset_id', $asset->id)
+            ->where(function ($q) use ($user, $request) {
+                if ($user) {
+                    $q->where('user_id', $user->id)
+                        ->orWhere('email', $user->email);
+                }
+                if ($request->filled('email')) {
+                    $q->orWhere('email', $request->input('email'));
+                }
+            })
+            ->whereNotIn('status', ['rejected']);
+
+        if ($asset->isMultiUnit() && ! empty($unitIds)) {
+            $existingBookingQuery->where(function ($q) use ($unitIds) {
+                $q->whereIn('asset_unit_id', $unitIds);
+                foreach ($unitIds as $uid) {
+                    $q->orWhereJsonContains('selected_unit_ids', (int) $uid);
+                }
+            });
+        }
+
+        $existingBooking = $existingBookingQuery->first();
+        if ($existingBooking) {
+            return back()->with('error', "Anda telah mengajukan minat untuk objek/unit ini dengan Kode Booking {$existingBooking->kode_booking}. Setiap pemohon hanya dapat mengajukan 1 kali (dibatasi 1 permohonan aktif per unit).");
         }
 
         $validated = $request->validate([
@@ -68,11 +136,15 @@ class BookingController extends Controller
         $proposalPath = null;
         if ($request->hasFile('proposal_bisnis')) {
             $proposalFile = $request->file('proposal_bisnis');
-            $proposalPath = $proposalFile->store('booking-documents', 'public');
+            $proposalPath = $proposalFile->store('booking-documents', 'local');
         }
+
+        $primaryUnitId = ! empty($unitIds) ? $unitIds[0] : null;
 
         $booking = Booking::create([
             'asset_id' => $asset->id,
+            'asset_unit_id' => $primaryUnitId,
+            'selected_unit_ids' => ! empty($unitIds) ? $unitIds : null,
             'user_id' => $user?->id,
             'tipe_pemohon' => $validated['tipe_pemohon'],
             'nama_pemohon' => $validated['nama_pemohon'],
@@ -95,7 +167,7 @@ class BookingController extends Controller
                 BookingDocument::create([
                     'booking_id' => $booking->id,
                     'booking_requirement_id' => $proposalReq->id,
-                    'nomor_dokumen' => 'PROP/' . $booking->kode_booking,
+                    'nomor_dokumen' => 'PROP/'.$booking->kode_booking,
                     'tanggal_dokumen' => now(),
                     'file_path' => $proposalPath,
                     'file_name' => $request->file('proposal_bisnis')->getClientOriginalName(),
@@ -107,9 +179,24 @@ class BookingController extends Controller
             }
         }
 
-        // Update status aset di marketplace menjadi dalam proses booking
-        if ($asset->status_ketersediaan === 'tersedia') {
-            $asset->update(['status_ketersediaan' => 'proses_booking']);
+        // Jalankan countdown 5 hari kerja
+        if ($asset->isMultiUnit()) {
+            foreach ($validUnits as $vu) {
+                if ($vu->status_ketersediaan === 'tersedia' || ! $vu->booking_deadline_at) {
+                    $vu->startBookingCountdown();
+                }
+            }
+        } else {
+            // Jika ini adalah peminat pertama pada aset reguler, tetapkan deadline penutupan (5 hari kerja s.d. 23:59 WIB)
+            if ($asset->status_ketersediaan === 'tersedia' || ! $asset->booking_deadline_at) {
+                $openedAt = now();
+                $deadlineAt = now()->addWeekdays(5)->endOfDay();
+                $asset->update([
+                    'status_ketersediaan' => 'proses_booking',
+                    'booking_opened_at' => $asset->booking_opened_at ?? $openedAt,
+                    'booking_deadline_at' => $deadlineAt,
+                ]);
+            }
         }
 
         return redirect()->route('booking.status', $booking->kode_booking)
@@ -121,11 +208,11 @@ class BookingController extends Controller
         $user = Auth::user();
 
         $bookings = Booking::where(function ($query) use ($user) {
-                $query->where('user_id', $user->id)
-                    ->orWhere(function ($q) use ($user) {
-                        $q->whereNull('user_id')->where('email', $user->email);
-                    });
-            })
+            $query->where('user_id', $user->id)
+                ->orWhere(function ($q) use ($user) {
+                    $q->whereNull('user_id')->where('email', $user->email);
+                });
+        })
             ->with(['asset'])
             ->latest('tanggal_booking')
             ->get();
@@ -214,12 +301,13 @@ class BookingController extends Controller
         // Mode template mentah
         if ($request->query('mode') === 'raw') {
             $templatePath = SuratPermohonanService::getTemplatePath();
+
             return response()->download($templatePath, 'DRAFT_Surat_Permohonan_Sewa_BMD_2026.docx');
         }
 
         // Mode auto-fill (otomatis terisi)
         $generatedFile = SuratPermohonanService::generate($booking);
-        $fileName = 'Surat_Permohonan_Sewa_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $booking->kode_booking) . '.docx';
+        $fileName = 'Surat_Permohonan_Sewa_'.preg_replace('/[^A-Za-z0-9_-]/', '_', $booking->kode_booking).'.docx';
 
         return response()->download($generatedFile, $fileName);
     }
@@ -232,7 +320,7 @@ class BookingController extends Controller
         abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk mengunduh template permohonan ini.');
 
         $templatePath = base_path('docs/data/Template Surat Pernyataan.docx');
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             abort(404, 'File template surat pernyataan tidak ditemukan di server.');
         }
 
@@ -247,7 +335,7 @@ class BookingController extends Controller
         abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk mengunduh template permohonan ini.');
 
         $templatePath = base_path('docs/data/Template Surat Keterangan Badan Hukum_Usaha.docx');
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             abort(404, 'File template surat keterangan badan hukum tidak ditemukan di server.');
         }
 
@@ -274,8 +362,21 @@ class BookingController extends Controller
         ]);
 
         $requirement = BookingRequirement::findOrFail($validated['booking_requirement_id']);
+
+        // Khusus berkas proses administrasi yang diterbitkan oleh admin tidak dapat diunggah pemohon
+        if ($requirement->diunggah_oleh === 'admin') {
+            abort(403, 'Dokumen "'.$requirement->nama_persyaratan.'" diterbitkan oleh Tim Admin UPTD BPKAD Jawa Barat dan tidak dapat diunggah oleh pemohon.');
+        }
+
         $file = $request->file('dokumen_file');
-        $path = $file->store('booking-documents', 'public');
+
+        // Lindungi dokumen identitas/pribadi (KTP, NPWP, NIB) dengan watermark pelindungan data pribadi (UU PDP)
+        if (in_array($requirement->kode, ['REQ_KTP', 'REQ_NPWP', 'REQ_NIB'], true)) {
+            app(DocumentWatermarkService::class)->applyWatermarkIfImage($file, $booking->kode_booking);
+        }
+
+        // Simpan ke private disk ('local' -> storage/app/private) agar tidak dapat diakses langsung via URL publik
+        $path = $file->store('booking-documents', 'local');
 
         BookingDocument::updateOrCreate(
             [
@@ -283,7 +384,7 @@ class BookingController extends Controller
                 'booking_requirement_id' => $requirement->id,
             ],
             [
-                'nomor_dokumen' => $requirement->kode . '/' . $booking->kode_booking,
+                'nomor_dokumen' => $requirement->kode.'/'.$booking->kode_booking,
                 'tanggal_dokumen' => now(),
                 'file_path' => $path,
                 'file_name' => $file->getClientOriginalName(),
@@ -316,7 +417,7 @@ class BookingController extends Controller
             );
         }
 
-        return back()->with('success', 'Dokumen "' . $requirement->nama_persyaratan . '" berhasil diunggah dan sedang menunggu verifikasi Tim UPTD BPKAD Jabar.');
+        return back()->with('success', 'Dokumen "'.$requirement->nama_persyaratan.'" berhasil diunggah dan sedang menunggu verifikasi Tim UPTD BPKAD Jabar.');
     }
 
     public function uploadTerminPayment(Request $request, string $kode)
@@ -327,7 +428,7 @@ class BookingController extends Controller
         abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk mengunggah setoran termin pada permohonan ini.');
 
         $validated = $request->validate([
-            'termin_ke' => 'required|integer|min:1|max:' . max(1, (int) $booking->durasi_sewa_tahun),
+            'termin_ke' => 'required|integer|min:1|max:'.max(1, (int) $booking->durasi_sewa_tahun),
             'nomor_sts' => 'nullable|string|max:100',
             'tanggal_bayar' => 'nullable|date',
             'nominal_disetor' => 'nullable|numeric|min:0',
@@ -340,7 +441,8 @@ class BookingController extends Controller
         ]);
 
         $file = $request->file('bukti_file');
-        $path = $file->store('booking-termin-payments', 'public');
+        // Simpan bukti bayar ke private disk
+        $path = $file->store('booking-termin-payments', 'local');
 
         BookingPayment::updateOrCreate(
             [
@@ -348,7 +450,7 @@ class BookingController extends Controller
                 'termin_ke' => $validated['termin_ke'],
             ],
             [
-                'tahun_ke' => 'Tahun ke-' . $validated['termin_ke'],
+                'tahun_ke' => 'Tahun ke-'.$validated['termin_ke'],
                 'nominal_disetor' => $validated['nominal_disetor'] ?? null,
                 'nomor_sts' => $validated['nomor_sts'] ?? null,
                 'tanggal_bayar' => $validated['tanggal_bayar'] ?? now(),
@@ -370,7 +472,7 @@ class BookingController extends Controller
                         'booking_requirement_id' => $reqBukti->id,
                     ],
                     [
-                        'nomor_dokumen' => $validated['nomor_sts'] ?? ($reqBukti->kode . '/' . $booking->kode_booking),
+                        'nomor_dokumen' => $validated['nomor_sts'] ?? ($reqBukti->kode.'/'.$booking->kode_booking),
                         'tanggal_dokumen' => $validated['tanggal_bayar'] ?? now(),
                         'file_path' => $path,
                         'file_name' => $file->getClientOriginalName(),
@@ -383,6 +485,6 @@ class BookingController extends Controller
             }
         }
 
-        return back()->with('success', 'Bukti setor Kasda Termin ke-' . $validated['termin_ke'] . ' berhasil diunggah! Petugas UPTD BPKAD Jabar akan segera memverifikasi transaksi Anda.');
+        return back()->with('success', 'Bukti setor Kasda Termin ke-'.$validated['termin_ke'].' berhasil diunggah! Petugas UPTD BPKAD Jabar akan segera memverifikasi transaksi Anda.');
     }
 }

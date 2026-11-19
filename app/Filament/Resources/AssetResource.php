@@ -3,31 +3,36 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AssetResource\Pages;
+use App\Filament\Resources\AssetResource\RelationManagers;
 use App\Models\Asset;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class AssetResource extends Resource
 {
     protected static ?string $model = Asset::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
+
     protected static ?string $navigationGroup = 'Manajemen BMD';
+
     protected static ?string $modelLabel = 'Aset BMD';
+
     protected static ?string $pluralModelLabel = 'Katalog Aset BMD';
+
     protected static ?int $navigationSort = 2;
 
     protected static array $regencies = [
-        'Kota Bandung', 'Kota Bogor', 'Kota Bekasi', 'Kota Depok', 'Kota Cirebon', 
+        'Kota Bandung', 'Kota Bogor', 'Kota Bekasi', 'Kota Depok', 'Kota Cirebon',
         'Kota Sukabumi', 'Kota Tasikmalaya', 'Kota Cimahi', 'Kota Banjar',
-        'Kabupaten Bandung Barat', 'Kabupaten Bandung', 'Kabupaten Bekasi', 'Kabupaten Bogor', 
-        'Kabupaten Ciamis', 'Kabupaten Cianjur', 'Kabupaten Cirebon', 'Kabupaten Garut', 
-        'Kabupaten Indramayu', 'Kabupaten Karawang', 'Kabupaten Kuningan', 'Kabupaten Majalengka', 
-        'Kabupaten Pangandaran', 'Kabupaten Purwakarta', 'Kabupaten Subang', 'Kabupaten Sukabumi', 
-        'Kabupaten Sumedang', 'Kabupaten Tasikmalaya'
+        'Kabupaten Bandung Barat', 'Kabupaten Bandung', 'Kabupaten Bekasi', 'Kabupaten Bogor',
+        'Kabupaten Ciamis', 'Kabupaten Cianjur', 'Kabupaten Cirebon', 'Kabupaten Garut',
+        'Kabupaten Indramayu', 'Kabupaten Karawang', 'Kabupaten Kuningan', 'Kabupaten Majalengka',
+        'Kabupaten Pangandaran', 'Kabupaten Purwakarta', 'Kabupaten Subang', 'Kabupaten Sukabumi',
+        'Kabupaten Sumedang', 'Kabupaten Tasikmalaya',
     ];
 
     public static function form(Form $form): Form
@@ -70,11 +75,41 @@ class AssetResource extends Resource
                                         'pemeliharaan' => 'Dalam Pemeliharaan / Belum Siap',
                                     ])
                                     ->default('tersedia')
+                                    ->live()
                                     ->required(),
+
+                                Forms\Components\DateTimePicker::make('booking_opened_at')
+                                    ->label('Waktu Pembukaan Minat Pertama')
+                                    ->visible(fn (Forms\Get $get) => $get('status_ketersediaan') === 'proses_booking'),
+
+                                Forms\Components\DateTimePicker::make('booking_deadline_at')
+                                    ->label('Batas Akhir Penutupan Minat (5 Hari Kerja)')
+                                    ->helperText('Setelah tanggal/jam ini, tombol dan form booking publik otomatis ditutup.')
+                                    ->visible(fn (Forms\Get $get) => $get('status_ketersediaan') === 'proses_booking'),
 
                                 Forms\Components\Toggle::make('is_featured')
                                     ->label('Tampilkan sebagai Aset Unggulan (Featured) di Beranda')
                                     ->default(false),
+
+                                Forms\Components\Select::make('tipe_aset')
+                                    ->label('Tipe / Struktur Aset')
+                                    ->options([
+                                        'tunggal' => 'Aset Tunggal (Satu Objek Utuh)',
+                                        'multi_unit' => 'Aset Kompleks / Multi-Unit (Memiliki Ruko / Kios / Unit Mandiri)',
+                                    ])
+                                    ->default('tunggal')
+                                    ->live()
+                                    ->required()
+                                    ->helperText('Pilih Multi-Unit jika aset ini memiliki banyak unit/ruko (seperti Komplek Banceuy Permai)'),
+
+                                Forms\Components\Select::make('site_plan_type')
+                                    ->label('Tipe Denah / Site Plan Interaktif')
+                                    ->options([
+                                        'none' => 'Tanpa Denah Khusus',
+                                        'interactive_cluster' => 'Denah Cluster / Kompleks Interaktif',
+                                    ])
+                                    ->default('none')
+                                    ->visible(fn (Forms\Get $get) => $get('tipe_aset') === 'multi_unit'),
                             ])->columns(2),
 
                         Forms\Components\Tabs\Tab::make('2. Lokasi & Luas')
@@ -133,7 +168,7 @@ class AssetResource extends Resource
                                     ->columnSpanFull(),
                             ])->columns(2),
 
-                        Forms\Components\Tabs\Tab::make('4. Foto, Galeri & Site Plan')
+                        Forms\Components\Tabs\Tab::make('4. Foto, Galeri, Video & Site Plan')
                             ->schema([
                                 Forms\Components\FileUpload::make('foto_utama')
                                     ->label('Foto Utama Objek (Cover Marketplace)')
@@ -145,13 +180,30 @@ class AssetResource extends Resource
                                     ->columnSpanFull(),
 
                                 Forms\Components\FileUpload::make('foto_galeri')
-                                    ->label('Galeri Multi-Foto Lapangan (Multi Angle)')
+                                    ->label('Galeri Multi-Foto Lapangan (Hingga 10 Foto)')
                                     ->disk('public')
                                     ->directory('assets/gallery')
                                     ->multiple()
                                     ->reorderable()
+                                    ->maxFiles(10)
                                     ->image()
-                                    ->helperText('Unggah foto kondisi fisik lapangan, jalan akses, lingkungan sekitar (bisa lebih dari satu)')
+                                    ->helperText('Unggah hingga 10 foto kondisi fisik lapangan dari berbagai sudut (tampak depan, akses, batas persil, interior, lingkungan)')
+                                    ->columnSpanFull(),
+
+                                Forms\Components\FileUpload::make('video_path')
+                                    ->label('Upload Video Peninjauan / Drone Lapangan (MP4 / WebM)')
+                                    ->disk('public')
+                                    ->directory('assets/videos')
+                                    ->acceptedFileTypes(['video/mp4', 'video/webm', 'video/quicktime'])
+                                    ->maxSize(102400)
+                                    ->helperText('Unggah video peninjauan lapangan resmi atau video udara drone (maksimal 100MB)')
+                                    ->columnSpanFull(),
+
+                                Forms\Components\TextInput::make('video_url')
+                                    ->label('Atau Tautan Video YouTube / Drone Walkthrough')
+                                    ->placeholder('Contoh: https://www.youtube.com/watch?v=... atau https://youtu.be/...')
+                                    ->url()
+                                    ->helperText('Jika video berdurasi panjang dan diunggah di YouTube / Cloud, masukkan URL-nya di sini')
                                     ->columnSpanFull(),
 
                                 Forms\Components\FileUpload::make('site_plan_url')
@@ -188,7 +240,7 @@ class AssetResource extends Resource
                     ->limit(35)
                     ->tooltip(fn (Asset $record): ?string => $record->nama_objek)
                     ->searchable()
-                    ->description(fn (Asset $record): string => ($record->bentuk_objek ? $record->bentuk_objek . ' • ' : '') . ($record->kabupaten_kota ?? '-')),
+                    ->description(fn (Asset $record): string => ($record->bentuk_objek ? $record->bentuk_objek.' • ' : '').($record->kabupaten_kota ?? '-')),
 
                 Tables\Columns\TextColumn::make('status_ketersediaan')
                     ->label('Status')
@@ -208,6 +260,20 @@ class AssetResource extends Resource
                         default => $state,
                     }),
 
+                Tables\Columns\TextColumn::make('tipe_aset')
+                    ->label('Tipe')
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'multi_unit' ? 'purple' : 'gray')
+                    ->formatStateUsing(fn (string $state, Asset $record): string => $state === 'multi_unit' ? 'Multi-Unit ('.$record->units()->count().' Unit)' : 'Tunggal')
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('booking_deadline_at')
+                    ->label('Batas Minat (5 Hari Kerja)')
+                    ->dateTime('d M Y H:i')
+                    ->placeholder('-')
+                    ->description(fn (Asset $record): ?string => $record->status_ketersediaan === 'proses_booking' ? ($record->isBookingOpen() ? 'Buka (sisa '.$record->remaining_booking_time.')' : 'Sudah Ditutup') : null)
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('estimasi_tarif_tahunan')
                     ->label('Tarif / Thn')
                     ->money('IDR', locale: 'id')
@@ -221,7 +287,7 @@ class AssetResource extends Resource
 
                 Tables\Columns\TextColumn::make('luas_tanah')
                     ->label('Luas Tnh')
-                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 0, ',', '.') . ' m²' : '-')
+                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 0, ',', '.').' m²' : '-')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
@@ -260,7 +326,7 @@ class AssetResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\UnitsRelationManager::class,
         ];
     }
 

@@ -27,16 +27,28 @@
             <!-- Asset Title & Status Badges -->
             <div>
                 <div class="flex flex-wrap items-center gap-2 mb-3.5">
-                    @if($asset->status_ketersediaan === 'tersedia')
+                    @if($asset->isMultiUnit())
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Status: Kawasan Multi-Unit ({{ $asset->available_units_count }} dari {{ $asset->total_units_count }} Unit Siap Sewa)
+                        </span>
+                    @elseif($asset->status_ketersediaan === 'tersedia')
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                             Status: Siap Disewa (Tersedia)
                         </span>
                     @elseif($asset->status_ketersediaan === 'proses_booking')
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-50 text-amber-800 border border-amber-300">
-                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                            Status: Sedang Proses Booking & Telaah Berkas
-                        </span>
+                        @if($asset->isBookingOpen())
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-50 text-amber-800 border border-amber-300">
+                                <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                                <span>Status: Minat Terbuka (</span><span data-countdown-deadline="{{ $asset->booking_deadline_iso }}">Sisa {{ $asset->remaining_booking_time }}</span><span>)</span>
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-slate-100 text-slate-800 border border-slate-300">
+                                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                                Status: Pengajuan Ditutup (Masa Seleksi)
+                            </span>
+                        @endif
                     @else
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-gray-100 text-gray-800 border border-gray-300">
                             Status: Tersewa Aktif (Perjanjian Berjalan)
@@ -67,14 +79,22 @@
             <!-- Interactive Multi-Photo Gallery & Site Plan Frame (Behance Studio Aesthetic) -->
             <div class="bg-white rounded-3xl overflow-hidden shadow-md shadow-gray-200/50 border border-gray-200/90 p-4 sm:p-5">
                 
-                <!-- Gallery Mode Switcher: Foto Lapangan vs Denah Tapak -->
+                <!-- Gallery Mode Switcher: Foto Lapangan vs Video Dokumentasi vs Denah Tapak -->
                 <div class="flex items-center justify-between pb-3.5 mb-3 border-b border-gray-100 flex-wrap gap-2">
-                    <div class="inline-flex p-1 rounded-2xl bg-gray-100/90 border border-gray-200/70 text-xs font-bold">
+                    <div class="inline-flex p-1 rounded-2xl bg-gray-100/90 border border-gray-200/70 text-xs font-bold gap-1 flex-wrap">
                         <button type="button" id="tab-btn-photos" class="px-3.5 py-1.5 rounded-xl bg-white text-emerald-800 font-extrabold shadow-2xs transition flex items-center gap-1.5">
                             <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             <span>Foto Lapangan</span>
-                            <span class="px-1.5 py-0.5 rounded-full bg-emerald-50 text-[10px] text-emerald-700 font-extrabold">{{ count($asset->gallery_urls) }}</span>
+                            <span id="gallery-badge-count" class="px-1.5 py-0.5 rounded-full bg-emerald-50 text-[10px] text-emerald-700 font-extrabold">{{ count($asset->gallery_urls) }}</span>
                         </button>
+
+                        @if($asset->hasVideo())
+                            <button type="button" id="tab-btn-video" class="px-3.5 py-1.5 rounded-xl text-gray-600 hover:text-gray-900 font-bold transition flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                <span>Video Dokumentasi</span>
+                                <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                            </button>
+                        @endif
 
                         @if($asset->hasSitePlan())
                             <button type="button" id="tab-btn-siteplan" class="px-3.5 py-1.5 rounded-xl text-gray-600 hover:text-gray-900 font-bold transition flex items-center gap-1.5">
@@ -96,22 +116,63 @@
                 <div id="gallery-photo-view">
                     <div class="relative aspect-[16/10] sm:aspect-[2/1] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100">
                         <img id="main-gallery-img" src="{{ $asset->thumbnail_url }}" alt="{{ $asset->nama_objek }}" class="w-full h-full object-cover transition duration-300">
-                        <div class="absolute bottom-3 right-3 bg-gray-950/70 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/20">
-                            <span id="gallery-counter">1</span> / {{ count($asset->gallery_urls) }} Foto
+                        
+                        <!-- Unit indicator pill (Hidden by default, shown when unit is selected) -->
+                        <div id="unit-photo-indicator" class="hidden absolute top-3 left-3 bg-gray-950/85 backdrop-blur-md text-white text-[11px] font-extrabold px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-2 shadow-sm z-10">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="unit-photo-title">Foto Ruko</span>
+                            <button type="button" id="btn-reset-complex-photos" class="ml-1 text-[10px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-full text-white font-bold transition">
+                                Foto Kawasan
+                            </button>
+                        </div>
+
+                        <div class="absolute bottom-3 right-3 bg-gray-950/70 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/20 z-10">
+                            <span id="gallery-counter">1</span> / <span id="gallery-total-count">{{ count($asset->gallery_urls) }}</span> Foto
                         </div>
                     </div>
 
-                    <!-- Thumbnail Strip (Klik untuk berganti foto) -->
-                    @if(count($asset->gallery_urls) > 1)
-                        <div class="flex items-center gap-2.5 mt-3 overflow-x-auto pb-1 pt-0.5">
-                            @foreach($asset->gallery_urls as $idx => $imgUrl)
-                                <button type="button" class="gallery-thumb-btn shrink-0 w-20 h-14 sm:w-24 sm:h-16 rounded-xl overflow-hidden border-2 {{ $idx === 0 ? 'border-emerald-600 ring-2 ring-emerald-500/30' : 'border-gray-200 opacity-70 hover:opacity-100' }} transition cursor-pointer" data-img-url="{{ $imgUrl }}" data-index="{{ $idx + 1 }}">
-                                    <img src="{{ $imgUrl }}" alt="Sudut {{ $idx + 1 }}" class="w-full h-full object-cover">
-                                </button>
-                            @endforeach
-                        </div>
-                    @endif
+                    <!-- Thumbnail Strip -->
+                    <div id="gallery-thumbnails-strip" class="flex items-center gap-2 mt-3 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin">
+                        @foreach($asset->gallery_urls as $idx => $imgUrl)
+                            <button type="button" class="gallery-thumb-btn shrink-0 w-16 h-12 sm:w-20 sm:h-14 rounded-xl overflow-hidden border-2 {{ $idx === 0 ? 'border-emerald-600 ring-2 ring-emerald-500/30' : 'border-gray-200 opacity-70 hover:opacity-100' }} transition cursor-pointer relative group" data-img-url="{{ $imgUrl }}" data-index="{{ $idx + 1 }}">
+                                <img src="{{ $imgUrl }}" alt="Sudut {{ $idx + 1 }}" class="w-full h-full object-cover">
+                                <span class="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[8px] font-black px-1 rounded">{{ $idx + 1 }}</span>
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
+
+                <!-- Video Display Frame (Hidden by default) -->
+                @if($asset->hasVideo())
+                    <div id="gallery-video-view" class="hidden">
+                        <div class="relative aspect-[16/10] sm:aspect-[2/1] bg-black rounded-2xl overflow-hidden border border-gray-900 flex items-center justify-center">
+                            @if($asset->isVideoDirectFile())
+                                <video id="asset-video-player" controls playsinline class="w-full h-full object-contain">
+                                    <source src="{{ $asset->video_play_url }}">
+                                    Browser Anda tidak mendukung pemutar video HTML5.
+                                </video>
+                            @else
+                                <iframe id="asset-video-iframe" src="{{ $asset->video_embed_url }}" class="w-full h-full border-0 rounded-2xl" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                            @endif
+                            <div class="absolute top-3 left-3 bg-gray-950/80 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full border border-white/20 flex items-center gap-1.5 shadow-xs pointer-events-none">
+                                <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                                <span>Video Peninjauan Lapangan</span>
+                            </div>
+                        </div>
+                        <div class="mt-2.5 flex items-center justify-between text-xs text-gray-500 px-1">
+                            <span class="flex items-center gap-1.5 font-bold text-gray-700">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                <span>Video dokumentasi fisik eksisting & kondisi sekitar aset</span>
+                            </span>
+                            @if($asset->video_url)
+                                <a href="{{ $asset->video_url }}" target="_blank" class="text-emerald-700 font-extrabold hover:underline flex items-center gap-1">
+                                    <span>Buka Video Asli</span>
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                @endif
 
                 <!-- Site Plan Display Frame (Hidden by default) -->
                 @if($asset->hasSitePlan())
@@ -133,6 +194,229 @@
                 @endif
 
             </div>
+
+            @if($asset->isMultiUnit())
+                <!-- Multi-Unit Interactive Cluster / Shophouse Section -->
+                <div id="section-multi-unit" class="bg-white rounded-3xl p-6 sm:p-8 shadow-md shadow-gray-200/50 border border-gray-200/90 space-y-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-gray-100">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    Aset Kompleks Multi-Unit
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                    <span id="unit-summary-available">{{ $asset->available_units_count }}</span> dari {{ $asset->total_units_count }} Unit Siap Sewa
+                                </span>
+                            </div>
+                            <h2 class="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">
+                                Pilihan Unit Ruko Komersial & Denah Tapak
+                            </h2>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Klik salah satu unit ruko pada denah atau daftar di bawah untuk <strong>melihat foto spesifik unit tersebut</strong> dan mengisi permohonan minat sewa (bisa sewa gandeng / lebih dari 1 unit).
+                            </p>
+                        </div>
+
+                        <!-- View Switcher: Grid vs Site Plan -->
+                        <div class="inline-flex p-1 rounded-2xl bg-gray-100 border border-gray-200 shrink-0 text-xs font-bold gap-1 self-start lg:self-center">
+                            <button type="button" id="btn-view-cards" class="px-3.5 py-2 rounded-xl bg-white text-emerald-800 font-extrabold shadow-2xs transition flex items-center gap-1.5 cursor-pointer">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                                <span>Daftar Kartu Unit</span>
+                            </button>
+                            <button type="button" id="btn-view-siteplan" class="px-3.5 py-2 rounded-xl text-gray-600 hover:text-gray-900 font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                <span>Denah Visual Site Plan</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar & Search Box -->
+                    <div class="space-y-3 bg-gray-50/70 p-4 rounded-2xl border border-gray-200/80">
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                            <!-- Search by Unit Number -->
+                            <div class="relative flex-grow max-w-md">
+                                <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <input type="text" id="unit-search-input" placeholder="Cari nomor unit / blok (misal: A11, B3, C14)..." class="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                            </div>
+
+                            <!-- Toggle Only Available -->
+                            <label class="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer select-none shrink-0">
+                                <input type="checkbox" id="unit-only-available-check" class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer">
+                                <span>Hanya Tampilkan Unit Siap Sewa</span>
+                            </label>
+                        </div>
+
+                        <!-- Zone Filter Pills -->
+                        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-thin text-xs">
+                            <button type="button" class="unit-filter-btn px-3 py-1.5 rounded-xl font-extrabold transition shrink-0 bg-emerald-700 text-white shadow-2xs" data-zone="all">
+                                Semua Unit ({{ $asset->total_units_count }})
+                            </button>
+                            <button type="button" class="unit-filter-btn px-3 py-1.5 rounded-xl font-bold transition shrink-0 bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 flex items-center gap-1.5" data-zone="hook_luar">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                <span>Hook Luar (Rp 90 Jt)</span>
+                            </button>
+                            <button type="button" class="unit-filter-btn px-3 py-1.5 rounded-xl font-bold transition shrink-0 bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 flex items-center gap-1.5" data-zone="premium">
+                                <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                                <span>Premium (Rp 83 Jt)</span>
+                            </button>
+                            <button type="button" class="unit-filter-btn px-3 py-1.5 rounded-xl font-bold transition shrink-0 bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 flex items-center gap-1.5" data-zone="hook_dalam">
+                                <span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
+                                <span>Hook Dalam (Rp 76 Jt)</span>
+                            </button>
+                            <button type="button" class="unit-filter-btn px-3 py-1.5 rounded-xl font-bold transition shrink-0 bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 flex items-center gap-1.5" data-zone="basic">
+                                <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                                <span>Basic (Rp 62.5 Jt)</span>
+                            </button>
+                            <button type="button" class="unit-filter-btn px-3 py-1.5 rounded-xl font-bold transition shrink-0 bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 flex items-center gap-1.5" data-zone="khusus">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                <span>Khusus (Rp 42.5 Jt)</span>
+                            </button>
+                            <button type="button" class="unit-filter-btn px-3 py-1.5 rounded-xl font-bold transition shrink-0 bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 flex items-center gap-1.5" data-zone="amat_khusus">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                <span>Amat Khusus (Rp 40 Jt)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Visual Site Plan View (Tampilan Denah Gambar Interaktif) -->
+                    <div id="unit-siteplan-container" class="hidden space-y-4">
+                        <div class="relative bg-gray-900 rounded-3xl overflow-hidden border border-gray-800 shadow-md p-3 sm:p-4 text-center">
+                            <img src="{{ $asset->site_plan_image_url }}" alt="Site Plan {{ $asset->nama_objek }}" class="max-w-full max-h-[500px] object-contain mx-auto rounded-xl">
+                            
+                            <div class="mt-3 flex items-center justify-between text-xs text-gray-300 px-2 flex-wrap gap-2">
+                                <span class="text-[11px] text-gray-400">Peta Denah Resmi Komplek Banceuy Permai (62 Ruko) &bull; UPTD BPKAD Jabar</span>
+                                <a href="{{ $asset->site_plan_image_url }}" target="_blank" class="text-emerald-400 hover:underline font-extrabold flex items-center gap-1 text-xs">
+                                    <span>Buka Gambar Ukuran Asli</span>
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Quick Cluster Selector Buttons -->
+                        <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200/80">
+                            <span class="text-xs font-extrabold text-gray-800 block mb-2">Pilih Blok / Koridor Cepat:</span>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                <button type="button" class="btn-quick-blok p-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-gray-200 text-left transition font-bold" data-blok="Blok A">
+                                    <span class="block text-emerald-800 font-extrabold">Blok A (23 Unit)</span>
+                                    <span class="text-[10px] text-gray-500">Jl. ABC & Jl. Banceuy</span>
+                                </button>
+                                <button type="button" class="btn-quick-blok p-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-gray-200 text-left transition font-bold" data-blok="Blok B">
+                                    <span class="block text-emerald-800 font-extrabold">Blok B (16 Unit)</span>
+                                    <span class="text-[10px] text-gray-500">Koridor Pusat Komplek</span>
+                                </button>
+                                <button type="button" class="btn-quick-blok p-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-gray-200 text-left transition font-bold" data-blok="Blok C">
+                                    <span class="block text-emerald-800 font-extrabold">Blok C (9 Unit)</span>
+                                    <span class="text-[10px] text-gray-500">Koridor Timur Jl. ABC</span>
+                                </button>
+                                <button type="button" class="btn-quick-blok p-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-gray-200 text-left transition font-bold" data-blok="Blok E">
+                                    <span class="block text-emerald-800 font-extrabold">Blok D & E (14 Unit)</span>
+                                    <span class="text-[10px] text-gray-500">Koridor Dalam & Parkiran</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Unit Cards Grid View (Default) -->
+                    <div id="unit-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                        @foreach($asset->units as $unit)
+                            @php
+                                $isAvailable = $unit->isAvailable();
+                                $isBookingOpen = $unit->isBookingOpen();
+                            @endphp
+                            <div class="unit-card group relative bg-white rounded-2xl p-4 border-2 transition duration-200 flex flex-col justify-between hover:shadow-md cursor-pointer border-gray-200 hover:border-emerald-300"
+                                data-unit-id="{{ $unit->id }}"
+                                data-unit-nomor="{{ $unit->nomor_unit }}"
+                                data-unit-blok="{{ $unit->blok }}"
+                                data-unit-zona="{{ $unit->kategori_zona }}"
+                                data-unit-label="{{ $unit->kategori_label }}"
+                                data-unit-tarif="{{ (float) $unit->tarif_tahunan }}"
+                                data-unit-status="{{ $unit->status_ketersediaan }}"
+                                data-unit-available="{{ $isAvailable ? '1' : '0' }}"
+                                data-unit-booking-open="{{ $isBookingOpen ? '1' : '0' }}"
+                                data-unit-photo="{{ $unit->thumbnail_url }}"
+                                data-unit-gallery='@json($unit->gallery_urls)'>
+                                
+                                <div>
+                                    <!-- Top Badges -->
+                                    <div class="flex items-center justify-between gap-1.5 mb-2">
+                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border {{ $unit->badge_color_class }}">
+                                            {{ $unit->kategori_label }}
+                                        </span>
+
+                                        @if($unit->status_ketersediaan === 'tersedia')
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                Tersedia
+                                            </span>
+                                        @elseif($unit->status_ketersediaan === 'proses_booking')
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-black bg-amber-50 text-amber-800 border border-amber-300">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                                                Minat Terbuka
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-extrabold bg-gray-100 text-gray-500 border border-gray-200">
+                                                Tersewa
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <!-- Unit Number & Block -->
+                                    <div class="flex items-start justify-between gap-2 mb-1">
+                                        <div>
+                                            <h4 class="text-base font-black text-gray-900 group-hover:text-emerald-700 transition">
+                                                Blok {{ $unit->nomor_unit }}
+                                            </h4>
+                                            <span class="text-[11px] text-gray-400 font-semibold block">{{ $unit->blok }}</span>
+                                        </div>
+
+                                        <!-- Unit Photo Thumbnail Mini -->
+                                        <div class="w-12 h-9 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0">
+                                            <img src="{{ $unit->thumbnail_url }}" alt="Ruko {{ $unit->nomor_unit }}" class="w-full h-full object-cover group-hover:scale-105 transition" onerror="this.onerror=null;this.src='{{ $asset->thumbnail_url }}';">
+                                        </div>
+                                    </div>
+
+                                    <!-- Specs -->
+                                    <div class="text-[11px] text-gray-500 mt-2 space-y-0.5">
+                                        @if($unit->luas_tanah)
+                                            <div>Luas Tanah: <strong class="text-gray-800">{{ $unit->luas_tanah }} m²</strong> / Bangunan: <strong class="text-gray-800">{{ $unit->luas_bangunan }} m²</strong></div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <!-- Card Bottom Action Area: Clean 2-Row Layout (No Button Overflow) -->
+                                <div class="mt-3.5 pt-3 border-t border-gray-100 space-y-2.5">
+                                    <div class="flex items-baseline justify-between gap-1">
+                                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Tarif Retribusi</span>
+                                        <span class="text-xs font-black text-emerald-700 tracking-tight">
+                                            Rp {{ number_format($unit->tarif_tahunan, 0, ',', '.') }}<span class="text-[10px] font-normal text-gray-400">/thn</span>
+                                        </span>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button type="button" class="btn-preview-unit-photo w-full py-2 px-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer" title="Lihat foto ruko ini di galeri utama atas" data-unit-id="{{ $unit->id }}">
+                                            <svg class="w-3.5 h-3.5 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            <span class="truncate">Lihat Foto</span>
+                                        </button>
+
+                                        @if($unit->status_ketersediaan === 'tersewa')
+                                            <button type="button" disabled class="w-full py-2 px-2 rounded-xl bg-gray-100 text-gray-400 font-bold text-[11px] cursor-not-allowed text-center truncate">
+                                                Tersewa
+                                            </button>
+                                        @else
+                                            <button type="button" class="btn-toggle-select-unit w-full py-2 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] transition shadow-2xs flex items-center justify-center gap-1 cursor-pointer truncate" data-unit-id="{{ $unit->id }}">
+                                                <span class="btn-label-select truncate">Pilih Ruko</span>
+                                            </button>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div id="unit-no-result" class="hidden py-12 text-center text-gray-400 text-xs">
+                        Tidak ada unit ruko yang cocok dengan kata kunci atau filter pencarian Anda.
+                    </div>
+                </div>
+            @endif
 
             <!-- Key Specifications Grid Card -->
             <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200/90">
@@ -436,6 +720,48 @@
 
                         <form id="form-booking" action="{{ route('booking.store', $asset->slug) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                             @csrf
+
+                            @if($asset->isMultiUnit())
+                                <!-- Multi-Unit Selector Container for Booking -->
+                                <div id="booking-unit-selection-box" class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/90 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-xs font-extrabold text-emerald-950 flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                            <span>Unit Ruko yang Diajukan <span class="text-rose-500">*</span></span>
+                                        </label>
+                                        <span id="selected-units-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-200/80 text-emerald-900 hidden">
+                                            0 Unit
+                                        </span>
+                                    </div>
+
+                                    <!-- Empty state placeholder when 0 units selected -->
+                                    <div id="selected-units-empty" class="text-center py-4 px-3 bg-white/80 rounded-xl border border-dashed border-emerald-300">
+                                        <svg class="w-7 h-7 text-emerald-400 mx-auto mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+                                        <p class="text-xs font-bold text-gray-800">Belum Ada Unit Ruko Terpilih</p>
+                                        <p class="text-[11px] text-gray-500 mt-0.5">Pilih satu atau lebih unit ruko dari daftar / denah di samping kiri untuk mengajukan minat sewa.</p>
+                                        <a href="#section-multi-unit" class="inline-block mt-2 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-extrabold transition">
+                                            Pilih Unit di Denah / Daftar
+                                        </a>
+                                    </div>
+
+                                    <!-- Selected units list pills -->
+                                    <div id="selected-units-list" class="space-y-1.5 hidden">
+                                        <!-- Populated dynamically via JavaScript -->
+                                    </div>
+
+                                    <!-- Hidden inputs container for form submit -->
+                                    <div id="selected-units-inputs"></div>
+
+                                    <!-- Total Price Summary for selected units -->
+                                    <div id="selected-units-summary" class="hidden pt-2.5 border-t border-emerald-200 text-xs flex items-center justify-between font-bold">
+                                        <span class="text-gray-600">Total Tarif Retribusi Pokok:</span>
+                                        <span id="selected-units-total-price" class="text-sm font-black text-emerald-800">Rp 0</span>
+                                    </div>
+                                </div>
+                                @error('selected_units')
+                                    <p class="text-[11px] text-rose-500 -mt-2">{{ $message }}</p>
+                                @enderror
+                            @endif
 
                             <!-- Pemilihan Kategori Pemohon untuk Permohonan Ini -->
                             <div>
@@ -891,6 +1217,511 @@
                 tabBtnPhotos.classList.remove('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
                 tabBtnPhotos.classList.add('text-gray-600');
             });
+        }
+
+        // ==========================================
+        // Multi-Unit / Shophouse Cluster Logic
+        // ==========================================
+        const isMultiUnit = {{ $asset->isMultiUnit() ? 'true' : 'false' }};
+        
+        if (isMultiUnit) {
+            const masterGalleryUrls = @json($asset->gallery_urls);
+            const masterMainImgUrl = @json($asset->thumbnail_url);
+            const assetUnitsData = @json($asset->units->keyBy('id'));
+            
+            const unitCards = document.querySelectorAll('.unit-card');
+            const unitSearchInput = document.getElementById('unit-search-input');
+            const unitOnlyAvailCheck = document.getElementById('unit-only-available-check');
+            const unitFilterBtns = document.querySelectorAll('.unit-filter-btn');
+            const unitCardsContainer = document.getElementById('unit-cards-container');
+            const unitSiteplanContainer = document.getElementById('unit-siteplan-container');
+            const btnViewCards = document.getElementById('btn-view-cards');
+            const btnViewSiteplan = document.getElementById('btn-view-siteplan');
+            const quickBlokBtns = document.querySelectorAll('.btn-quick-blok');
+            const unitNoResult = document.getElementById('unit-no-result');
+
+            // Unit Photo Preview elements
+            const unitPhotoIndicator = document.getElementById('unit-photo-indicator');
+            const unitPhotoTitle = document.getElementById('unit-photo-title');
+            const btnResetComplexPhotos = document.getElementById('btn-reset-complex-photos');
+            const galleryThumbnailsStrip = document.getElementById('gallery-thumbnails-strip');
+            const galleryTotalCount = document.getElementById('gallery-total-count');
+
+            // Form Selected Units elements
+            const selectedUnitsEmpty = document.getElementById('selected-units-empty');
+            const selectedUnitsList = document.getElementById('selected-units-list');
+            const selectedUnitsInputs = document.getElementById('selected-units-inputs');
+            const selectedUnitsSummary = document.getElementById('selected-units-summary');
+            const selectedUnitsTotalPrice = document.getElementById('selected-units-total-price');
+            const selectedUnitsCountBadge = document.getElementById('selected-units-count-badge');
+            const bookingForm = document.getElementById('form-booking');
+
+            let currentZoneFilter = 'all';
+            let currentSearchTerm = '';
+            let currentOnlyAvailable = false;
+            let selectedUnitIds = [];
+
+            function resolvePhotoUrl(pathOrUrl) {
+                if (!pathOrUrl || typeof pathOrUrl !== 'string') return masterMainImgUrl;
+                if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+                    return pathOrUrl;
+                }
+                if (pathOrUrl.startsWith('/storage/')) {
+                    return pathOrUrl;
+                }
+                return `/storage/${pathOrUrl.replace(/^\/+/, '')}`;
+            }
+
+            // 1. Reactive Unit Photo Preview
+            function previewUnitPhotos(unitId, shouldScroll = false) {
+                const unit = assetUnitsData[unitId];
+                if (!unit) return;
+
+                // Pastikan tab Foto Lapangan aktif jika user sedang di tab denah/video
+                if (tabBtnPhotos && viewPhotos && viewPhotos.classList.contains('hidden')) {
+                    tabBtnPhotos.click();
+                }
+
+                // Resolusi foto utama unit
+                const rawPrimary = unit.thumbnail_url || unit.foto_utama || masterMainImgUrl;
+                const primaryPhoto = resolvePhotoUrl(rawPrimary);
+
+                // Resolusi galeri unit
+                let rawGallery = [];
+                if (Array.isArray(unit.gallery_urls) && unit.gallery_urls.length > 0) {
+                    rawGallery = unit.gallery_urls;
+                } else if (Array.isArray(unit.foto_galeri) && unit.foto_galeri.length > 0) {
+                    rawGallery = unit.foto_galeri;
+                } else {
+                    rawGallery = [primaryPhoto];
+                }
+
+                const galleryPhotos = rawGallery.map(u => resolvePhotoUrl(u));
+
+                if (mainImg) {
+                    mainImg.style.opacity = '0.3';
+                    mainImg.onerror = function() {
+                        this.onerror = null;
+                        this.src = masterMainImgUrl;
+                    };
+                    mainImg.src = primaryPhoto;
+                    setTimeout(() => {
+                        mainImg.style.opacity = '1';
+                        currentActiveImgUrl = primaryPhoto;
+                    }, 100);
+                }
+
+                if (unitPhotoIndicator && unitPhotoTitle) {
+                    unitPhotoTitle.textContent = `Foto Ruko ${unit.nomor_unit} (${unit.kategori_label})`;
+                    unitPhotoIndicator.classList.remove('hidden');
+                }
+
+                if (galleryTotalCount) {
+                    galleryTotalCount.textContent = galleryPhotos.length;
+                }
+                if (counterEl) {
+                    counterEl.textContent = '1';
+                }
+
+                // Rebuild gallery thumbnails strip for this unit
+                if (galleryThumbnailsStrip) {
+                    galleryThumbnailsStrip.innerHTML = '';
+                    galleryPhotos.forEach((url, idx) => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = `gallery-thumb-btn shrink-0 w-16 h-12 sm:w-20 sm:h-14 rounded-xl overflow-hidden border-2 ${idx === 0 ? 'border-emerald-600 ring-2 ring-emerald-500/30' : 'border-gray-200 opacity-70 hover:opacity-100'} transition cursor-pointer relative group`;
+                        btn.setAttribute('data-img-url', url);
+                        btn.setAttribute('data-index', idx + 1);
+                        btn.innerHTML = `
+                            <img src="${url}" alt="Unit ${unit.nomor_unit} Foto ${idx + 1}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='${masterMainImgUrl}';">
+                            <span class="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[8px] font-black px-1 rounded">${idx + 1}</span>
+                        `;
+                        btn.addEventListener('click', function () {
+                            if (mainImg) {
+                                mainImg.style.opacity = '0.4';
+                                mainImg.src = url;
+                                setTimeout(() => {
+                                    mainImg.style.opacity = '1';
+                                    currentActiveImgUrl = url;
+                                }, 100);
+                            }
+                            if (counterEl) counterEl.textContent = idx + 1;
+                            galleryThumbnailsStrip.querySelectorAll('.gallery-thumb-btn').forEach(b => {
+                                b.classList.remove('border-emerald-600', 'ring-2', 'ring-emerald-500/30');
+                                b.classList.add('border-gray-200', 'opacity-70');
+                            });
+                            this.classList.add('border-emerald-600', 'ring-2', 'ring-emerald-500/30');
+                            this.classList.remove('border-gray-200', 'opacity-70');
+                        });
+                        galleryThumbnailsStrip.appendChild(btn);
+                    });
+
+                    // Add "Kembali ke Kawasan" button thumbnail
+                    const btnBackThumb = document.createElement('button');
+                    btnBackThumb.type = 'button';
+                    btnBackThumb.className = 'shrink-0 px-3 h-12 sm:h-14 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 text-[10px] font-extrabold flex flex-col items-center justify-center transition cursor-pointer';
+                    btnBackThumb.innerHTML = `
+                        <svg class="w-3.5 h-3.5 text-gray-500 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                        <span>Foto Kawasan</span>
+                    `;
+                    btnBackThumb.addEventListener('click', resetComplexPhotos);
+                    galleryThumbnailsStrip.appendChild(btnBackThumb);
+                }
+
+                // If shouldScroll is true, scroll up smoothly to the gallery preview stage
+                if (shouldScroll) {
+                    const targetEl = document.getElementById('gallery-photo-view') || mainImg;
+                    if (targetEl) {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            }
+
+            // Restore Complex Master Photos
+            function resetComplexPhotos() {
+                if (mainImg) {
+                    mainImg.style.opacity = '0.3';
+                    setTimeout(() => {
+                        mainImg.src = masterMainImgUrl;
+                        mainImg.style.opacity = '1';
+                        currentActiveImgUrl = masterMainImgUrl;
+                    }, 120);
+                }
+
+                if (unitPhotoIndicator) {
+                    unitPhotoIndicator.classList.add('hidden');
+                }
+
+                if (galleryTotalCount) {
+                    galleryTotalCount.textContent = masterGalleryUrls.length;
+                }
+                if (counterEl) {
+                    counterEl.textContent = '1';
+                }
+
+                // Restore original thumbnails
+                if (galleryThumbnailsStrip) {
+                    galleryThumbnailsStrip.innerHTML = '';
+                    masterGalleryUrls.forEach((url, idx) => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = `gallery-thumb-btn shrink-0 w-16 h-12 sm:w-20 sm:h-14 rounded-xl overflow-hidden border-2 ${idx === 0 ? 'border-emerald-600 ring-2 ring-emerald-500/30' : 'border-gray-200 opacity-70 hover:opacity-100'} transition cursor-pointer relative group`;
+                        btn.setAttribute('data-img-url', url);
+                        btn.setAttribute('data-index', idx + 1);
+                        btn.innerHTML = `
+                            <img src="${url}" alt="Sudut ${idx + 1}" class="w-full h-full object-cover">
+                            <span class="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[8px] font-black px-1 rounded">${idx + 1}</span>
+                        `;
+                        btn.addEventListener('click', function () {
+                            if (mainImg) {
+                                mainImg.style.opacity = '0.4';
+                                setTimeout(() => {
+                                    mainImg.src = url;
+                                    mainImg.style.opacity = '1';
+                                    currentActiveImgUrl = url;
+                                }, 120);
+                            }
+                            if (counterEl) counterEl.textContent = idx + 1;
+                            galleryThumbnailsStrip.querySelectorAll('.gallery-thumb-btn').forEach(b => {
+                                b.classList.remove('border-emerald-600', 'ring-2', 'ring-emerald-500/30');
+                                b.classList.add('border-gray-200', 'opacity-70');
+                            });
+                            this.classList.add('border-emerald-600', 'ring-2', 'ring-emerald-500/30');
+                            this.classList.remove('border-gray-200', 'opacity-70');
+                        });
+                        galleryThumbnailsStrip.appendChild(btn);
+                    });
+                }
+            }
+
+            if (btnResetComplexPhotos) {
+                btnResetComplexPhotos.addEventListener('click', resetComplexPhotos);
+            }
+
+            // 2. Unit Selection & Multi-Unit Booking Cart
+            function toggleSelectUnit(unitId) {
+                const idInt = parseInt(unitId);
+                const unit = assetUnitsData[idInt];
+                if (!unit || unit.status_ketersediaan === 'tersewa') return;
+
+                const index = selectedUnitIds.indexOf(idInt);
+                if (index > -1) {
+                    selectedUnitIds.splice(index, 1);
+                } else {
+                    selectedUnitIds.push(idInt);
+                }
+
+                previewUnitPhotos(idInt);
+                syncSelectedUnitsUI();
+            }
+
+            function syncSelectedUnitsUI() {
+                // Update unit cards styling
+                unitCards.forEach(card => {
+                    const cardId = parseInt(card.getAttribute('data-unit-id'));
+                    const isSelected = selectedUnitIds.includes(cardId);
+                    const btnSelect = card.querySelector('.btn-toggle-select-unit');
+                    const labelSelect = card.querySelector('.btn-label-select');
+
+                    if (isSelected) {
+                        card.classList.add('border-emerald-500', 'bg-emerald-50/40', 'ring-2', 'ring-emerald-500/20');
+                        card.classList.remove('border-gray-200');
+                        if (btnSelect) {
+                            btnSelect.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+                            btnSelect.classList.add('bg-rose-600', 'hover:bg-rose-700');
+                        }
+                        if (labelSelect) labelSelect.textContent = '✓ Terpilih (Batal)';
+                    } else {
+                        card.classList.remove('border-emerald-500', 'bg-emerald-50/40', 'ring-2', 'ring-emerald-500/20');
+                        card.classList.add('border-gray-200');
+                        if (btnSelect) {
+                            btnSelect.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+                            btnSelect.classList.remove('bg-rose-600', 'hover:bg-rose-700');
+                        }
+                        if (labelSelect) labelSelect.textContent = 'Pilih Ruko';
+                    }
+                });
+
+                // Update form booking container
+                if (!selectedUnitsEmpty || !selectedUnitsList || !selectedUnitsInputs) return;
+
+                if (selectedUnitIds.length === 0) {
+                    selectedUnitsEmpty.classList.remove('hidden');
+                    selectedUnitsList.classList.add('hidden');
+                    selectedUnitsSummary?.classList.add('hidden');
+                    selectedUnitsCountBadge?.classList.add('hidden');
+                    selectedUnitsInputs.innerHTML = '';
+                    selectedUnitsList.innerHTML = '';
+                    
+                    // Reset simulation base price to 0 or asset baseline
+                    if (inputTarifPokok) {
+                        inputTarifPokok.value = 0;
+                        hitungSimulasi();
+                    }
+                } else {
+                    selectedUnitsEmpty.classList.add('hidden');
+                    selectedUnitsList.classList.remove('hidden');
+                    selectedUnitsSummary?.classList.remove('hidden');
+                    if (selectedUnitsCountBadge) {
+                        selectedUnitsCountBadge.textContent = `${selectedUnitIds.length} Unit`;
+                        selectedUnitsCountBadge.classList.remove('hidden');
+                    }
+
+                    let totalPrice = 0;
+                    selectedUnitsList.innerHTML = '';
+                    selectedUnitsInputs.innerHTML = '';
+
+                    selectedUnitIds.forEach((id, idx) => {
+                        const unit = assetUnitsData[id];
+                        if (!unit) return;
+
+                        const price = parseFloat(unit.tarif_tahunan) || 0;
+                        totalPrice += price;
+
+                        // Create hidden input
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'selected_units[]';
+                        input.value = id;
+                        selectedUnitsInputs.appendChild(input);
+
+                        if (idx === 0) {
+                            const mainInput = document.createElement('input');
+                            mainInput.type = 'hidden';
+                            mainInput.name = 'asset_unit_id';
+                            mainInput.value = id;
+                            selectedUnitsInputs.appendChild(mainInput);
+                        }
+
+                        // Create chip in list
+                        const item = document.createElement('div');
+                        item.className = 'flex items-center justify-between p-2 rounded-xl bg-white border border-emerald-200 shadow-2xs text-xs';
+                        item.innerHTML = `
+                            <div class="flex items-center gap-2 truncate">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                                <div class="truncate">
+                                    <strong class="text-gray-900 font-black">Blok ${unit.nomor_unit}</strong>
+                                    <span class="text-gray-500 text-[11px] ml-1">(${unit.kategori_label})</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="font-extrabold text-emerald-800">${formatRupiah(price)}</span>
+                                <button type="button" class="btn-remove-unit text-gray-400 hover:text-rose-600 transition p-1 cursor-pointer" data-unit-id="${id}" title="Hapus unit ini">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                        `;
+
+                        item.querySelector('.btn-remove-unit')?.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            toggleSelectUnit(id);
+                        });
+
+                        selectedUnitsList.appendChild(item);
+                    });
+
+                    if (selectedUnitsTotalPrice) {
+                        selectedUnitsTotalPrice.textContent = formatRupiah(totalPrice) + '/thn';
+                    }
+
+                    // Feed total price into the simulation calculator
+                    if (inputTarifPokok) {
+                        inputTarifPokok.value = totalPrice;
+                        hitungSimulasi();
+                    }
+                }
+            }
+
+            // Bind click events on cards and buttons
+            unitCards.forEach(card => {
+                const unitId = parseInt(card.getAttribute('data-unit-id'));
+
+                // Card body click: preview photos & smooth scroll to gallery
+                card.addEventListener('click', function (e) {
+                    if (e.target.closest('button') || e.target.closest('a')) return;
+                    previewUnitPhotos(unitId, true);
+                });
+
+                // Toggle select button click
+                const btnToggle = card.querySelector('.btn-toggle-select-unit');
+                if (btnToggle) {
+                    btnToggle.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        toggleSelectUnit(unitId);
+                    });
+                }
+
+                // Preview photo button click
+                const btnPreview = card.querySelector('.btn-preview-unit-photo');
+                if (btnPreview) {
+                    btnPreview.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        previewUnitPhotos(unitId, true);
+                    });
+                }
+            });
+
+            // 3. Search & Filter Handlers
+            function applyFilters() {
+                let matchCount = 0;
+
+                unitCards.forEach(card => {
+                    const nomor = card.getAttribute('data-unit-nomor')?.toLowerCase() || '';
+                    const blok = card.getAttribute('data-unit-blok')?.toLowerCase() || '';
+                    const zona = card.getAttribute('data-unit-zona') || '';
+                    const label = card.getAttribute('data-unit-label')?.toLowerCase() || '';
+                    const isAvailable = card.getAttribute('data-unit-available') === '1';
+
+                    const matchesSearch = !currentSearchTerm || 
+                        nomor.includes(currentSearchTerm) || 
+                        blok.includes(currentSearchTerm) || 
+                        label.includes(currentSearchTerm);
+
+                    const matchesZone = currentZoneFilter === 'all' || zona === currentZoneFilter;
+                    const matchesAvail = !currentOnlyAvailable || isAvailable;
+
+                    if (matchesSearch && matchesZone && matchesAvail) {
+                        card.classList.remove('hidden');
+                        matchCount++;
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+
+                if (unitNoResult) {
+                    if (matchCount === 0) {
+                        unitNoResult.classList.remove('hidden');
+                    } else {
+                        unitNoResult.classList.add('hidden');
+                    }
+                }
+            }
+
+            if (unitSearchInput) {
+                unitSearchInput.addEventListener('input', function () {
+                    currentSearchTerm = this.value.trim().toLowerCase();
+                    applyFilters();
+                });
+            }
+
+            if (unitOnlyAvailCheck) {
+                unitOnlyAvailCheck.addEventListener('change', function () {
+                    currentOnlyAvailable = this.checked;
+                    applyFilters();
+                });
+            }
+
+            unitFilterBtns.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    unitFilterBtns.forEach(b => {
+                        b.classList.remove('bg-emerald-700', 'text-white', 'shadow-2xs');
+                        b.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-200');
+                    });
+                    this.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-200');
+                    this.classList.add('bg-emerald-700', 'text-white', 'shadow-2xs');
+
+                    currentZoneFilter = this.getAttribute('data-zone') || 'all';
+                    applyFilters();
+                });
+            });
+
+            // 4. Site Plan vs Cards Switcher
+            if (btnViewCards && btnViewSiteplan && unitCardsContainer && unitSiteplanContainer) {
+                btnViewCards.addEventListener('click', function () {
+                    unitCardsContainer.classList.remove('hidden');
+                    unitSiteplanContainer.classList.add('hidden');
+                    btnViewCards.classList.add('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
+                    btnViewCards.classList.remove('text-gray-600');
+                    btnViewSiteplan.classList.remove('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
+                    btnViewSiteplan.classList.add('text-gray-600');
+                });
+
+                btnViewSiteplan.addEventListener('click', function () {
+                    unitSiteplanContainer.classList.remove('hidden');
+                    unitCardsContainer.classList.add('hidden');
+                    btnViewSiteplan.classList.add('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
+                    btnViewSiteplan.classList.remove('text-gray-600');
+                    btnViewCards.classList.remove('bg-white', 'text-emerald-800', 'font-extrabold', 'shadow-2xs');
+                    btnViewCards.classList.add('text-gray-600');
+                });
+            }
+
+            // Quick cluster jump buttons
+            quickBlokBtns.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const blokKey = this.getAttribute('data-blok');
+                    if (!blokKey) return;
+
+                    // Switch to cards view
+                    if (btnViewCards) btnViewCards.click();
+
+                    // Put blok into search input and apply filter
+                    if (unitSearchInput) {
+                        unitSearchInput.value = blokKey;
+                        currentSearchTerm = blokKey.toLowerCase();
+                        applyFilters();
+                        unitCardsContainer?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+
+            // Form Submit Guard: prevent submitting without selecting any unit
+            if (bookingForm) {
+                bookingForm.addEventListener('submit', function (e) {
+                    if (selectedUnitIds.length === 0) {
+                        e.preventDefault();
+                        const unitSection = document.getElementById('section-multi-unit');
+                        if (unitSection) {
+                            unitSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            unitSection.classList.add('ring-4', 'ring-rose-500/50');
+                            setTimeout(() => {
+                                unitSection.classList.remove('ring-4', 'ring-rose-500/50');
+                            }, 2500);
+                        }
+                        alert('Silakan pilih minimal 1 unit ruko pada denah / daftar unit sebelum mengajukan minat sewa.');
+                    }
+                });
+            }
         }
     });
 </script>

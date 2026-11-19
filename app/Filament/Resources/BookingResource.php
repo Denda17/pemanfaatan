@@ -11,21 +11,26 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class BookingResource extends Resource
 {
     protected static ?string $model = Booking::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-inbox-arrow-down';
+
     protected static ?string $navigationGroup = 'Pelayanan Pemanfaatan';
+
     protected static ?string $modelLabel = 'Booking Aset';
+
     protected static ?string $pluralModelLabel = 'Pengajuan Booking Aset';
+
     protected static ?int $navigationSort = 1;
 
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::where('status', 'pending')->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -52,6 +57,11 @@ class BookingResource extends Resource
                             ->searchable()
                             ->preload(),
 
+                        Forms\Components\Placeholder::make('unit_terpilih')
+                            ->label('Unit Ruko / Cluster Terpilih')
+                            ->content(fn (?Booking $record): string => $record?->unit_names_text ?? '-')
+                            ->visible(fn (?Booking $record): bool => ! empty($record?->selected_unit_ids) || ! empty($record?->asset_unit_id)),
+
                         Forms\Components\Select::make('tipe_pemohon')
                             ->label('Kategori Pemohon')
                             ->options([
@@ -73,7 +83,8 @@ class BookingResource extends Resource
                             ->helperText('Nomor WhatsApp akan digunakan petugas UPTD untuk follow-up.'),
 
                         Forms\Components\TextInput::make('nik_atau_nib')
-                            ->label('NIK / NIB Pemohon')
+                            ->label('NIK / NIB Pemohon (Data Pribadi)')
+                            ->helperText('Dilindungi UU PDP No. 27/2022. Akses tercatat dalam audit trail log.')
                             ->maxLength(255),
 
                         Forms\Components\TextInput::make('nama_instansi')
@@ -103,12 +114,13 @@ class BookingResource extends Resource
                             ->default('sekaligus')
                             ->required()
                             ->live()
-                            ->helperText(fn ($get) => $get('skema_pembayaran') === 'bertahap' 
-                                ? 'Skema Bertahap: Termin 1 wajib lunas sebelum penandatanganan PKS. Jadwal termin tahun ke-2 dst. wajib dicantumkan dalam klausul naskah PKS.' 
+                            ->helperText(fn ($get) => $get('skema_pembayaran') === 'bertahap'
+                                ? 'Skema Bertahap: Termin 1 wajib lunas sebelum penandatanganan PKS. Jadwal termin tahun ke-2 dst. wajib dicantumkan dalam klausul naskah PKS.'
                                 : 'Skema Sekaligus: Pelunasan 100% penuh di awal sebelum penandatanganan naskah PKS.'),
 
                         Forms\Components\FileUpload::make('proposal_bisnis_path')
                             ->label('Dokumen Proposal Bisnis / Feasibility Study')
+                            ->disk('local')
                             ->directory('booking-documents')
                             ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
                             ->openable()
@@ -186,14 +198,14 @@ class BookingResource extends Resource
                     ->wrap()
                     ->limit(35)
                     ->tooltip(fn (Booking $record): ?string => $record->asset?->nama_objek)
-                    ->description(fn (Booking $record): string => $record->asset?->kabupaten_kota ?? '-')
+                    ->description(fn (Booking $record): string => ($record->unit_names_text ? 'Unit: '.$record->unit_names_text.' • ' : '').($record->asset?->kabupaten_kota ?? '-'))
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('nama_pemohon')
                     ->label('Pemohon')
                     ->weight('medium')
                     ->wrap()
-                    ->description(fn (Booking $record): string => ($record->nama_instansi && $record->nama_instansi !== 'Perorangan' ? $record->nama_instansi . ' • ' : '') . $record->nomor_whatsapp)
+                    ->description(fn (Booking $record): string => ($record->nama_instansi && $record->nama_instansi !== 'Perorangan' ? $record->nama_instansi.' • ' : '').$record->nomor_whatsapp)
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('tipe_pemohon')
@@ -253,7 +265,7 @@ class BookingResource extends Resource
 
                 Tables\Columns\TextColumn::make('durasi_sewa_tahun')
                     ->label('Durasi Sewa')
-                    ->formatStateUsing(fn ($state) => $state . ' Tahun')
+                    ->formatStateUsing(fn ($state) => $state.' Tahun')
                     ->alignCenter()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -362,18 +374,12 @@ class BookingResource extends Resource
                         ->action(function (Booking $record, array $data) {
                             $record->update([
                                 'status' => $data['status'],
-                                'catatan_admin' => $data['catatan_admin'] ? ($record->catatan_admin . "\n" . now()->format('d/m/Y H:i') . ': ' . $data['catatan_admin']) : $record->catatan_admin,
+                                'catatan_admin' => $data['catatan_admin'] ? ($record->catatan_admin."\n".now()->format('d/m/Y H:i').': '.$data['catatan_admin']) : $record->catatan_admin,
                                 'petugas_uptd_id' => Auth::id(),
                             ]);
 
-                            // Jika disetujui / PKS terbit, ubah status aset ke 'tersewa'
-                            if ($data['status'] === 'contract_signed') {
-                                $record->asset?->update(['status_ketersediaan' => 'tersewa']);
-                            } elseif ($data['status'] === 'rejected') {
-                                $record->asset?->update(['status_ketersediaan' => 'tersedia']);
-                            } else {
-                                $record->asset?->update(['status_ketersediaan' => 'proses_booking']);
-                            }
+                            // Sinkronkan status aset dan deadline secara cerdas
+                            $record->asset?->syncBookingStatus();
 
                             Notification::make()
                                 ->title('Status Berhasil Diperbarui')
@@ -385,8 +391,8 @@ class BookingResource extends Resource
                         ->label('Detail & Input Berkas')
                         ->icon('heroicon-o-document-text'),
                 ])
-                ->tooltip('Pilihan Tindakan')
-                ->icon('heroicon-m-ellipsis-vertical'),
+                    ->tooltip('Pilihan Tindakan')
+                    ->icon('heroicon-m-ellipsis-vertical'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
