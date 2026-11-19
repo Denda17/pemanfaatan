@@ -34,6 +34,11 @@
         <!-- Registration Form Card -->
         <div class="bg-white rounded-3xl p-6 sm:p-8 md:p-10 border border-gray-200/90 shadow-xl shadow-gray-200/50">
             
+            <!-- Logo SIPBMD -->
+            <div class="flex justify-center mb-6">
+                <img src="{{ asset('images/logo-sipbmd.png') }}" alt="Logo SIPBMD Jawa Barat" class="h-20 sm:h-24 w-auto object-contain drop-shadow-xs">
+            </div>
+
             @if ($errors->any())
                 <div class="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
                     <div class="flex items-center gap-2 font-bold mb-1">

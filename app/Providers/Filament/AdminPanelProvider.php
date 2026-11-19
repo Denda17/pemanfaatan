@@ -2,6 +2,9 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\LatestBookingsWidget;
+use App\Filament\Widgets\RekapPemanfaatanTableWidget;
+use App\Filament\Widgets\StatsOverviewWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -12,7 +15,6 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\MaxWidth;
 use Filament\View\PanelsRenderHook;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -55,9 +57,9 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                \App\Filament\Widgets\StatsOverviewWidget::class,
-                \App\Filament\Widgets\RekapPemanfaatanTableWidget::class,
-                \App\Filament\Widgets\LatestBookingsWidget::class,
+                StatsOverviewWidget::class,
+                RekapPemanfaatanTableWidget::class,
+                LatestBookingsWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

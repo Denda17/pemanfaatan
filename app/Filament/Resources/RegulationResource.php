@@ -14,10 +14,15 @@ use Illuminate\Support\Str;
 class RegulationResource extends Resource
 {
     protected static ?string $model = Regulation::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-scale';
+
     protected static ?string $navigationGroup = 'Regulasi & Legal';
+
     protected static ?string $modelLabel = 'Dasar Hukum / Regulasi';
+
     protected static ?string $pluralModelLabel = 'Dasar Hukum & SOP';
+
     protected static ?int $navigationSort = 4;
 
     public static function getNavigationBadge(): ?string

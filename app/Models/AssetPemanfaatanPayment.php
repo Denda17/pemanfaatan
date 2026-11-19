@@ -48,7 +48,7 @@ class AssetPemanfaatanPayment extends Model
 
     public function getBuktiBayarUrlAttribute(): ?string
     {
-        if (!$this->bukti_bayar_path) {
+        if (! $this->bukti_bayar_path) {
             return null;
         }
 

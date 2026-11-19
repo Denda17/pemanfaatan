@@ -3,6 +3,7 @@
 use App\Http\Controllers\AssetCatalogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BookingDocumentAccessController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\RegulasiController;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +57,18 @@ Route::post('/status-booking/{kode}/upload-dokumen', [BookingController::class, 
 Route::post('/status-booking/{kode}/upload-termin', [BookingController::class, 'uploadTerminPayment'])
     ->middleware('auth')
     ->name('booking.upload-termin');
+
+// Akses Aman Dokumen Permohonan & Pembayaran (UU PDP)
+Route::middleware('auth')->group(function () {
+    Route::get('/booking-documents/{document}/view', [BookingDocumentAccessController::class, 'viewDocument'])
+        ->name('booking.documents.view');
+    Route::get('/booking-documents/{document}/download', [BookingDocumentAccessController::class, 'downloadDocument'])
+        ->name('booking.documents.download');
+    Route::get('/booking-payments/{payment}/view', [BookingDocumentAccessController::class, 'viewPaymentProof'])
+        ->name('booking.payments.view');
+    Route::get('/status-booking/{booking}/proposal-bisnis', [BookingDocumentAccessController::class, 'viewProposal'])
+        ->name('booking.proposal.view');
+});
 
 // Pengalihan Login Admin ke Portal Login Terpadu
 Route::get('/admin/login', function () {

@@ -13,16 +13,17 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 class ImportBmdExcelCommand extends Command
 {
     protected $signature = 'bmd:import-excel {--file=docs/data/Rekap Pemanfaatan BMD (terbaru).xlsx} {--clean}';
+
     protected $description = 'Import dan sinkronisasi 100% data pemanfaatan BMD dari file Excel ke database PostgreSQL';
 
     protected array $regencies = [
-        'Kota Bandung', 'Kota Bogor', 'Kota Bekasi', 'Kota Depok', 'Kota Cirebon', 
+        'Kota Bandung', 'Kota Bogor', 'Kota Bekasi', 'Kota Depok', 'Kota Cirebon',
         'Kota Sukabumi', 'Kota Tasikmalaya', 'Kota Cimahi', 'Kota Banjar',
-        'Kabupaten Bandung Barat', 'Kabupaten Bandung', 'Kabupaten Bekasi', 'Kabupaten Bogor', 
-        'Kabupaten Ciamis', 'Kabupaten Cianjur', 'Kabupaten Cirebon', 'Kabupaten Garut', 
-        'Kabupaten Indramayu', 'Kabupaten Karawang', 'Kabupaten Kuningan', 'Kabupaten Majalengka', 
-        'Kabupaten Pangandaran', 'Kabupaten Purwakarta', 'Kabupaten Subang', 'Kabupaten Sukabumi', 
-        'Kabupaten Sumedang', 'Kabupaten Tasikmalaya'
+        'Kabupaten Bandung Barat', 'Kabupaten Bandung', 'Kabupaten Bekasi', 'Kabupaten Bogor',
+        'Kabupaten Ciamis', 'Kabupaten Cianjur', 'Kabupaten Cirebon', 'Kabupaten Garut',
+        'Kabupaten Indramayu', 'Kabupaten Karawang', 'Kabupaten Kuningan', 'Kabupaten Majalengka',
+        'Kabupaten Pangandaran', 'Kabupaten Purwakarta', 'Kabupaten Subang', 'Kabupaten Sukabumi',
+        'Kabupaten Sumedang', 'Kabupaten Tasikmalaya',
     ];
 
     protected array $defaultCoordinates = [
@@ -59,8 +60,9 @@ class ImportBmdExcelCommand extends Command
     {
         $filePath = base_path($this->option('file'));
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             $this->error("File tidak ditemukan: {$filePath}");
+
             return Command::FAILURE;
         }
 
@@ -71,7 +73,8 @@ class ImportBmdExcelCommand extends Command
             $sheet = $spreadsheet->getActiveSheet();
             $highestRow = $sheet->getHighestRow();
         } catch (\Exception $e) {
-            $this->error("Gagal membuka file Excel: " . $e->getMessage());
+            $this->error('Gagal membuka file Excel: '.$e->getMessage());
+
             return Command::FAILURE;
         }
 
@@ -84,6 +87,28 @@ class ImportBmdExcelCommand extends Command
             AssetPemanfaatan::where('asset_id', $da->id)->delete();
             $da->delete();
             $this->warn("Menghapus data kotor/legend lama: Asset ID {$da->id} ({$da->nama_objek})");
+        }
+
+        // Jika opsi --clean aktif, bersihkan aset dummy non-excel
+        if ($this->option('clean')) {
+            $dummyAssets = Asset::whereNull('nomor_urut_excel')
+                ->orWhereIn('kode_aset', ['BMD-JBR-001', 'BMD-JBR-002', 'BMD-JBR-003', 'BMD-JBR-004', 'BMD-JBR-005'])
+                ->get();
+
+            $targetAsset = Asset::whereNotNull('nomor_urut_excel')->where('status_ketersediaan', 'tersedia')->first();
+
+            foreach ($dummyAssets as $da) {
+                foreach ($da->bookings as $b) {
+                    if ($targetAsset) {
+                        $b->update(['asset_id' => $targetAsset->id]);
+                    } else {
+                        $b->delete();
+                    }
+                }
+                AssetPemanfaatan::where('asset_id', $da->id)->delete();
+                $da->delete();
+                $this->warn("Menghapus dummy asset seeder non-excel: {$da->kode_aset} ({$da->nama_objek})");
+            }
         }
 
         $parsedRows = [];
@@ -142,7 +167,7 @@ class ImportBmdExcelCommand extends Command
             ];
         }
 
-        $this->info("Ditemukan " . count($parsedRows) . " baris data pemanfaatan BMD valid.");
+        $this->info('Ditemukan '.count($parsedRows).' baris data pemanfaatan BMD valid.');
         $this->output->progressStart(count($parsedRows));
 
         $importedAssets = 0;
@@ -150,7 +175,7 @@ class ImportBmdExcelCommand extends Command
 
         foreach ($parsedRows as $item) {
             $noUrut = $item['no_urut'];
-            $kodeAset = 'BMD-JBR-' . str_pad((string) $noUrut, 4, '0', STR_PAD_LEFT);
+            $kodeAset = 'BMD-JBR-'.str_pad((string) $noUrut, 4, '0', STR_PAD_LEFT);
             $objekSewa = $item['objek_sewa'];
             $mitra = $item['mitra'];
             $kategoriStatus = $item['kategori_status'];
@@ -207,9 +232,12 @@ class ImportBmdExcelCommand extends Command
                 }
             }
 
-            $bentukObjek = !empty($item['bentuk_objek_raw']) ? trim((string) $item['bentuk_objek_raw']) : 'Tanah';
+            $bentukObjek = ! empty($item['bentuk_objek_raw']) ? trim((string) $item['bentuk_objek_raw']) : 'Tanah';
             $peruntukan = $this->detectPeruntukan($objekSewa, $bentukObjek);
-            $statusPengelola = !empty($item['status_pengelola_raw']) ? trim((string) $item['status_pengelola_raw']) : 'PENGELOLA';
+            $statusPengelola = ! empty($item['status_pengelola_raw']) ? trim((string) $item['status_pengelola_raw']) : 'PENGELOLA';
+
+            $fotoUtama = $this->detectThumbnail($objekSewa, $bentukObjek);
+            $fotoGaleri = $this->generateGallery($objekSewa, $bentukObjek);
 
             // Simpan / update Aset
             $asset = Asset::updateOrCreate(
@@ -217,7 +245,7 @@ class ImportBmdExcelCommand extends Command
                 [
                     'nomor_urut_excel' => $noUrut,
                     'nama_objek' => $objekSewa,
-                    'slug' => Str::slug($objekSewa) . '-' . strtolower(substr($kodeAset, -4)),
+                    'slug' => Str::slug($objekSewa).'-'.strtolower(substr($kodeAset, -4)),
                     'bentuk_objek' => $bentukObjek,
                     'status_pengelola' => $statusPengelola,
                     'luas_tanah' => $luasTanah,
@@ -230,6 +258,9 @@ class ImportBmdExcelCommand extends Command
                     'estimasi_tarif_tahunan' => $besaranSewa ?: ($totalSewa && $jangkaTahun ? $totalSewa / $jangkaTahun : null),
                     'peruntukan' => $peruntukan,
                     'deskripsi' => "Aset Barang Milik Daerah Provinsi Jawa Barat di {$kabupatenKota}. Status Pengelola: {$statusPengelola}. Peruntukan: {$peruntukan}.",
+                    'foto_utama' => $fotoUtama,
+                    'foto_galeri' => $fotoGaleri,
+                    'video_url' => $this->detectVideoUrl($objekSewa, $bentukObjek),
                     'fasilitas' => $this->generateDefaultFacilities($bentukObjek),
                     'is_featured' => ($noUrut <= 12),
                 ]
@@ -237,7 +268,7 @@ class ImportBmdExcelCommand extends Command
             $importedAssets++;
 
             // Simpan / update Data Pemanfaatan
-            if (!empty($mitra) && $mitra !== '-') {
+            if (! empty($mitra) && $mitra !== '-') {
                 AssetPemanfaatan::updateOrCreate(
                     [
                         'asset_id' => $asset->id,
@@ -252,7 +283,7 @@ class ImportBmdExcelCommand extends Command
                         'jangka_waktu_tahun' => $jangkaTahun,
                         'jangka_waktu_teks' => $jangkaTeks,
                         'total_sewa' => $totalSewa,
-                        'mekanisme_pembayaran' => !empty($item['pembayaran']) ? $item['pembayaran'] : 'Sekaligus',
+                        'mekanisme_pembayaran' => ! empty($item['pembayaran']) ? $item['pembayaran'] : 'Sekaligus',
                         'nomor_persetujuan' => $item['no_persetujuan'] ?: null,
                         'nomor_kepgub' => $item['no_kepgub'] ?: null,
                         'nomor_perjanjian' => $item['no_perjanjian'] ?: null,
@@ -271,7 +302,12 @@ class ImportBmdExcelCommand extends Command
 
         $this->output->progressFinish();
 
-        $this->info("Import dan sinkronisasi selesai!");
+        // Sinkronisasi status booking jika aset memiliki pengajuan minat aktif
+        foreach (Asset::has('bookings')->get() as $assetWithBooking) {
+            $assetWithBooking->syncBookingStatus();
+        }
+
+        $this->info('Import dan sinkronisasi selesai!');
         $this->info("Total Aset: {$importedAssets}");
         $this->info("Total Pemanfaatan: {$importedPemanfaatan}");
 
@@ -295,7 +331,7 @@ class ImportBmdExcelCommand extends Command
         }
 
         // Tangani format ribuan Indo / koma desimal
-        if (str_contains($clean, ',') && !str_contains($clean, '.')) {
+        if (str_contains($clean, ',') && ! str_contains($clean, '.')) {
             $clean = str_replace(',', '.', $clean);
         } else {
             $clean = str_replace(',', '', $clean);
@@ -314,6 +350,7 @@ class ImportBmdExcelCommand extends Command
 
         if (is_numeric($raw)) {
             $val = (int) $raw;
+
             return [$val, "{$val} tahun"];
         }
 
@@ -324,6 +361,7 @@ class ImportBmdExcelCommand extends Command
         if (preg_match('/(\d+)\s*bulan/i', $rawStr, $m)) {
             $bulan = (int) $m[1];
             $tahun = (int) ceil($bulan / 12);
+
             return [$tahun, "{$bulan} bulan"];
         }
 
@@ -356,31 +394,42 @@ class ImportBmdExcelCommand extends Command
         // Jika string diawali dot multipel misal "-693.239.969.1746582,107.62426971945949"
         if (str_starts_with($raw, '-693.')) {
             $parts = explode(',', $raw);
+
             return [-6.9323997, round((float) ($parts[1] ?? 107.6242697), 7)];
         }
 
         // Format koma desimal misal "-7,104734.107,458259"
         if (preg_match('/^(-?\d+),(\d+)\.(10\d+),(\d+)/', $raw, $m)) {
-            return [(float) ($m[1] . '.' . $m[2]), (float) ($m[3] . '.' . $m[4])];
+            return [(float) ($m[1].'.'.$m[2]), (float) ($m[3].'.'.$m[4])];
         }
 
         // Format DMS rapat tanpa derajat misal "-646050\"S 1083212.2\"E"
         if (preg_match('/-?([67])(\d{2})(\d{2,3}(?:\.\d+)?)"?[Ss]\s*(10[6-9])(\d{2})(\d{2,3}(?:\.\d+)?)"?[Ee]/i', $raw, $m)) {
             $secLat = (float) $m[3];
-            if ($secLat >= 100) $secLat = $secLat / 10;
-            $lat = -1 * ((float)$m[1] + (float)$m[2]/60 + $secLat/3600);
+            if ($secLat >= 100) {
+                $secLat = $secLat / 10;
+            }
+            $lat = -1 * ((float) $m[1] + (float) $m[2] / 60 + $secLat / 3600);
             $secLng = (float) $m[6];
-            if ($secLng >= 100) $secLng = $secLng / 10;
-            $lng = (float)$m[4] + (float)$m[5]/60 + $secLng/3600;
+            if ($secLng >= 100) {
+                $secLng = $secLng / 10;
+            }
+            $lng = (float) $m[4] + (float) $m[5] / 60 + $secLng / 3600;
+
             return [round($lat, 7), round($lng, 7)];
         }
 
         // Standard DMS misal 6°55'15.4"S 107°36'35.5"E
         if (preg_match('/(\d+)°(\d+)\'([\d.]+)"([NSns])\s*(\d+)°(\d+)\'([\d.]+)"([EWew])/', $raw, $m)) {
             $lat = (float) $m[1] + ((float) $m[2] / 60) + ((float) $m[3] / 3600);
-            if (strtoupper($m[4]) === 'S') $lat = -$lat;
+            if (strtoupper($m[4]) === 'S') {
+                $lat = -$lat;
+            }
             $lng = (float) $m[5] + ((float) $m[6] / 60) + ((float) $m[7] / 3600);
-            if (strtoupper($m[8]) === 'W') $lng = -$lng;
+            if (strtoupper($m[8]) === 'W') {
+                $lng = -$lng;
+            }
+
             return [round($lat, 7), round($lng, 7)];
         }
 
@@ -402,12 +451,13 @@ class ImportBmdExcelCommand extends Command
             $num = (float) $raw;
             // Jika tahun tunggal seperti 2025, 2030
             if ($num >= 1990 && $num <= 2050) {
-                return ((int) $num) . '-01-01';
+                return ((int) $num).'-01-01';
             }
             if ($num > 10000) {
                 try {
                     return ExcelDate::excelToDateTimeObject($num)->format('Y-m-d');
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             }
         }
 
@@ -426,7 +476,7 @@ class ImportBmdExcelCommand extends Command
             'september' => '09', 'sep' => '09',
             'oktober' => '10', 'okt' => '10', 'oct' => '10',
             'november' => '11', 'nov' => '11',
-            'desember' => '12', 'des' => '12', 'dec' => '12'
+            'desember' => '12', 'des' => '12', 'dec' => '12',
         ];
 
         if (preg_match('/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/', $str, $m)) {
@@ -590,5 +640,182 @@ class ImportBmdExcelCommand extends Command
         }
 
         return array_merge($common, ['Bebas Sengketa', 'Patok Batas Jelas']);
+    }
+
+    protected function detectThumbnail(string $nama, string $bentuk): string
+    {
+        $n = strtolower($nama);
+
+        if (str_contains($n, 'braga') || str_contains($n, 'ruko')) {
+            return 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80';
+        }
+
+        if (str_contains($n, 'mraj') || str_contains($n, 'al jabbar') || str_contains($n, 'al-jabbar') || str_contains($n, 'cimincarang')) {
+            return 'https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?auto=format&fit=crop&w=1000&q=80';
+        }
+
+        if (str_contains($n, 'gbla') || str_contains($n, 'stadion') || str_contains($n, 'sor')) {
+            return 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1000&q=80';
+        }
+
+        if (str_contains($n, 'banteng') || str_contains($n, 'gor')) {
+            return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=80';
+        }
+
+        if (str_contains($n, 'tower') || str_contains($n, 'telekomunikasi') || str_contains($n, 'saparua') || str_contains($n, 'begawan')) {
+            return 'https://images.unsplash.com/photo-1520690214124-2405c5217036?auto=format&fit=crop&w=1000&q=80';
+        }
+
+        if (str_contains($n, 'ciporeat') || str_contains($n, 'pasirjambu') || str_contains($n, 'agro') || str_contains($n, 'tani') || str_contains($n, 'lembang')) {
+            return 'https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=1000&q=80';
+        }
+
+        if (str_contains($n, 'pasar') || str_contains($n, 'umkm') || str_contains($n, 'kios')) {
+            return 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1000&q=80';
+        }
+
+        if (str_contains(strtolower($bentuk), 'bangunan') || str_contains(strtolower($bentuk), 'gedung')) {
+            return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80';
+        }
+
+        return 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1000&q=80';
+    }
+
+    protected function detectVideoUrl(string $nama, string $bentuk): ?string
+    {
+        $n = strtolower($nama);
+
+        if (str_contains($n, 'mraj') || str_contains($n, 'al jabbar') || str_contains($n, 'al-jabbar') || str_contains($n, 'cimincarang')) {
+            return 'https://www.youtube.com/watch?v=kYJ_t7j5V6A'; // Video Drone Kawasan Masjid Raya Al Jabbar
+        }
+
+        if (str_contains($n, 'braga') || str_contains($n, 'ruko') || str_contains($n, 'banceuy')) {
+            return 'https://www.youtube.com/watch?v=sKkJk5p1Fio'; // Video Walkthrough Heritage Braga Bandung
+        }
+
+        if (str_contains($n, 'gbla') || str_contains($n, 'stadion') || str_contains($n, 'sor')) {
+            return 'https://www.youtube.com/watch?v=t5JvD1aV8rE'; // Video Udara Stadion GBLA Gedebage
+        }
+
+        if (str_contains($n, 'ciporeat') || str_contains($n, 'pasirjambu') || str_contains($n, 'agro') || str_contains($n, 'tani') || str_contains($n, 'lembang')) {
+            return 'https://www.youtube.com/watch?v=aqz-KE-bpKQ'; // Video Lanskap Pertanian & Alam Jabar
+        }
+
+        return null;
+    }
+
+    protected function generateGallery(string $nama, string $bentuk): array
+    {
+        $n = strtolower($nama);
+
+        // 1. Ruko Braga / Pertokoan Heritage
+        if (str_contains($n, 'braga') || str_contains($n, 'ruko') || str_contains($n, 'banceuy')) {
+            return [
+                'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1524813686514-a57563d77d61?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=1200&q=80',
+            ];
+        }
+
+        // 2. Al Jabbar / MRAJ / Cimincarang
+        if (str_contains($n, 'mraj') || str_contains($n, 'al jabbar') || str_contains($n, 'al-jabbar') || str_contains($n, 'cimincarang')) {
+            return [
+                'https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1545128485-c400e7702796?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1628744448840-55bdb2497bd4?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=1200&q=80',
+            ];
+        }
+
+        // 3. Stadion GBLA / SOR Gedebage
+        if (str_contains($n, 'gbla') || str_contains($n, 'stadion') || str_contains($n, 'sor')) {
+            return [
+                'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1519766304817-4f37bda74a29?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1628744448840-55bdb2497bd4?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=1200&q=80',
+            ];
+        }
+
+        // 4. Tower Telekomunikasi / BTS
+        if (str_contains($n, 'tower') || str_contains($n, 'telekomunikasi') || str_contains($n, 'saparua') || str_contains($n, 'begawan')) {
+            return [
+                'https://images.unsplash.com/photo-1520690214124-2405c5217036?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1628744448840-55bdb2497bd4?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=1200&q=80',
+            ];
+        }
+
+        // 5. Agrowisata / Lahan Tani
+        if (str_contains($n, 'ciporeat') || str_contains($n, 'pasirjambu') || str_contains($n, 'agro') || str_contains($n, 'tani') || str_contains($n, 'lembang') || str_contains($n, 'desa')) {
+            return [
+                'https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1628744448840-55bdb2497bd4?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+            ];
+        }
+
+        // 6. Bangunan & Gedung Komersial
+        if (str_contains(strtolower($bentuk), 'bangunan') || str_contains(strtolower($bentuk), 'gedung') || str_contains($n, 'turangga') || str_contains($n, 'suryalaya') || str_contains($n, 'tera')) {
+            return [
+                'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=1200&q=80',
+                'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+            ];
+        }
+
+        // 7. Tanah Kosong Komersial
+        return [
+            'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1628744448840-55bdb2497bd4?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1500076656116-558758c991c1?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+        ];
     }
 }

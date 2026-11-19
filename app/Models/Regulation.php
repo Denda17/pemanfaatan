@@ -43,11 +43,11 @@ class Regulation extends Model
     {
         static::saving(function (Regulation $regulation) {
             if (empty($regulation->slug)) {
-                $regulation->slug = Str::slug($regulation->nomor . '-' . $regulation->judul);
+                $regulation->slug = Str::slug($regulation->nomor.'-'.$regulation->judul);
             }
 
-            if (empty($regulation->download_name) && !empty($regulation->file_path)) {
-                $regulation->download_name = Str::slug($regulation->nomor . '-' . $regulation->judul) . '.pdf';
+            if (empty($regulation->download_name) && ! empty($regulation->file_path)) {
+                $regulation->download_name = Str::slug($regulation->nomor.'-'.$regulation->judul).'.pdf';
             }
 
             // Sync file size if file exists on disk
@@ -89,12 +89,12 @@ class Regulation extends Model
         }
 
         // 2. Cek direktori regulasi-docs di disk public
-        if (Storage::disk('public')->exists('regulasi-docs/' . basename($this->file_path))) {
-            return Storage::disk('public')->path('regulasi-docs/' . basename($this->file_path));
+        if (Storage::disk('public')->exists('regulasi-docs/'.basename($this->file_path))) {
+            return Storage::disk('public')->path('regulasi-docs/'.basename($this->file_path));
         }
 
         // 3. Fallback direktori docs/dasar-hukum
-        $docPath = base_path('docs/dasar-hukum/' . basename($this->file_path));
+        $docPath = base_path('docs/dasar-hukum/'.basename($this->file_path));
         if (file_exists($docPath)) {
             return $docPath;
         }
@@ -115,22 +115,22 @@ class Regulation extends Model
     {
         $bytes = $this->file_size;
 
-        if (!$bytes) {
+        if (! $bytes) {
             $realPath = $this->resolveFilePath();
             if ($realPath && file_exists($realPath)) {
                 $bytes = filesize($realPath);
             }
         }
 
-        if (!$bytes) {
+        if (! $bytes) {
             return '-';
         }
 
         if ($bytes >= 1048576) {
-            return round($bytes / 1048576, 2) . ' MB';
+            return round($bytes / 1048576, 2).' MB';
         }
 
-        return round($bytes / 1024, 0) . ' KB';
+        return round($bytes / 1024, 0).' KB';
     }
 
     /**

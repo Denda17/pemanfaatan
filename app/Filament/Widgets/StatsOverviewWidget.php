@@ -11,6 +11,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 class StatsOverviewWidget extends BaseWidget
 {
     protected static bool $isLazy = false;
+
     protected static ?int $sort = 1;
 
     protected function getStats(): array
@@ -49,7 +50,7 @@ class StatsOverviewWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color($warningPerpanjangan > 0 ? 'danger' : 'success'),
 
-            Stat::make('Realisasi Masuk Kasda', 'Rp ' . number_format($totalSetoranKasda, 0, ',', '.'))
+            Stat::make('Realisasi Masuk Kasda', 'Rp '.number_format($totalSetoranKasda, 0, ',', '.'))
                 ->description('Total Setoran Retribusi Ber-STS Resmi')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),

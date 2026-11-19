@@ -2,13 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\BookingResource\Pages\EditBooking;
 use App\Models\Asset;
+use App\Models\AssetPemanfaatan;
 use App\Models\Booking;
 use App\Models\BookingRequirement;
+use App\Models\Regulation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class MarketplaceAndBookingTest extends TestCase
@@ -51,7 +58,7 @@ class MarketplaceAndBookingTest extends TestCase
         $asset = Asset::first();
         $this->assertNotNull($asset);
 
-        $response = $this->get('/aset/' . $asset->slug);
+        $response = $this->get('/aset/'.$asset->slug);
 
         $response->assertStatus(200);
         $response->assertSee($asset->nama_objek);
@@ -61,10 +68,10 @@ class MarketplaceAndBookingTest extends TestCase
 
     public function test_user_can_submit_booking_via_marketplace_form(): void
     {
-        $asset = Asset::where('status_ketersediaan', 'tersedia')->first();
-        if (!$asset) {
-            $asset = Asset::first();
-            $asset->update(['status_ketersediaan' => 'tersedia']);
+        $asset = Asset::where('status_ketersediaan', 'tersedia')->where('tipe_aset', 'tunggal')->first();
+        if (! $asset) {
+            $asset = Asset::where('tipe_aset', 'tunggal')->first() ?? Asset::first();
+            $asset->update(['status_ketersediaan' => 'tersedia', 'tipe_aset' => 'tunggal']);
         }
 
         $user = User::factory()->create([
@@ -86,11 +93,11 @@ class MarketplaceAndBookingTest extends TestCase
         ];
 
         // Tamu tanpa login dialihkan ke halaman login
-        $guestResponse = $this->post('/aset/' . $asset->slug . '/booking', $postData);
+        $guestResponse = $this->post('/aset/'.$asset->slug.'/booking', $postData);
         $guestResponse->assertRedirect(route('login'));
 
         // Pengguna terautentikasi berhasil mengirim pengajuan booking
-        $response = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', $postData);
+        $response = $this->actingAs($user, 'web')->post('/aset/'.$asset->slug.'/booking', $postData);
 
         $booking = Booking::where('nomor_whatsapp', '08122334455')->latest()->first();
         $this->assertNotNull($booking);
@@ -114,8 +121,8 @@ class MarketplaceAndBookingTest extends TestCase
     {
         Storage::fake('public');
 
-        $asset = Asset::where('status_ketersediaan', 'tersedia')->first() ?? Asset::first();
-        $asset->update(['status_ketersediaan' => 'tersedia']);
+        $asset = Asset::where('status_ketersediaan', 'tersedia')->where('tipe_aset', 'tunggal')->first() ?? Asset::where('tipe_aset', 'tunggal')->first() ?? Asset::first();
+        $asset->update(['status_ketersediaan' => 'tersedia', 'tipe_aset' => 'tunggal']);
 
         $user = User::factory()->create([
             'role' => 'peminat',
@@ -123,7 +130,7 @@ class MarketplaceAndBookingTest extends TestCase
         ]);
 
         // 1. Durasi > 5 tahun tanpa proposal bisnis ditolak validasi
-        $failResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+        $failResponse = $this->actingAs($user, 'web')->post('/aset/'.$asset->slug.'/booking', [
             'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Budi Sudarsono',
             'nomor_whatsapp' => '081399887766',
@@ -134,7 +141,7 @@ class MarketplaceAndBookingTest extends TestCase
         $failResponse->assertSessionHasErrors('proposal_bisnis');
 
         // Durasi sewa > 10 tahun ditolak validasi batas maksimal
-        $overLimitResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+        $overLimitResponse = $this->actingAs($user, 'web')->post('/aset/'.$asset->slug.'/booking', [
             'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Budi Sudarsono',
             'nomor_whatsapp' => '081399887766',
@@ -147,7 +154,7 @@ class MarketplaceAndBookingTest extends TestCase
         // 2. Durasi > 5 tahun dengan melampirkan proposal bisnis diterima
         $file = UploadedFile::fake()->create('proposal_rencana_bisnis.pdf', 1024, 'application/pdf');
 
-        $successResponse = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+        $successResponse = $this->actingAs($user, 'web')->post('/aset/'.$asset->slug.'/booking', [
             'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Budi Sudarsono',
             'nomor_whatsapp' => '081399887766',
@@ -162,7 +169,7 @@ class MarketplaceAndBookingTest extends TestCase
         $this->assertEquals(10, $booking->durasi_sewa_tahun);
         $this->assertEquals('sekaligus', $booking->skema_pembayaran);
         $this->assertNotNull($booking->proposal_bisnis_path);
-        Storage::disk('public')->assertExists($booking->proposal_bisnis_path);
+        Storage::disk('local')->assertExists($booking->proposal_bisnis_path);
 
         // Dokumen proposal juga otomatis masuk ke tabel booking_documents
         $proposalReq = BookingRequirement::where('kode', 'REQ_PROPOSAL')->first();
@@ -179,7 +186,7 @@ class MarketplaceAndBookingTest extends TestCase
     {
         $applicant1 = User::factory()->create([
             'name' => 'Pemohon Pertama',
-            'email' => 'pemohon1_' . uniqid() . '@example.com',
+            'email' => 'pemohon1_'.uniqid().'@example.com',
             'phone' => '081111222333',
             'role' => 'peminat',
             'is_active' => true,
@@ -187,7 +194,7 @@ class MarketplaceAndBookingTest extends TestCase
 
         $applicant2 = User::factory()->create([
             'name' => 'Pemohon Kedua',
-            'email' => 'pemohon2_' . uniqid() . '@example.com',
+            'email' => 'pemohon2_'.uniqid().'@example.com',
             'phone' => '082222333444',
             'role' => 'peminat',
             'is_active' => true,
@@ -220,7 +227,7 @@ class MarketplaceAndBookingTest extends TestCase
         $myBookingsResponse->assertSee('Menunggu Tindak Lanjut');
 
         // 3. Pemohon 1 dapat melihat detail status pengajuannya sendiri
-        $statusDetail = $this->actingAs($applicant1, 'web')->get('/status-booking/' . $booking->kode_booking);
+        $statusDetail = $this->actingAs($applicant1, 'web')->get('/status-booking/'.$booking->kode_booking);
         $statusDetail->assertStatus(200);
         $statusDetail->assertSee($booking->kode_booking);
         $statusDetail->assertSee('Linimasa Progres Permohonan');
@@ -229,7 +236,7 @@ class MarketplaceAndBookingTest extends TestCase
         // 4. Pemohon 2 TIDAK BISA mengakses status booking milik Pemohon 1 (403 Forbidden)
         // Bahkan jika Pemohon 2 memiliki nomor telepon / WA yang sama dengan Pemohon 1
         $applicant2->update(['phone' => $applicant1->phone]);
-        $forbiddenResponse = $this->actingAs($applicant2, 'web')->get('/status-booking/' . $booking->kode_booking);
+        $forbiddenResponse = $this->actingAs($applicant2, 'web')->get('/status-booking/'.$booking->kode_booking);
         $forbiddenResponse->assertStatus(403);
 
         $applicant2MyBookings = $this->actingAs($applicant2, 'web')->get('/pengajuan-saya');
@@ -238,7 +245,7 @@ class MarketplaceAndBookingTest extends TestCase
 
         // 5. Admin UPTD dapat mengakses status booking pemohon manapun
         $admin = User::where('role', 'admin')->first();
-        $adminResponse = $this->actingAs($admin, 'web')->get('/status-booking/' . $booking->kode_booking);
+        $adminResponse = $this->actingAs($admin, 'web')->get('/status-booking/'.$booking->kode_booking);
         $adminResponse->assertStatus(200);
         $adminResponse->assertSee($booking->kode_booking);
 
@@ -261,18 +268,18 @@ class MarketplaceAndBookingTest extends TestCase
 
         $booking = Booking::first();
         if ($booking) {
-            $bookingEdit = $this->actingAs($admin, 'web')->get('/admin/bookings/' . $booking->id . '/edit');
+            $bookingEdit = $this->actingAs($admin, 'web')->get('/admin/bookings/'.$booking->id.'/edit');
             $bookingEdit->assertStatus(200);
             $bookingEdit->assertSee('Petugas Verifikator UPTD');
 
             // Verifikasi dropdown petugas_uptd_id hanya memuat user dengan role admin
-            $component = \Livewire\Livewire::actingAs($admin)
-                ->test(\App\Filament\Resources\BookingResource\Pages\EditBooking::class, ['record' => $booking->id]);
-            
+            $component = Livewire::actingAs($admin)
+                ->test(EditBooking::class, ['record' => $booking->id]);
+
             $form = $component->instance()->form;
             $petugasField = $form->getFlatFields()['petugas_uptd_id'] ?? null;
             $this->assertNotNull($petugasField);
-            
+
             $options = $petugasField->getOptions();
             $adminIds = User::where('role', 'admin')->pluck('id')->toArray();
             $peminatIds = User::where('role', 'peminat')->pluck('id')->toArray();
@@ -299,14 +306,14 @@ class MarketplaceAndBookingTest extends TestCase
     public function test_asset_detail_page_contains_permendagri_calculator(): void
     {
         $asset = Asset::where('status_ketersediaan', 'tersedia')->first();
-        if (!$asset) {
+        if (! $asset) {
             $asset = Asset::first();
             $asset->update(['status_ketersediaan' => 'tersedia']);
         }
         $this->assertNotNull($asset);
 
         // 1. Publik / Tamu melihat simulasi tarif tanpa diskon kategori dan tanpa teks tarif penuh 100%
-        $response = $this->get('/aset/' . $asset->slug);
+        $response = $this->get('/aset/'.$asset->slug);
         $response->assertStatus(200);
         $response->assertSee('Simulasi Tarif Sewa BMD');
         $response->assertSee('Permendagri No. 7/2024');
@@ -322,7 +329,7 @@ class MarketplaceAndBookingTest extends TestCase
             'is_active' => true,
         ]);
 
-        $authResponse = $this->actingAs($user, 'web')->get('/aset/' . $asset->slug);
+        $authResponse = $this->actingAs($user, 'web')->get('/aset/'.$asset->slug);
         $authResponse->assertStatus(200);
         $authResponse->assertSee('Formulir Booking Minat Sewa');
         $authResponse->assertSee('Skema Pembayaran');
@@ -337,7 +344,7 @@ class MarketplaceAndBookingTest extends TestCase
         $this->assertNotNull($rentedAsset, 'Harus ada aset berstatus tersewa.');
 
         // 1. Detail aset tersewa tetap dapat diakses dengan sukses
-        $detailResponse = $this->get('/aset/' . $rentedAsset->slug);
+        $detailResponse = $this->get('/aset/'.$rentedAsset->slug);
         $detailResponse->assertStatus(200);
         $detailResponse->assertSee($rentedAsset->nama_objek);
         $detailResponse->assertSee('Objek ini Berstatus Tersewa Aktif');
@@ -362,7 +369,7 @@ class MarketplaceAndBookingTest extends TestCase
             'durasi_sewa_tahun' => 1,
             'skema_pembayaran' => 'sekaligus',
         ];
-        $bookingResponse = $this->actingAs($user, 'web')->post('/aset/' . $rentedAsset->slug . '/booking', $postData);
+        $bookingResponse = $this->actingAs($user, 'web')->post('/aset/'.$rentedAsset->slug.'/booking', $postData);
         $bookingResponse->assertSessionHas('error', 'Maaf, aset ini sedang dalam masa sewa aktif.');
     }
 
@@ -380,7 +387,7 @@ class MarketplaceAndBookingTest extends TestCase
             ],
         ]);
 
-        $response = $this->get('/aset/' . $asset->slug);
+        $response = $this->get('/aset/'.$asset->slug);
         $response->assertStatus(200);
         $response->assertSee('Foto Lapangan');
         $response->assertSee('Denah Tapak / Site Plan');
@@ -389,7 +396,7 @@ class MarketplaceAndBookingTest extends TestCase
 
     public function test_kasda_payments_relation_and_tracking_work(): void
     {
-        $lease = \App\Models\AssetPemanfaatan::where('kategori_status', 'sewa_aktif')->first();
+        $lease = AssetPemanfaatan::where('kategori_status', 'sewa_aktif')->first();
         $this->assertNotNull($lease);
 
         $this->assertGreaterThan(0, $lease->payments()->count());
@@ -404,7 +411,7 @@ class MarketplaceAndBookingTest extends TestCase
 
     public function test_check_expiring_leases_command_runs_successfully(): void
     {
-        $exitCode = \Illuminate\Support\Facades\Artisan::call('bmd:check-expiring-leases');
+        $exitCode = Artisan::call('bmd:check-expiring-leases');
         $this->assertEquals(0, $exitCode);
     }
 
@@ -461,7 +468,7 @@ class MarketplaceAndBookingTest extends TestCase
         $createPage->assertStatus(200);
 
         // Buat record SOP baru
-        $sop = \App\Models\Regulation::updateOrCreate(
+        $sop = Regulation::updateOrCreate(
             ['slug' => 'sop-survei-lapangan-2026'],
             [
                 'nomor' => 'SOP/05/UPTD/2026',
@@ -492,7 +499,7 @@ class MarketplaceAndBookingTest extends TestCase
         $publicSop->assertSee('Internal SOP');
 
         // Pastikan dokumen dapat dipratinjau
-        $sopPreview = $this->get('/dasar-hukum/preview/' . $sop->slug);
+        $sopPreview = $this->get('/dasar-hukum/preview/'.$sop->slug);
         $sopPreview->assertStatus(200);
         $sopPreview->assertHeader('Content-Type', 'application/pdf');
     }
@@ -508,7 +515,7 @@ class MarketplaceAndBookingTest extends TestCase
         $regResponse->assertSee('Pernyataan Keabsahan Data', false);
         $regResponse->assertSee('disabled', false);
 
-        $email = 'ahmad_' . uniqid() . '@ptpasundan.co.id';
+        $email = 'ahmad_'.uniqid().'@ptpasundan.co.id';
         $registerData = [
             'name' => 'Ahmad Subagja',
             'email' => $email,
@@ -528,7 +535,7 @@ class MarketplaceAndBookingTest extends TestCase
         // Harus dialihkan ke halaman login, BUKAN langsung login
         $postResponse->assertRedirect(route('login'));
         $postResponse->assertSessionHas('success');
-        $this->assertFalse(\Illuminate\Support\Facades\Auth::check(), 'User tidak boleh langsung login otomatis setelah mendaftar.');
+        $this->assertFalse(Auth::check(), 'User tidak boleh langsung login otomatis setelah mendaftar.');
 
         // 3. Data tersimpan di database dengan role peminat
         $createdUser = User::where('email', $email)->first();
@@ -548,18 +555,18 @@ class MarketplaceAndBookingTest extends TestCase
             'password' => 'password123',
         ]);
         $loginResponse->assertRedirect(route('booking.my'));
-        $this->assertTrue(\Illuminate\Support\Facades\Auth::check());
-        $this->assertEquals($createdUser->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertTrue(Auth::check());
+        $this->assertEquals($createdUser->id, Auth::id());
 
         // 5. Logout
         $logoutResponse = $this->post('/keluar');
         $logoutResponse->assertRedirect(route('home'));
-        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+        $this->assertFalse(Auth::check());
     }
 
     public function test_inactive_user_cannot_login(): void
     {
-        $email = 'suspended_' . uniqid() . '@mitra.com';
+        $email = 'suspended_'.uniqid().'@mitra.com';
         $inactiveUser = User::factory()->create([
             'email' => $email,
             'password' => bcrypt('password123'),
@@ -573,7 +580,7 @@ class MarketplaceAndBookingTest extends TestCase
         ]);
 
         $loginResponse->assertSessionHasErrors('email');
-        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+        $this->assertFalse(Auth::check());
     }
 
     public function test_admin_can_access_user_management_in_filament(): void
@@ -604,7 +611,7 @@ class MarketplaceAndBookingTest extends TestCase
             'password' => 'password',
         ]);
         $adminPost->assertRedirect('/admin');
-        $this->assertEquals($admin->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertEquals($admin->id, Auth::id());
 
         // Saat admin sedang login dan membuka /masuk, otomatis dilempar ke /admin
         $alreadyLoggedInAdmin = $this->get('/masuk');
@@ -612,13 +619,13 @@ class MarketplaceAndBookingTest extends TestCase
 
         // Logout
         $this->post('/keluar');
-        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+        $this->assertFalse(Auth::check());
 
         // 3. Pemohon login via formulir terpadu -> diarahkan ke Pengajuan Saya
         $peminat = User::factory()->create([
             'role' => 'peminat',
             'is_active' => true,
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            'password' => Hash::make('password'),
         ]);
 
         $peminatPost = $this->post('/masuk', [
@@ -634,8 +641,8 @@ class MarketplaceAndBookingTest extends TestCase
 
     public function test_booking_form_adapts_for_individual_vs_business_applicant(): void
     {
-        $asset = Asset::where('status_ketersediaan', 'tersedia')->first() ?? Asset::first();
-        $asset->update(['status_ketersediaan' => 'tersedia']);
+        $asset = Asset::where('status_ketersediaan', 'tersedia')->where('tipe_aset', 'tunggal')->first() ?? Asset::where('tipe_aset', 'tunggal')->first() ?? Asset::first();
+        $asset->update(['status_ketersediaan' => 'tersedia', 'tipe_aset' => 'tunggal']);
 
         $user = User::factory()->create([
             'role' => 'peminat',
@@ -643,7 +650,7 @@ class MarketplaceAndBookingTest extends TestCase
         ]);
 
         // 1. Tampilan formulir memuat pemilih kategori pemohon (Perorangan vs Badan Usaha) secara dinamis
-        $res = $this->actingAs($user, 'web')->get('/aset/' . $asset->slug);
+        $res = $this->actingAs($user, 'web')->get('/aset/'.$asset->slug);
         $res->assertStatus(200);
         $res->assertSee('Kategori Pemohon Sewa');
         $res->assertSee('Perorangan');
@@ -652,7 +659,7 @@ class MarketplaceAndBookingTest extends TestCase
         $res->assertSee('Jabatan Pemohon dalam Badan Usaha');
 
         // 2. Pemohon memilih Badan Usaha tetapi tidak mengisi nama instansi/perusahaan -> ditolak validasi
-        $failBusiness = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+        $failBusiness = $this->actingAs($user, 'web')->post('/aset/'.$asset->slug.'/booking', [
             'tipe_pemohon' => 'badan_usaha',
             'nama_pemohon' => 'Ahmad Subagja',
             'nomor_whatsapp' => '081298765432',
@@ -664,7 +671,7 @@ class MarketplaceAndBookingTest extends TestCase
         $failBusiness->assertSessionHasErrors('nama_instansi');
 
         // 3. Pemohon memilih Badan Usaha dengan nama instansi lengkap -> berhasil tersimpan
-        $successBusiness = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+        $successBusiness = $this->actingAs($user, 'web')->post('/aset/'.$asset->slug.'/booking', [
             'tipe_pemohon' => 'badan_usaha',
             'nama_pemohon' => 'Ahmad Subagja',
             'nomor_whatsapp' => '081298765432',
@@ -685,9 +692,10 @@ class MarketplaceAndBookingTest extends TestCase
 
         // Kembalikan ketersediaan aset untuk perorangan test
         $asset->update(['status_ketersediaan' => 'tersedia']);
+        $userIndiv = User::factory()->create(['tipe_pemohon' => 'perorangan', 'role' => 'peminat']);
 
         // 4. Pemohon memilih Perorangan -> otomatis nama_instansi menjadi 'Perorangan'
-        $successIndiv = $this->actingAs($user, 'web')->post('/aset/' . $asset->slug . '/booking', [
+        $successIndiv = $this->actingAs($userIndiv, 'web')->post('/aset/'.$asset->slug.'/booking', [
             'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Dedi Pribadi',
             'nomor_whatsapp' => '081311223344',
@@ -727,37 +735,37 @@ class MarketplaceAndBookingTest extends TestCase
         ]);
 
         // 1. Pemohon berhak mengunduh draf terisi otomatis (.docx)
-        $downloadRes = $this->actingAs($applicant, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan');
+        $downloadRes = $this->actingAs($applicant, 'web')->get('/status-booking/'.$booking->kode_booking.'/surat-permohonan');
         $downloadRes->assertStatus(200);
         $this->assertStringContainsString('Surat_Permohonan_Sewa_', (string) $downloadRes->headers->get('Content-Disposition'));
 
         // 2. Pemohon dapat mengunduh mode template mentah (?mode=raw)
-        $rawRes = $this->actingAs($applicant, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan?mode=raw');
+        $rawRes = $this->actingAs($applicant, 'web')->get('/status-booking/'.$booking->kode_booking.'/surat-permohonan?mode=raw');
         $rawRes->assertStatus(200);
         $this->assertStringContainsString('DRAFT_Surat_Permohonan_Sewa_BMD_2026.docx', (string) $rawRes->headers->get('Content-Disposition'));
 
         // 3. Pemohon dapat mengunduh template surat pernyataan (.docx)
-        $pernyataanRes = $this->actingAs($applicant, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-pernyataan');
+        $pernyataanRes = $this->actingAs($applicant, 'web')->get('/status-booking/'.$booking->kode_booking.'/surat-pernyataan');
         $pernyataanRes->assertStatus(200);
         $this->assertStringContainsString('Template_Surat_Pernyataan_Sewa_BMD.docx', (string) $pernyataanRes->headers->get('Content-Disposition'));
 
         // 4. Pemohon dapat mengunduh template surat keterangan badan hukum/usaha (.docx)
-        $badanHukumRes = $this->actingAs($applicant, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-badan-hukum');
+        $badanHukumRes = $this->actingAs($applicant, 'web')->get('/status-booking/'.$booking->kode_booking.'/surat-badan-hukum');
         $badanHukumRes->assertStatus(200);
         $this->assertStringContainsString('Template_Surat_Keterangan_Badan_Hukum_Usaha.docx', (string) $badanHukumRes->headers->get('Content-Disposition'));
 
         // 5. User asing dilarang mengunduh dokumen permohonan orang lain (403)
-        $forbiddenRes = $this->actingAs($stranger, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan');
+        $forbiddenRes = $this->actingAs($stranger, 'web')->get('/status-booking/'.$booking->kode_booking.'/surat-permohonan');
         $forbiddenRes->assertStatus(403);
 
-        $forbiddenPernyataan = $this->actingAs($stranger, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-pernyataan');
+        $forbiddenPernyataan = $this->actingAs($stranger, 'web')->get('/status-booking/'.$booking->kode_booking.'/surat-pernyataan');
         $forbiddenPernyataan->assertStatus(403);
 
         // 6. Admin UPTD diperbolehkan mengunduh dokumen pemohon manapun
-        $adminRes = $this->actingAs($admin, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-permohonan');
+        $adminRes = $this->actingAs($admin, 'web')->get('/status-booking/'.$booking->kode_booking.'/surat-permohonan');
         $adminRes->assertStatus(200);
 
-        $adminPernyataanRes = $this->actingAs($admin, 'web')->get('/status-booking/' . $booking->kode_booking . '/surat-pernyataan');
+        $adminPernyataanRes = $this->actingAs($admin, 'web')->get('/status-booking/'.$booking->kode_booking.'/surat-pernyataan');
         $adminPernyataanRes->assertStatus(200);
     }
 
@@ -786,7 +794,7 @@ class MarketplaceAndBookingTest extends TestCase
 
         $file = UploadedFile::fake()->create('surat_permohonan_bertandatangan.pdf', 800, 'application/pdf');
 
-        $uploadResponse = $this->actingAs($applicant, 'web')->post('/status-booking/' . $booking->kode_booking . '/upload-dokumen', [
+        $uploadResponse = $this->actingAs($applicant, 'web')->post('/status-booking/'.$booking->kode_booking.'/upload-dokumen', [
             'booking_requirement_id' => $reqSurat->id,
             'dokumen_file' => $file,
         ]);
@@ -833,7 +841,7 @@ class MarketplaceAndBookingTest extends TestCase
         // Unggah 1 dokumen (KTP) -> 1/4 = 25%
         $reqKtp = BookingRequirement::where('kode', 'REQ_KTP')->first();
         $fileKtp = UploadedFile::fake()->create('ktp_ahmad.pdf', 500, 'application/pdf');
-        $this->actingAs($userIndividu, 'web')->post('/status-booking/' . $bookingIndividu->kode_booking . '/upload-dokumen', [
+        $this->actingAs($userIndividu, 'web')->post('/status-booking/'.$bookingIndividu->kode_booking.'/upload-dokumen', [
             'booking_requirement_id' => $reqKtp->id,
             'dokumen_file' => $fileKtp,
         ]);
@@ -861,7 +869,7 @@ class MarketplaceAndBookingTest extends TestCase
         $this->assertEquals(8, $statsBisnis['total_wajib']);
 
         // 3. Tampilan halaman status memuat progress bar dan kelompok dokumen
-        $viewResponse = $this->actingAs($userIndividu, 'web')->get('/status-booking/' . $bookingIndividu->kode_booking);
+        $viewResponse = $this->actingAs($userIndividu, 'web')->get('/status-booking/'.$bookingIndividu->kode_booking);
         $viewResponse->assertStatus(200);
         $viewResponse->assertSee('Patokan Kelengkapan Dokumen');
         $viewResponse->assertSee('Berkas Template Persyaratan Resmi');
@@ -873,7 +881,7 @@ class MarketplaceAndBookingTest extends TestCase
         $viewResponse->assertDontSee('Ketentuan & Mekanisme Pembayaran Bertahap');
 
         // 4. Pembayaran bertahap menampilkan card simulasi termin dan panduan Kasda BJB
-        $viewBertahap = $this->actingAs($userBisnis, 'web')->get('/status-booking/' . $bookingBisnis->kode_booking);
+        $viewBertahap = $this->actingAs($userBisnis, 'web')->get('/status-booking/'.$bookingBisnis->kode_booking);
         $viewBertahap->assertStatus(200);
         $viewBertahap->assertSee('Ketentuan & Mekanisme Pembayaran Bertahap');
         $viewBertahap->assertSee('Khusus Skema Bertahap');
@@ -922,11 +930,11 @@ class MarketplaceAndBookingTest extends TestCase
         ]);
 
         // Verifikasi label dinamis persyaratan no. 9
-        $resSekaligus = $this->actingAs($userSekaligus, 'web')->get('/status-booking/' . $bookingSekaligus->kode_booking);
+        $resSekaligus = $this->actingAs($userSekaligus, 'web')->get('/status-booking/'.$bookingSekaligus->kode_booking);
         $resSekaligus->assertStatus(200);
         $resSekaligus->assertSee('Bukti Setor PAD (Pelunasan 100% Sewa)');
 
-        $resBertahap = $this->actingAs($userBertahap, 'web')->get('/status-booking/' . $bookingBertahap->kode_booking);
+        $resBertahap = $this->actingAs($userBertahap, 'web')->get('/status-booking/'.$bookingBertahap->kode_booking);
         $resBertahap->assertStatus(200);
         $resBertahap->assertSee('Bukti Setor PAD (Termin Ke-1 - Tahun Pertama)');
 
@@ -934,7 +942,7 @@ class MarketplaceAndBookingTest extends TestCase
         $reqBukti = BookingRequirement::where('kode', 'REQ_BUKTI_BAYAR')->first();
         $fileTermin1 = UploadedFile::fake()->create('bukti_bayar_termin1.pdf', 300, 'application/pdf');
 
-        $uploadDoc1 = $this->actingAs($userBertahap, 'web')->post('/status-booking/' . $bookingBertahap->kode_booking . '/upload-dokumen', [
+        $uploadDoc1 = $this->actingAs($userBertahap, 'web')->post('/status-booking/'.$bookingBertahap->kode_booking.'/upload-dokumen', [
             'booking_requirement_id' => $reqBukti->id,
             'dokumen_file' => $fileTermin1,
         ]);
@@ -948,7 +956,7 @@ class MarketplaceAndBookingTest extends TestCase
 
         // Unggah mandiri bukti setor termin ke-2 oleh pemohon
         $fileTermin2 = UploadedFile::fake()->create('slip_bjb_termin2.jpg', 400, 'image/jpeg');
-        $uploadTermin2 = $this->actingAs($userBertahap, 'web')->post('/status-booking/' . $bookingBertahap->kode_booking . '/upload-termin', [
+        $uploadTermin2 = $this->actingAs($userBertahap, 'web')->post('/status-booking/'.$bookingBertahap->kode_booking.'/upload-termin', [
             'termin_ke' => 2,
             'nomor_sts' => 'STS-2026-TERM-02',
             'tanggal_bayar' => '2026-11-20',
@@ -966,20 +974,20 @@ class MarketplaceAndBookingTest extends TestCase
 
         // User lain ditolak mengunggah termin pemohon lain (403)
         $fileStranger = UploadedFile::fake()->create('hack.pdf', 100, 'application/pdf');
-        $forbiddenTermin = $this->actingAs($stranger, 'web')->post('/status-booking/' . $bookingBertahap->kode_booking . '/upload-termin', [
+        $forbiddenTermin = $this->actingAs($stranger, 'web')->post('/status-booking/'.$bookingBertahap->kode_booking.'/upload-termin', [
             'termin_ke' => 3,
             'bukti_file' => $fileStranger,
         ]);
         $forbiddenTermin->assertStatus(403);
 
         // Halaman status pemohon kini memuat info termin 2 dan tombol lihat bukti
-        $resUpdated = $this->actingAs($userBertahap, 'web')->get('/status-booking/' . $bookingBertahap->kode_booking);
+        $resUpdated = $this->actingAs($userBertahap, 'web')->get('/status-booking/'.$bookingBertahap->kode_booking);
         $resUpdated->assertStatus(200);
         $resUpdated->assertSee('STS-2026-TERM-02');
         $resUpdated->assertSee('Menunggu Verifikasi Kasda');
 
         // Filament relation manager dapat dibuka oleh admin
-        $filamentEdit = $this->actingAs($admin, 'web')->get('/admin/bookings/' . $bookingBertahap->id . '/edit');
+        $filamentEdit = $this->actingAs($admin, 'web')->get('/admin/bookings/'.$bookingBertahap->id.'/edit');
         $filamentEdit->assertStatus(200);
         $filamentEdit->assertSee('Riwayat Setoran Termin Kasda');
     }

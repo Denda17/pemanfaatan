@@ -12,8 +12,11 @@ use Illuminate\Support\Facades\Auth;
 class LatestBookingsWidget extends BaseWidget
 {
     protected static bool $isLazy = false;
+
     protected static ?int $sort = 3;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
+
     protected static ?string $heading = 'Permohonan Booking Aset Terbaru (Perlu Tindak Lanjut Admin)';
 
     public function table(Table $table): Table
@@ -35,7 +38,7 @@ class LatestBookingsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('nama_pemohon')
                     ->label('Pemohon')
                     ->weight('medium')
-                    ->description(fn (Booking $record) => ($record->nama_instansi ? $record->nama_instansi . ' • ' : '') . $record->nomor_whatsapp),
+                    ->description(fn (Booking $record) => ($record->nama_instansi ? $record->nama_instansi.' • ' : '').$record->nomor_whatsapp),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')

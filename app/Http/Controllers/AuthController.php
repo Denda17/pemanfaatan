@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -94,7 +93,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
-        if ($user && !$user->is_active) {
+        if ($user && ! $user->is_active) {
             return back()->withErrors([
                 'email' => 'Akun Anda sedang dinonaktifkan oleh administrator. Silakan hubungi UPTD Pengamanan dan Pemanfaatan Aset Jabar.',
             ])->onlyInput('email');
@@ -109,12 +108,12 @@ class AuthController extends Controller
             // 1. Jika terdeteksi sebagai Admin UPTD -> arahkan ke dashboard admin
             if ($loggedInUser->isAdmin()) {
                 return redirect()->intended('/admin')
-                    ->with('success', 'Selamat datang di Panel Administrasi UPTD, ' . $loggedInUser->name . '!');
+                    ->with('success', 'Selamat datang di Panel Administrasi UPTD, '.$loggedInUser->name.'!');
             }
 
             // 2. Selain itu (Pemohon / Calon Mitra) -> arahkan ke akun masing-masing (Pengajuan Saya)
             return redirect()->intended(route('booking.my'))
-                ->with('success', 'Selamat datang kembali, ' . $loggedInUser->name . '! Anda dapat memantau permohonan atau mengajukan sewa aset.');
+                ->with('success', 'Selamat datang kembali, '.$loggedInUser->name.'! Anda dapat memantau permohonan atau mengajukan sewa aset.');
         }
 
         return back()->withErrors([

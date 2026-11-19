@@ -53,9 +53,9 @@
     <!-- Highlight Bento Cards (Dynamic 3 or 4 cols) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 {{ ($counts['sop'] ?? 0) > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-5 mb-10">
         <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-emerald-200 transition">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                    JABAR
+            <div class="flex items-center gap-3.5 mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-50/80 border border-emerald-100/90 flex items-center justify-center shrink-0 p-1.5 shadow-2xs">
+                    <img src="{{ asset('images/logo-jabar.svg') }}" alt="Logo Provinsi Jawa Barat" class="w-full h-full object-contain">
                 </div>
                 <div>
                     <h3 class="font-extrabold text-sm text-gray-900">Perda & Pergub Jabar</h3>
@@ -68,9 +68,9 @@
         </div>
 
         <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-blue-200 transition">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-9 h-9 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs">
-                    MENDAGRI
+            <div class="flex items-center gap-3.5 mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-blue-50/80 border border-blue-100/90 flex items-center justify-center shrink-0 p-1.5 shadow-2xs">
+                    <img src="{{ asset('images/logo-kemendagri.svg') }}" alt="Logo Kementerian Dalam Negeri" class="w-full h-full object-contain">
                 </div>
                 <div>
                     <h3 class="font-extrabold text-sm text-gray-900">Permendagri 7/2024 & 19/2016</h3>
@@ -83,9 +83,9 @@
         </div>
 
         <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-purple-200 transition">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-9 h-9 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs">
-                    PUSAT
+            <div class="flex items-center gap-3.5 mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-amber-50/80 border border-amber-100/90 flex items-center justify-center shrink-0 p-1.5 shadow-2xs">
+                    <img src="{{ asset('images/logo-garuda.svg') }}" alt="Lambang Burung Garuda RI" class="w-full h-full object-contain">
                 </div>
                 <div>
                     <h3 class="font-extrabold text-sm text-gray-900">PP No. 28/2020 & 27/2014</h3>
@@ -99,9 +99,9 @@
 
         @if(($counts['sop'] ?? 0) > 0)
             <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-amber-200 transition">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-9 h-9 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs">
-                        SOP
+                <div class="flex items-center gap-3.5 mb-3">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-50/80 border border-amber-100/90 flex items-center justify-center shrink-0 p-2 shadow-2xs text-amber-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     </div>
                     <div>
                         <h3 class="font-extrabold text-sm text-gray-900">SOP & Juknis UPTD</h3>

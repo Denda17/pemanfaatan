@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\AssetPemanfaatanResource\RelationManagers;
 
-use App\Models\AssetPemanfaatan;
 use App\Models\AssetPemanfaatanPayment;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,7 +13,9 @@ use Illuminate\Support\Facades\Auth;
 class PaymentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'payments';
+
     protected static ?string $title = 'Riwayat Termin Pembayaran & Setoran Kasda (STS / NTPN)';
+
     protected static ?string $modelLabel = 'Termin Setoran Kasda';
 
     public function form(Form $form): Form
@@ -137,7 +138,7 @@ class PaymentsRelationManager extends RelationManager
                     ->searchable()
                     ->copyable()
                     ->placeholder('Belum ada STS')
-                    ->description(fn (AssetPemanfaatanPayment $record) => $record->tanggal_bayar ? 'Tgl Setor: ' . $record->tanggal_bayar->format('d/m/Y') : '-'),
+                    ->description(fn (AssetPemanfaatanPayment $record) => $record->tanggal_bayar ? 'Tgl Setor: '.$record->tanggal_bayar->format('d/m/Y') : '-'),
 
                 Tables\Columns\TextColumn::make('status_pembayaran')
                     ->label('Status')
@@ -178,7 +179,7 @@ class PaymentsRelationManager extends RelationManager
                     ->iconButton()
                     ->tooltip('Buka Bukti Setoran')
                     ->url(fn (AssetPemanfaatanPayment $record) => $record->bukti_bayar_url, true)
-                    ->visible(fn (AssetPemanfaatanPayment $record) => !empty($record->bukti_bayar_path)),
+                    ->visible(fn (AssetPemanfaatanPayment $record) => ! empty($record->bukti_bayar_path)),
 
                 Tables\Actions\EditAction::make()->iconButton(),
                 Tables\Actions\DeleteAction::make()->iconButton(),

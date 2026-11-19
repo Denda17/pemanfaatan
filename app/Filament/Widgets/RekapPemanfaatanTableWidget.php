@@ -2,9 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Asset;
 use App\Models\AssetPemanfaatan;
-use Filament\Forms;
 use Filament\Infolists;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -13,8 +11,11 @@ use Filament\Widgets\TableWidget as BaseWidget;
 class RekapPemanfaatanTableWidget extends BaseWidget
 {
     protected static bool $isLazy = false;
+
     protected static ?int $sort = 2;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
+
     protected static ?string $heading = 'Rekapitulasi Pemanfaatan Barang Milik Daerah (BMD) Pemprov Jawa Barat';
 
     public function table(Table $table): Table
@@ -46,11 +47,12 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                             $parts[] = $record->asset->bentuk_objek;
                         }
                         if ($record->asset?->luas_tanah) {
-                            $parts[] = 'Tanah: ' . number_format($record->asset->luas_tanah, 0, ',', '.') . ' m²';
+                            $parts[] = 'Tanah: '.number_format($record->asset->luas_tanah, 0, ',', '.').' m²';
                         }
                         if ($record->asset?->luas_bangunan) {
-                            $parts[] = 'Bgn: ' . number_format($record->asset->luas_bangunan, 0, ',', '.') . ' m²';
+                            $parts[] = 'Bgn: '.number_format($record->asset->luas_bangunan, 0, ',', '.').' m²';
                         }
+
                         return implode(' • ', $parts);
                     }),
 
@@ -77,25 +79,28 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                     ->money('IDR', locale: 'id')
                     ->placeholder('-')
                     ->description(function (AssetPemanfaatan $record): string {
-                        $durasi = $record->jangka_waktu_teks ?? ($record->jangka_waktu_tahun ? $record->jangka_waktu_tahun . ' thn' : '-');
+                        $durasi = $record->jangka_waktu_teks ?? ($record->jangka_waktu_tahun ? $record->jangka_waktu_tahun.' thn' : '-');
                         $bayar = $record->mekanisme_pembayaran ?? 'Sekaligus';
+
                         return "{$durasi} ({$bayar})";
                     }),
 
                 Tables\Columns\TextColumn::make('tanggal_awal')
                     ->label('Periode Masa Sewa')
                     ->formatStateUsing(function (AssetPemanfaatan $record): string {
-                        if (!$record->tanggal_awal && !$record->tanggal_akhir) {
+                        if (! $record->tanggal_awal && ! $record->tanggal_akhir) {
                             return '-';
                         }
                         $awal = $record->tanggal_awal ? $record->tanggal_awal->format('d/m/Y') : '-';
                         $akhir = $record->tanggal_akhir ? $record->tanggal_akhir->format('d/m/Y') : '-';
+
                         return "{$awal} s/d {$akhir}";
                     })
                     ->description(function (AssetPemanfaatan $record): ?string {
                         if ($record->status_perpanjangan === 'peringatan_jatuh_tempo') {
                             return '⚠️ Jatuh tempo ≤ 6 bulan';
                         }
+
                         return null;
                     }),
 
@@ -121,7 +126,7 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                     ->color('success')
                     ->weight('bold')
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->description(fn (AssetPemanfaatan $record) => $record->persentase_pelunasan . '% Lunas'),
+                    ->description(fn (AssetPemanfaatan $record) => $record->persentase_pelunasan.'% Lunas'),
 
                 Tables\Columns\TextColumn::make('keterangan')
                     ->label('Keterangan / Progres')
@@ -138,11 +143,12 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                     ->description(function (AssetPemanfaatan $record): ?string {
                         $desc = [];
                         if ($record->nomor_kepgub) {
-                            $desc[] = 'Kepgub: ' . $record->nomor_kepgub;
+                            $desc[] = 'Kepgub: '.$record->nomor_kepgub;
                         }
                         if ($record->nomor_persetujuan) {
-                            $desc[] = 'Persetujuan: ' . $record->nomor_persetujuan;
+                            $desc[] = 'Persetujuan: '.$record->nomor_persetujuan;
                         }
+
                         return implode(' | ', $desc) ?: null;
                     }),
 
@@ -217,10 +223,10 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                                     ->label('Bentuk Objek'),
                                 Infolists\Components\TextEntry::make('asset.luas_tanah')
                                     ->label('Luas Tanah')
-                                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 2, ',', '.') . ' m²' : '-'),
+                                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 2, ',', '.').' m²' : '-'),
                                 Infolists\Components\TextEntry::make('asset.luas_bangunan')
                                     ->label('Luas Bangunan')
-                                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 2, ',', '.') . ' m²' : '-'),
+                                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 2, ',', '.').' m²' : '-'),
                                 Infolists\Components\TextEntry::make('asset.latitude')
                                     ->label('Koordinat Latitude')
                                     ->copyable(),
@@ -297,7 +303,7 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                                     ->color('success'),
                                 Infolists\Components\TextEntry::make('persentase_pelunasan')
                                     ->label('Persentase Realisasi Pelunasan')
-                                    ->formatStateUsing(fn ($state) => $state . '%')
+                                    ->formatStateUsing(fn ($state) => $state.'%')
                                     ->badge()
                                     ->color(fn ($state) => $state >= 100 ? 'success' : ($state > 0 ? 'warning' : 'danger')),
                                 Infolists\Components\TextEntry::make('sisa_kewajiban')
@@ -321,7 +327,7 @@ class RekapPemanfaatanTableWidget extends BaseWidget
                     ->color('info')
                     ->url(fn (AssetPemanfaatan $record): string => "https://www.google.com/maps?q={$record->asset?->latitude},{$record->asset?->longitude}")
                     ->openUrlInNewTab()
-                    ->visible(fn (AssetPemanfaatan $record): bool => !empty($record->asset?->latitude)),
+                    ->visible(fn (AssetPemanfaatan $record): bool => ! empty($record->asset?->latitude)),
             ])
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 'all']);

@@ -11,11 +11,12 @@ use Illuminate\Console\Command;
 class GenerateKasdaPaymentsCommand extends Command
 {
     protected $signature = 'bmd:generate-kasda-payments';
+
     protected $description = 'Menghasilkan termin setoran Kasda (STS / NTPN) untuk kontrak sewa BMD aktif';
 
     public function handle(): int
     {
-        $this->info("=== GENERATE TERMIN PEMBAYARAN KASDA SEWA BMD ===");
+        $this->info('=== GENERATE TERMIN PEMBAYARAN KASDA SEWA BMD ===');
 
         $adminUser = User::first();
         $adminId = $adminUser?->id;
@@ -45,12 +46,12 @@ class GenerateKasdaPaymentsCommand extends Command
                     AssetPemanfaatanPayment::create([
                         'asset_pemanfaatan_id' => $lease->id,
                         'termin_ke' => $termin,
-                        'tahun_ke' => 'Tahun ' . $termin . ' (' . $periodeTahun->year . ')',
+                        'tahun_ke' => 'Tahun '.$termin.' ('.$periodeTahun->year.')',
                         'nominal_kewajiban' => $besaranTahunan,
                         'nominal_disetor' => $besaranTahunan,
                         'tanggal_jatuh_tempo' => $jatuhTempo,
                         'tanggal_bayar' => $jatuhTempo->copy()->subDays(rand(2, 10)),
-                        'nomor_sts' => 'STS-' . $periodeTahun->year . '/BPKAD-BMD/' . str_pad($lease->id . $termin, 4, '0', STR_PAD_LEFT),
+                        'nomor_sts' => 'STS-'.$periodeTahun->year.'/BPKAD-BMD/'.str_pad($lease->id.$termin, 4, '0', STR_PAD_LEFT),
                         'status_pembayaran' => 'lunas',
                         'catatan' => 'Setoran retribusi sewa diterima di Kasda Jabar via Bank BJB.',
                         'verified_by' => $adminId,
@@ -61,7 +62,7 @@ class GenerateKasdaPaymentsCommand extends Command
                     AssetPemanfaatanPayment::create([
                         'asset_pemanfaatan_id' => $lease->id,
                         'termin_ke' => $termin,
-                        'tahun_ke' => 'Tahun ' . $termin . ' (' . $periodeTahun->year . ')',
+                        'tahun_ke' => 'Tahun '.$termin.' ('.$periodeTahun->year.')',
                         'nominal_kewajiban' => $besaranTahunan,
                         'nominal_disetor' => null,
                         'tanggal_jatuh_tempo' => $jatuhTempo,
@@ -77,6 +78,7 @@ class GenerateKasdaPaymentsCommand extends Command
         }
 
         $this->info("Berhasil membuat {$countCreated} catatan termin setoran Kasda untuk seluruh sewa aktif!");
+
         return 0;
     }
 }

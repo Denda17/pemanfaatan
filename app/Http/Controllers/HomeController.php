@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\AssetPemanfaatan;
-use App\Models\Booking;
-use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
@@ -23,7 +21,7 @@ class HomeController extends Controller
         }
 
         $totalAssets = Asset::count();
-        $totalTersedia = Asset::where('status_ketersediaan', 'tersedia')->count();
+        $totalTersedia = Asset::siapSewa()->count();
         $totalTersewa = Asset::where('status_ketersediaan', 'tersewa')->count();
         $totalPad = AssetPemanfaatan::sum('besaran_sewa_tahunan');
 

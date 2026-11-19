@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Asset;
 use App\Models\AssetPemanfaatan;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -31,10 +30,10 @@ class CheckExpiringLeases extends Command
         $today = Carbon::today();
         $isDryRun = (bool) $this->option('dry-run');
 
-        $this->info("=== PEMERIKSAAN JATUH TEMPO SEWA BMD JABAR (PERMENDAGRI 19/2016) ===");
-        $this->line("Tanggal Evaluasi Sistem: " . $today->translatedFormat('d F Y'));
+        $this->info('=== PEMERIKSAAN JATUH TEMPO SEWA BMD JABAR (PERMENDAGRI 19/2016) ===');
+        $this->line('Tanggal Evaluasi Sistem: '.$today->translatedFormat('d F Y'));
         if ($isDryRun) {
-            $this->warn("[MODE DRY-RUN AKTIF] Perubahan tidak akan disimpan ke database.");
+            $this->warn('[MODE DRY-RUN AKTIF] Perubahan tidak akan disimpan ke database.');
         }
 
         $records = AssetPemanfaatan::with('asset')
@@ -55,7 +54,7 @@ class CheckExpiringLeases extends Command
             if ($today->gt($endDate)) {
                 if ($item->status_perpanjangan !== 'selesai') {
                     $this->warn("[-] Kontrak Selesai: ID #{$item->id} ({$item->nama_mitra}) berakhir pada {$endDate->format('d/m/Y')}");
-                    if (!$isDryRun) {
+                    if (! $isDryRun) {
                         $item->update(['status_perpanjangan' => 'selesai']);
                     }
                     $countExpired++;
@@ -69,7 +68,7 @@ class CheckExpiringLeases extends Command
 
                     if ($activeLeasesCount === 0 && $item->asset && $item->asset->status_ketersediaan !== 'tersedia') {
                         $this->info("    -> Mengembalikan aset '{$item->asset->nama_objek}' ke status TERSEDIA.");
-                        if (!$isDryRun) {
+                        if (! $isDryRun) {
                             $item->asset->update(['status_ketersediaan' => 'tersedia']);
                         }
                         $countFreedAssets++;
@@ -81,7 +80,7 @@ class CheckExpiringLeases extends Command
                 $daysRemaining = $today->diffInDays($endDate, false);
                 if ($item->status_perpanjangan !== 'peringatan_jatuh_tempo') {
                     $this->comment("[!] Peringatan Dini (H-{$daysRemaining} hari): ID #{$item->id} ({$item->nama_mitra}) batas jatuh tempo {$endDate->format('d/m/Y')}");
-                    if (!$isDryRun) {
+                    if (! $isDryRun) {
                         $item->update(['status_perpanjangan' => 'peringatan_jatuh_tempo']);
                     }
                 }
@@ -90,7 +89,7 @@ class CheckExpiringLeases extends Command
             // Kasus 3: Kontrak masih aman (> 6 bulan)
             else {
                 if ($item->status_perpanjangan === 'peringatan_jatuh_tempo') {
-                    if (!$isDryRun) {
+                    if (! $isDryRun) {
                         $item->update(['status_perpanjangan' => 'aktif']);
                     }
                 }
@@ -109,7 +108,8 @@ class CheckExpiringLeases extends Command
             ]
         );
 
-        $this->info("Pemeriksaan jatuh tempo sewa BMD berhasil dijalankan.");
+        $this->info('Pemeriksaan jatuh tempo sewa BMD berhasil dijalankan.');
+
         return Command::SUCCESS;
     }
 }

@@ -9,15 +9,19 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-users';
+
     protected static ?string $navigationGroup = 'Pengaturan';
+
     protected static ?string $modelLabel = 'Pengguna';
+
     protected static ?string $pluralModelLabel = 'Manajemen Pengguna';
+
     protected static ?int $navigationSort = 5;
 
     public static function getNavigationBadge(): ?string
@@ -88,6 +92,7 @@ class UserResource extends Resource
                                 Forms\Components\TextInput::make('nik')
                                     ->label('Nomor Induk Kependudukan (NIK)')
                                     ->placeholder('16 digit NIK sesuai KTP')
+                                    ->helperText('Data PII dilindungi UU PDP No. 27/2022. Hanya digunakan untuk verifikasi resmi.')
                                     ->maxLength(20),
 
                                 Forms\Components\TextInput::make('phone')

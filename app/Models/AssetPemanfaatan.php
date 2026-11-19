@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AssetPemanfaatan extends Model
 {
@@ -48,7 +49,7 @@ class AssetPemanfaatan extends Model
         return $this->belongsTo(Asset::class);
     }
 
-    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function payments(): HasMany
     {
         return $this->hasMany(AssetPemanfaatanPayment::class, 'asset_pemanfaatan_id')->orderBy('termin_ke');
     }
@@ -61,6 +62,7 @@ class AssetPemanfaatan extends Model
     public function getSisaKewajibanAttribute(): float
     {
         $totalSewa = (float) ($this->total_sewa ?? 0);
+
         return max(0, $totalSewa - $this->total_disetor);
     }
 
@@ -85,9 +87,9 @@ class AssetPemanfaatan extends Model
 
         $phone = preg_replace('/[^0-9]/', '', (string) $this->kontak_mitra);
         if (str_starts_with($phone, '0')) {
-            $phone = '62' . substr($phone, 1);
+            $phone = '62'.substr($phone, 1);
         } elseif (str_starts_with($phone, '8')) {
-            $phone = '62' . $phone;
+            $phone = '62'.$phone;
         }
 
         return $phone;
@@ -104,19 +106,19 @@ class AssetPemanfaatan extends Model
         $pks = $this->nomor_perjanjian ?? '-';
 
         $text = "Yth. Pimpinan / Pengelola {$this->nama_mitra},\n\n"
-            . "Kami dari *UPTD Pengamanan dan Pemanfaatan Aset BPKAD Provinsi Jawa Barat* menyampaikan pemberitahuan resmi bahwa Perjanjian Sewa Barang Milik Daerah (BMD) atas:\n"
-            . "• *Objek Aset:* {$namaAset}\n"
-            . "• *No. Perjanjian / PKS:* {$pks}\n"
-            . "• *Batas Akhir Sewa:* {$tglAkhir}\n\n"
-            . "Berdasarkan *Pasal 100 Permendagri No. 19 Tahun 2016*, permohonan perpanjangan sewa BMD wajib diajukan paling lambat *6 (enam) bulan* sebelum masa sewa berakhir.\n\n"
-            . "Mohon kesediaan konfirmasi perpanjangan sewa atau persiapan serah terima kembali objek ke Pemprov Jawa Barat. Apabila ada pertanyaan, silakan membalas pesan ini.\n\n"
-            . "Hormat kami,\n"
-            . "*UPTD Pengamanan & Pemanfaatan Aset Jabar*";
+            ."Kami dari *UPTD Pengamanan dan Pemanfaatan Aset BPKAD Provinsi Jawa Barat* menyampaikan pemberitahuan resmi bahwa Perjanjian Sewa Barang Milik Daerah (BMD) atas:\n"
+            ."• *Objek Aset:* {$namaAset}\n"
+            ."• *No. Perjanjian / PKS:* {$pks}\n"
+            ."• *Batas Akhir Sewa:* {$tglAkhir}\n\n"
+            ."Berdasarkan *Pasal 100 Permendagri No. 19 Tahun 2016*, permohonan perpanjangan sewa BMD wajib diajukan paling lambat *6 (enam) bulan* sebelum masa sewa berakhir.\n\n"
+            ."Mohon kesediaan konfirmasi perpanjangan sewa atau persiapan serah terima kembali objek ke Pemprov Jawa Barat. Apabila ada pertanyaan, silakan membalas pesan ini.\n\n"
+            ."Hormat kami,\n"
+            .'*UPTD Pengamanan & Pemanfaatan Aset Jabar*';
 
         if ($phone) {
-            return "https://api.whatsapp.com/send?phone={$phone}&text=" . rawurlencode($text);
+            return "https://api.whatsapp.com/send?phone={$phone}&text=".rawurlencode($text);
         }
 
-        return "https://api.whatsapp.com/send?text=" . rawurlencode($text);
+        return 'https://api.whatsapp.com/send?text='.rawurlencode($text);
     }
 }

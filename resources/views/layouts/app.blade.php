@@ -303,6 +303,50 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Global Realtime Countdown Script for 5-Day Booking Window -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function updateCountdowns() {
+                const elements = document.querySelectorAll('[data-countdown-deadline]');
+                if (!elements.length) return;
+
+                const now = new Date().getTime();
+
+                elements.forEach(function (el) {
+                    const deadlineIso = el.getAttribute('data-countdown-deadline');
+                    if (!deadlineIso) return;
+
+                    const deadline = new Date(deadlineIso).getTime();
+                    const diff = deadline - now;
+
+                    if (diff <= 0) {
+                        el.textContent = 'Masa Minat Berakhir';
+                        return;
+                    }
+
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                    const prefix = el.hasAttribute('data-countdown-prefix') ? el.getAttribute('data-countdown-prefix') : 'Sisa ';
+                    
+                    let parts = [];
+                    if (days > 0) parts.push(days + ' hari');
+                    if (hours > 0 || days > 0) parts.push(hours + ' jam');
+                    parts.push(minutes + ' mnt');
+                    parts.push(seconds + ' dtk');
+
+                    el.textContent = prefix + parts.join(' ') + ' lagi';
+                });
+            }
+
+            updateCountdowns();
+            setInterval(updateCountdowns, 1000);
+        });
+    </script>
+
     @stack('scripts')
 </body>
 </html>

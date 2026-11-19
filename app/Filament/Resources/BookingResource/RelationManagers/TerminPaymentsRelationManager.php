@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\BookingResource\RelationManagers;
 
 use App\Models\BookingPayment;
-use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -16,7 +15,9 @@ use Illuminate\Support\Facades\Auth;
 class TerminPaymentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'payments';
+
     protected static ?string $title = 'Riwayat Setoran Termin Kasda (Skema Bertahap)';
+
     protected static ?string $modelLabel = 'Setoran Termin Kasda';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
@@ -63,7 +64,7 @@ class TerminPaymentsRelationManager extends RelationManager
 
                 Forms\Components\FileUpload::make('file_path')
                     ->label('File Bukti Setor Bank BJB')
-                    ->disk('public')
+                    ->disk('local')
                     ->directory('booking-termin-payments')
                     ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
                     ->maxSize(20480)
@@ -91,7 +92,7 @@ class TerminPaymentsRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('termin_ke')
                     ->label('Termin')
-                    ->formatStateUsing(fn ($state) => 'Termin ke-' . $state)
+                    ->formatStateUsing(fn ($state) => 'Termin ke-'.$state)
                     ->sortable()
                     ->weight('bold'),
 
@@ -146,7 +147,7 @@ class TerminPaymentsRelationManager extends RelationManager
                     ->icon('heroicon-o-eye')
                     ->color('primary')
                     ->url(fn (BookingPayment $record) => $record->bukti_url, true)
-                    ->visible(fn (BookingPayment $record) => !empty($record->file_path)),
+                    ->visible(fn (BookingPayment $record) => ! empty($record->file_path)),
 
                 Tables\Actions\Action::make('verifikasi_lunas')
                     ->label('Sahkan Lunas')
@@ -155,7 +156,7 @@ class TerminPaymentsRelationManager extends RelationManager
                     ->requiresConfirmation()
                     ->modalHeading('Konfirmasi Pengesahan Setoran Kasda')
                     ->modalDescription('Pastikan dana setoran sewa ini telah benar-benar masuk dan terkonfirmasi pada mutasi Rekening Kas Umum Daerah (RKUD) Bank BJB.')
-                    ->visible(fn (BookingPayment $record) => $record->status_pembayaran !== 'lunas' && !empty($record->file_path))
+                    ->visible(fn (BookingPayment $record) => $record->status_pembayaran !== 'lunas' && ! empty($record->file_path))
                     ->action(function (BookingPayment $record) {
                         $record->update([
                             'status_pembayaran' => 'lunas',

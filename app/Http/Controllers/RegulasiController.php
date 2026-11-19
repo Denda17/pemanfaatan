@@ -18,18 +18,18 @@ class RegulasiController extends Controller
 
         $query = Regulation::active()->ordered();
 
-        if (!empty($kategori) && $kategori !== 'semua') {
+        if (! empty($kategori) && $kategori !== 'semua') {
             $query->where('tingkat', $kategori);
         }
 
-        if (!empty($search)) {
+        if (! empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('nomor', 'like', "%{$search}%")
-                  ->orWhere('judul', 'like', "%{$search}%")
-                  ->orWhere('jenis', 'like', "%{$search}%")
-                  ->orWhere('penerbit', 'like', "%{$search}%")
-                  ->orWhere('deskripsi', 'like', "%{$search}%")
-                  ->orWhere('poin_kunci', 'like', "%{$search}%");
+                    ->orWhere('judul', 'like', "%{$search}%")
+                    ->orWhere('jenis', 'like', "%{$search}%")
+                    ->orWhere('penerbit', 'like', "%{$search}%")
+                    ->orWhere('deskripsi', 'like', "%{$search}%")
+                    ->orWhere('poin_kunci', 'like', "%{$search}%");
             });
         }
 
@@ -62,7 +62,7 @@ class RegulasiController extends Controller
 
         return response()->file($filePath, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $downloadName . '"',
+            'Content-Disposition' => 'inline; filename="'.$downloadName.'"',
         ]);
     }
 

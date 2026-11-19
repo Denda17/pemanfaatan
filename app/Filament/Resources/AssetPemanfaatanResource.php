@@ -14,15 +14,21 @@ use Filament\Tables\Table;
 class AssetPemanfaatanResource extends Resource
 {
     protected static ?string $model = AssetPemanfaatan::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-document-currency-dollar';
+
     protected static ?string $navigationGroup = 'Manajemen BMD';
+
     protected static ?string $modelLabel = 'Rekap Sewa / PKS';
+
     protected static ?string $pluralModelLabel = 'Data Pemanfaatan & Sewa BMD';
+
     protected static ?int $navigationSort = 3;
 
     public static function getNavigationBadge(): ?string
     {
         $warningCount = static::getModel()::where('status_perpanjangan', 'peringatan_jatuh_tempo')->count();
+
         return $warningCount > 0 ? (string) $warningCount : null;
     }
 

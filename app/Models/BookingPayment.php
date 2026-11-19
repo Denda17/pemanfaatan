@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class BookingPayment extends Model
 {
@@ -50,7 +49,7 @@ class BookingPayment extends Model
 
     public function getBuktiUrlAttribute(): ?string
     {
-        if (!$this->file_path) {
+        if (! $this->file_path) {
             return null;
         }
 
@@ -58,7 +57,7 @@ class BookingPayment extends Model
             return $this->file_path;
         }
 
-        return Storage::disk('public')->url($this->file_path);
+        return route('booking.payments.view', $this);
     }
 
     public function getStatusLabelAttribute(): string
