@@ -244,9 +244,19 @@
                                     Tersedia
                                 </span>
                             @elseif($asset->status_ketersediaan === 'proses_booking')
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white shadow-xs">
-                                    Proses Booking
-                                </span>
+                                @if($asset->isBookingOpen())
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white shadow-xs animate-pulse">
+                                        <span>Minat Terbuka (</span><span data-countdown-deadline="{{ $asset->booking_deadline_iso }}">Sisa {{ $asset->remaining_booking_time ?? '5 Hari' }}</span><span>)</span>
+                                    </span>
+                                @elseif($asset->isAdministrativeProcess())
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-600 text-white shadow-xs">
+                                        Proses Administrasi
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-600 text-white shadow-xs">
+                                        Minat Ditutup
+                                    </span>
+                                @endif
                             @else
                                 <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gray-800 text-white shadow-xs">
                                     Tersewa
@@ -308,8 +318,8 @@
                             <a href="{{ route('catalog.show', $asset->slug) }}" class="flex-grow py-2 px-3 rounded-full text-center text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
                                 Detail Aset
                             </a>
-                            @if($asset->status_ketersediaan === 'tersewa')
-                                <button type="button" disabled class="py-2 px-3 rounded-full text-xs font-extrabold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed flex items-center justify-center shrink-0 opacity-75" title="Aset sedang dalam masa sewa aktif">
+                            @if($asset->status_ketersediaan === 'tersewa' || $asset->isBookingClosed())
+                                <button type="button" disabled class="py-2 px-3 rounded-full text-xs font-extrabold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed flex items-center justify-center shrink-0 opacity-75" title="{{ $asset->status_ketersediaan === 'tersewa' ? 'Aset sedang dalam masa sewa aktif' : 'Pendaftaran minat untuk aset ini telah ditutup' }}">
                                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                 </button>
                             @else
@@ -373,6 +383,7 @@
                     bounds.extend([lat, lng]);
 
                     const statusKey = (item.status_ketersediaan || item.status || 'tersedia').toLowerCase();
+                    const isBookingOpen = item.is_booking_open ?? (statusKey === 'tersedia');
                     
                     // Status style configuration
                     let statusConfig = {
@@ -385,14 +396,25 @@
                     };
 
                     if (statusKey === 'proses_booking') {
-                        statusConfig = {
-                            color: '#D97706', // Amber
-                            label: item.status_label || 'Sedang Proses Booking',
-                            badgeBg: '#FFFBEB',
-                            badgeText: '#92400E',
-                            badgeBorder: '#FDE68A',
-                            isAvailable: false
-                        };
+                        if (isBookingOpen) {
+                            statusConfig = {
+                                color: '#D97706', // Amber
+                                label: item.status_label || 'Minat Terbuka (5 Hari Kerja)',
+                                badgeBg: '#FFFBEB',
+                                badgeText: '#92400E',
+                                badgeBorder: '#FDE68A',
+                                isAvailable: true
+                            };
+                        } else {
+                            statusConfig = {
+                                color: '#64748B', // Slate
+                                label: item.status_label || 'Minat Ditutup (Verifikasi)',
+                                badgeBg: '#F1F5F9',
+                                badgeText: '#334155',
+                                badgeBorder: '#CBD5E1',
+                                isAvailable: false
+                            };
+                        }
                     } else if (statusKey === 'tersewa') {
                         statusConfig = {
                             color: '#475569', // Slate
@@ -468,9 +490,9 @@
                                     <a href="${item.url}" class="py-2.5 px-3 text-center rounded-xl bg-gray-100 hover:bg-gray-200 !text-gray-800 font-extrabold text-xs transition flex items-center justify-center border border-gray-200/80 no-underline shadow-2xs" style="color: #1f2937 !important; text-decoration: none !important;">
                                         <span style="color: #1f2937 !important;">Detail Aset</span>
                                     </a>
-                                    ${statusKey === 'tersewa' ? `
-                                        <button type="button" disabled class="py-2.5 px-3 text-center rounded-xl bg-gray-100 text-gray-400 font-extrabold text-xs border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 opacity-75" title="Aset sedang dalam masa sewa aktif">
-                                            <span>Tersewa</span>
+                                    ${(statusKey === 'tersewa' || !statusConfig.isAvailable) ? `
+                                        <button type="button" disabled class="py-2.5 px-3 text-center rounded-xl bg-gray-100 text-gray-400 font-extrabold text-xs border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 opacity-75" title="${statusKey === 'tersewa' ? 'Aset sedang dalam masa sewa aktif' : 'Pendaftaran minat telah ditutup'}">
+                                            <span>${statusKey === 'tersewa' ? 'Tersewa' : 'Ditutup'}</span>
                                             <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                         </button>
                                     ` : `
@@ -522,9 +544,9 @@
                                     <a href="${item.url}" class="py-2.5 px-3 text-center rounded-xl bg-gray-100 hover:bg-gray-200 !text-gray-800 font-extrabold text-xs transition flex items-center justify-center border border-gray-200/80 no-underline shadow-2xs" style="color: #1f2937 !important; text-decoration: none !important;">
                                         <span style="color: #1f2937 !important;">Detail Aset</span>
                                     </a>
-                                    ${statusKey === 'tersewa' ? `
-                                        <button type="button" disabled class="py-2.5 px-3 text-center rounded-xl bg-gray-100 text-gray-400 font-extrabold text-xs border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 opacity-75" title="Aset sedang dalam masa sewa aktif">
-                                            <span>Tersewa</span>
+                                    ${(statusKey === 'tersewa' || !statusConfig.isAvailable) ? `
+                                        <button type="button" disabled class="py-2.5 px-3 text-center rounded-xl bg-gray-100 text-gray-400 font-extrabold text-xs border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 opacity-75" title="${statusKey === 'tersewa' ? 'Aset sedang dalam masa sewa aktif' : 'Pendaftaran minat telah ditutup'}">
+                                            <span>${statusKey === 'tersewa' ? 'Tersewa' : 'Ditutup'}</span>
                                             <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                         </button>
                                     ` : `

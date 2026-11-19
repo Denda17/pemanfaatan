@@ -202,9 +202,19 @@
                                 Tersedia Disewa
                             </span>
                         @elseif($asset->status_ketersediaan === 'proses_booking')
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-amber-500 text-white shadow-sm">
-                                Proses Booking
-                            </span>
+                            @if($asset->isBookingOpen())
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-amber-500 text-white shadow-sm animate-pulse">
+                                    <span>Minat Terbuka (</span><span data-countdown-deadline="{{ $asset->booking_deadline_iso }}">Sisa {{ $asset->remaining_booking_time }}</span><span>)</span>
+                                </span>
+                            @elseif($asset->isAdministrativeProcess())
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-blue-600 text-white shadow-sm">
+                                    Proses Administrasi
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-slate-600 text-white shadow-sm">
+                                    Minat Ditutup
+                                </span>
+                            @endif
                         @else
                             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-gray-800 text-white shadow-sm">
                                 Tersewa
@@ -278,9 +288,9 @@
                         <a href="{{ route('catalog.show', $asset->slug) }}" class="flex-grow py-2.5 px-4 rounded-full text-center text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
                             Lihat Detail
                         </a>
-                        @if($asset->status_ketersediaan === 'tersewa')
-                            <button type="button" disabled class="py-2.5 px-4 rounded-full text-xs font-extrabold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed flex items-center gap-1.5 shrink-0 opacity-75" title="Aset sedang dalam masa sewa aktif">
-                                <span>Tersewa</span>
+                        @if($asset->status_ketersediaan === 'tersewa' || $asset->isBookingClosed())
+                            <button type="button" disabled class="py-2.5 px-4 rounded-full text-xs font-extrabold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed flex items-center gap-1.5 shrink-0 opacity-75" title="{{ $asset->status_ketersediaan === 'tersewa' ? 'Aset sedang dalam masa sewa aktif' : 'Pendaftaran minat untuk aset ini telah ditutup' }}">
+                                <span>{{ $asset->status_ketersediaan === 'tersewa' ? 'Tersewa' : 'Ditutup' }}</span>
                                 <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                             </button>
                         @else
