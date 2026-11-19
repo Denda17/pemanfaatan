@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->text('rencana_peruntukan')->nullable();
             $table->integer('durasi_sewa_tahun')->default(1);
-            $table->string('status')->default('pending')->index(); 
+            $table->string('status')->default('pending')->index();
             // pending, contacted, document_review, field_survey, approved, contract_signed, rejected
             $table->text('catatan_admin')->nullable();
             $table->text('alasan_penolakan')->nullable();

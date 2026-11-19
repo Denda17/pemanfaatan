@@ -27,7 +27,21 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        User::updateOrCreate(
+            ['email' => 'sihabudindenda28@gmail.com'],
+            [
+                'name' => 'Denda Sihabudin',
+                'role' => 'peminat',
+                'phone' => '081234567890',
+                'password' => bcrypt('password'),
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+
         $this->call([
+            AssetSeeder::class,
+            BanceuyUnitsSeeder::class,
             BookingRequirementSeeder::class,
             BookingSeeder::class,
             RegulationSeeder::class,
