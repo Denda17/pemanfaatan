@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Booking extends Model
 {
@@ -34,6 +35,12 @@ class Booking extends Model
         'tanggal_booking',
         'tanggal_dihubungi',
         'petugas_uptd_id',
+        'beauty_contest_scheduled_at',
+        'beauty_contest_location',
+        'beauty_contest_notes',
+        'beauty_contest_status',
+        'is_beauty_contest_winner',
+        'beauty_contest_berita_acara_path',
     ];
 
     protected $casts = [
@@ -41,6 +48,8 @@ class Booking extends Model
         'selected_unit_ids' => 'array',
         'tanggal_booking' => 'datetime',
         'tanggal_dihubungi' => 'datetime',
+        'beauty_contest_scheduled_at' => 'datetime',
+        'is_beauty_contest_winner' => 'boolean',
     ];
 
     protected static function booted()
@@ -65,11 +74,13 @@ class Booking extends Model
         static::saved(function ($booking) {
             if ($booking->wasChanged('status')) {
                 $booking->asset?->syncBookingStatus();
+                $booking->syncUnitStatuses();
             }
         });
 
         static::deleted(function ($booking) {
             $booking->asset?->syncBookingStatus();
+            $booking->syncUnitStatuses();
         });
     }
 
@@ -146,16 +157,53 @@ class Booking extends Model
         return "https://wa.me/{$phone}?text={$message}";
     }
 
+    public function getBeautyContestWhatsappUrlAttribute(): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $this->nomor_whatsapp);
+        if (str_starts_with($phone, '0')) {
+            $phone = '62'.substr($phone, 1);
+        }
+
+        $assetName = $this->asset?->nama_objek ?? 'Aset BMD';
+        $schedule = $this->formatted_beauty_contest_schedule ?? 'Akan diinformasikan lebih lanjut';
+        $location = $this->beauty_contest_location ?? 'Kantor UPTD Pengamanan & Pemanfaatan Aset';
+        $notes = $this->beauty_contest_notes ? "\nCatatan: {$this->beauty_contest_notes}" : '';
+
+        $message = rawurlencode(
+            "Yth. Bapak/Ibu {$this->nama_pemohon},\n\n".
+            "Sehubungan dengan permohonan sewa BMD *{$assetName}* (Kode: {$this->kode_booking}), kami menginformasikan bahwa berkas persyaratan Anda telah LENGKAP.\n\n".
+            "Karena terdapat lebih dari satu peminat yang memenuhi syarat, UPTD Pengamanan & Pemanfaatan Aset BPKAD Jabar mengundang Anda untuk menghadiri sesi Seleksi Pemaparan Rencana Usaha (*Beauty Contest*):\n\n".
+            "📅 Waktu: {$schedule}\n".
+            "📍 Tempat/Tautan: {$location}{$notes}\n\n".
+            'Mohon konfirmasi kehadiran Anda dengan membalas pesan ini. Terima kasih.'
+        );
+
+        return "https://wa.me/{$phone}?text={$message}";
+    }
+
+    public function getFormattedBeautyContestScheduleAttribute(): ?string
+    {
+        return $this->beauty_contest_scheduled_at?->locale('id')->translatedFormat('l, d F Y \p\u\k\u\l H:i').' WIB';
+    }
+
+    public function isBeautyContestScheduled(): bool
+    {
+        return $this->beauty_contest_scheduled_at !== null;
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
             'pending' => 'Menunggu Tindak Lanjut',
             'contacted' => 'Sudah Dihubungi via WA',
             'document_review' => 'Verifikasi Berkas',
+            'beauty_contest' => 'Tahap Beauty Contest',
             'field_survey' => 'Peninjauan Lapangan',
             'approved' => 'Disetujui',
             'contract_signed' => 'PKS Terbit (Selesai)',
             'rejected' => 'Ditolak / Batal',
+            'expired' => 'Gugur / Kedaluwarsa',
+            'cancelled' => 'Dibatalkan',
             default => ucfirst($this->status),
         };
     }
@@ -166,10 +214,13 @@ class Booking extends Model
             'pending' => 'warning',
             'contacted' => 'info',
             'document_review' => 'primary',
+            'beauty_contest' => 'purple',
             'field_survey' => 'indigo',
             'approved' => 'success',
             'contract_signed' => 'success',
             'rejected' => 'danger',
+            'expired' => 'danger',
+            'cancelled' => 'danger',
             default => 'gray',
         };
     }
@@ -343,5 +394,373 @@ class Booking extends Model
         }
 
         return '••••';
+    }
+
+    /**
+     * Hitung batas waktu booking 5 hari kerja presisi (Senin s.d. Jumat pkl 23:59:59).
+     */
+    public static function calculateBookingDeadline(?\DateTimeInterface $from = null): Carbon
+    {
+        return Asset::calculateBookingDeadline($from);
+    }
+
+    /**
+     * Dapatkan tanggal deadline permohonan booking ini.
+     */
+    public function getDeadlineAtAttribute(): ?Carbon
+    {
+        if ($this->asset?->isMultiUnit()) {
+            $units = $this->selected_units;
+            if ($units->isNotEmpty()) {
+                $unitDeadlines = $units->pluck('booking_deadline_at')->filter();
+                if ($unitDeadlines->isNotEmpty()) {
+                    return $unitDeadlines->min();
+                }
+            }
+            if ($this->assetUnit?->booking_deadline_at) {
+                return $this->assetUnit->booking_deadline_at;
+            }
+        }
+
+        return $this->asset?->booking_deadline_at;
+    }
+
+    /**
+     * Format tanggal deadline dalam bahasa Indonesia.
+     */
+    public function getFormattedDeadlineAttribute(): ?string
+    {
+        return $this->deadline_at?->locale('id')->translatedFormat('l, d F Y \p\u\k\u\l H:i').' WIB';
+    }
+
+    /**
+     * Sisa waktu batas akhir permohonan (humanized).
+     */
+    public function getRemainingTimeAttribute(): ?string
+    {
+        $deadline = $this->deadline_at;
+        if (! $deadline || now()->gt($deadline)) {
+            return null;
+        }
+
+        $totalSeconds = (int) now()->diffInSeconds($deadline);
+        $days = (int) floor($totalSeconds / 86400);
+        $hours = (int) floor(($totalSeconds % 86400) / 3600);
+        $minutes = (int) floor(($totalSeconds % 3600) / 60);
+
+        if ($days > 0) {
+            return "{$days} hari {$hours} jam {$minutes} menit";
+        }
+        if ($hours > 0) {
+            return "{$hours} jam {$minutes} menit";
+        }
+
+        return "{$minutes} menit";
+    }
+
+    /**
+     * Cek apakah masa tenggang 5 hari kerja untuk melengkapi berkas sudah kedaluwarsa.
+     */
+    public function isExpired(): bool
+    {
+        if ($this->status === 'expired') {
+            return true;
+        }
+
+        if (in_array($this->status, ['rejected', 'cancelled'], true)) {
+            return false;
+        }
+
+        // Jika seluruh berkas wajib sudah lengkap diunggah, tidak dianggap expired
+        if ($this->getCompletenessStats()['is_complete']) {
+            return false;
+        }
+
+        $deadline = $this->deadline_at;
+        if (! $deadline) {
+            return false;
+        }
+
+        return now()->gt($deadline);
+    }
+
+    /**
+     * Dapatkan langkah progres linimasa aktif (1 sampai 6).
+     */
+    public function getStatusStepAttribute(): int
+    {
+        if ($this->status === 'contract_signed') {
+            return 6;
+        }
+        if ($this->status === 'approved') {
+            return 5;
+        }
+        if ($this->status === 'field_survey') {
+            return 4;
+        }
+        if (in_array($this->status, ['document_review', 'beauty_contest'], true)) {
+            return 3;
+        }
+        if ($this->status === 'contacted') {
+            return 2;
+        }
+
+        return 1;
+    }
+
+    /**
+     * URL Berita Acara Seleksi Beauty Contest.
+     */
+    public function getBeritaAcaraSeleksiUrlAttribute(): ?string
+    {
+        if (! $this->beauty_contest_berita_acara_path) {
+            return null;
+        }
+
+        return route('booking.beauty-contest.berita-acara', $this);
+    }
+
+    /**
+     * Cek apakah ada dokumen persyaratan yang berstatus 'revision' (diminta perbaikan oleh admin).
+     */
+    public function hasRevisionDocuments(): bool
+    {
+        return $this->documents()->where('status_verifikasi', 'revision')->exists();
+    }
+
+    /**
+     * Dapatkan permohonan lain yang bersaing pada objek/unit yang sama.
+     */
+    public function getCompetingBeautyContestBookings()
+    {
+        return static::where('id', '!=', $this->id)
+            ->where('asset_id', $this->asset_id)
+            ->where('status', 'beauty_contest')
+            ->get();
+    }
+
+    /**
+     * Jadwalkan Beauty Contest untuk permohonan ini dan seluruh pemohon pesaingnya pada aset yang sama.
+     */
+    public function scheduleBeautyContest(\DateTimeInterface $scheduledAt, string $location, ?string $notes = null): int
+    {
+        $payload = [
+            'beauty_contest_scheduled_at' => $scheduledAt,
+            'beauty_contest_location' => $location,
+            'beauty_contest_notes' => $notes,
+            'beauty_contest_status' => 'scheduled',
+        ];
+
+        $this->update($payload);
+
+        $competing = $this->getCompetingBeautyContestBookings();
+        foreach ($competing as $c) {
+            $c->update($payload);
+        }
+
+        return 1 + $competing->count();
+    }
+
+    /**
+     * Tetapkan pemenang Beauty Contest dan selesaikan seleksi:
+     * - Pemenang beralih ke 'document_review'.
+     * - Peserta lain dialihkan ke 'rejected' dengan alasan objektif.
+     */
+    public function awardBeautyContestWinner(?string $beritaAcaraPath = null, ?string $catatanAdmin = null): void
+    {
+        $this->update([
+            'status' => 'document_review',
+            'is_beauty_contest_winner' => true,
+            'beauty_contest_status' => 'completed',
+            'beauty_contest_berita_acara_path' => $beritaAcaraPath ?? $this->beauty_contest_berita_acara_path,
+            'catatan_admin' => $catatanAdmin ? "Ditetapkan sebagai pemenang Beauty Contest. {$catatanAdmin}" : 'Ditetapkan sebagai pemenang seleksi Beauty Contest.',
+        ]);
+
+        $competing = $this->getCompetingBeautyContestBookings();
+        foreach ($competing as $c) {
+            $c->update([
+                'status' => 'rejected',
+                'is_beauty_contest_winner' => false,
+                'beauty_contest_status' => 'completed',
+                'beauty_contest_berita_acara_path' => $beritaAcaraPath ?? $c->beauty_contest_berita_acara_path,
+                'alasan_penolakan' => 'Tidak terpilih dalam seleksi Beauty Contest (skor evaluasi berada di bawah mitra terpilih).',
+                'catatan_admin' => 'Terima kasih atas partisipasinya dalam Beauty Contest. Objek ditetapkan kepada mitra dengan nilai tertinggi sesuai Berita Acara Seleksi.',
+            ]);
+        }
+    }
+
+    /**
+     * Sinkronkan status unit aset yang dipilih.
+     */
+    public function syncUnitStatuses(): void
+    {
+        foreach ($this->selected_units as $unit) {
+            $unit->syncBookingStatus();
+        }
+    }
+
+    /**
+     * Evaluasi batas waktu untuk aset reguler:
+     * - Batalkan booking yang belum lengkap jika deadline terlewati.
+     * - Kembalikan aset ke 'tersedia' jika tidak ada peminat lengkap yang bertahan.
+     * - Arahkan ke 'beauty_contest' jika terdapat >= 2 peminat lengkap.
+     */
+    public static function evaluateDeadlineForAsset(?Asset $asset): void
+    {
+        if (! $asset) {
+            return;
+        }
+
+        $deadline = $asset->booking_deadline_at;
+        if (! $deadline || now()->lte($deadline)) {
+            return;
+        }
+
+        $activeBookings = $asset->bookings()
+            ->whereNotIn('status', ['rejected', 'expired', 'cancelled', 'contract_signed'])
+            ->get();
+
+        if ($activeBookings->isEmpty()) {
+            $asset->syncBookingStatus();
+
+            return;
+        }
+
+        $completeBookings = collect();
+
+        foreach ($activeBookings as $b) {
+            $stats = $b->getCompletenessStats();
+            if ($stats['is_complete']) {
+                $completeBookings->push($b);
+            } else {
+                $b->update([
+                    'status' => 'expired',
+                    'alasan_penolakan' => 'Batas waktu 5 hari kerja terlampaui tanpa kelengkapan berkas persyaratan.',
+                    'catatan_admin' => 'Gugur otomatis: Berkas persyaratan tidak dilengkapi hingga batas waktu 5 hari kerja berakhir.',
+                ]);
+            }
+        }
+
+        if ($completeBookings->isEmpty()) {
+            $asset->update([
+                'status_ketersediaan' => 'tersedia',
+                'booking_opened_at' => null,
+                'booking_deadline_at' => null,
+            ]);
+        } elseif ($completeBookings->count() === 1) {
+            $winner = $completeBookings->first();
+            if ($winner->status === 'pending') {
+                $winner->update(['status' => 'document_review']);
+            }
+        } else {
+            foreach ($completeBookings as $contestant) {
+                if (in_array($contestant->status, ['pending', 'document_review'], true)) {
+                    $contestant->update(['status' => 'beauty_contest']);
+                }
+            }
+        }
+    }
+
+    /**
+     * Evaluasi batas waktu untuk unit aset (ruko/kios):
+     */
+    public static function evaluateDeadlineForUnit(?AssetUnit $unit): void
+    {
+        if (! $unit) {
+            return;
+        }
+
+        $deadline = $unit->booking_deadline_at;
+        if (! $deadline || now()->lte($deadline)) {
+            return;
+        }
+
+        $unitBookings = static::where(function ($q) use ($unit) {
+            $q->where('asset_unit_id', $unit->id)
+                ->orWhereJsonContains('selected_unit_ids', $unit->id)
+                ->orWhereJsonContains('selected_unit_ids', (string) $unit->id);
+        })
+            ->whereNotIn('status', ['rejected', 'expired', 'cancelled', 'contract_signed'])
+            ->get();
+
+        if ($unitBookings->isEmpty()) {
+            $unit->syncBookingStatus();
+
+            return;
+        }
+
+        $completeBookings = collect();
+
+        foreach ($unitBookings as $b) {
+            $stats = $b->getCompletenessStats();
+            if ($stats['is_complete']) {
+                $completeBookings->push($b);
+            } else {
+                $b->update([
+                    'status' => 'expired',
+                    'alasan_penolakan' => 'Batas waktu 5 hari kerja terlampaui tanpa kelengkapan berkas persyaratan.',
+                    'catatan_admin' => 'Gugur otomatis: Berkas persyaratan tidak dilengkapi hingga batas waktu 5 hari kerja berakhir.',
+                ]);
+            }
+        }
+
+        if ($completeBookings->isEmpty()) {
+            $unit->update([
+                'status_ketersediaan' => 'tersedia',
+                'booking_opened_at' => null,
+                'booking_deadline_at' => null,
+            ]);
+        } elseif ($completeBookings->count() === 1) {
+            $winner = $completeBookings->first();
+            if ($winner->status === 'pending') {
+                $winner->update(['status' => 'document_review']);
+            }
+        } else {
+            foreach ($completeBookings as $contestant) {
+                if (in_array($contestant->status, ['pending', 'document_review'], true)) {
+                    $contestant->update(['status' => 'beauty_contest']);
+                }
+            }
+        }
+    }
+
+    /**
+     * Evaluasi seluruh aset dan unit yang memiliki batas waktu kedaluwarsa.
+     */
+    public static function evaluateAllDeadlines(): array
+    {
+        $expiredAssetsCount = 0;
+
+        $assets = Asset::whereNotNull('booking_deadline_at')
+            ->where('booking_deadline_at', '<', now())
+            ->get();
+
+        foreach ($assets as $asset) {
+            $beforeStatus = $asset->status_ketersediaan;
+            static::evaluateDeadlineForAsset($asset);
+            $asset->refresh();
+            if ($beforeStatus === 'proses_booking' && $asset->status_ketersediaan === 'tersedia') {
+                $expiredAssetsCount++;
+            }
+        }
+
+        $units = AssetUnit::whereNotNull('booking_deadline_at')
+            ->where('booking_deadline_at', '<', now())
+            ->get();
+
+        foreach ($units as $unit) {
+            $beforeStatus = $unit->status_ketersediaan;
+            static::evaluateDeadlineForUnit($unit);
+            $unit->refresh();
+            if ($beforeStatus === 'proses_booking' && $unit->status_ketersediaan === 'tersedia') {
+                $expiredAssetsCount++;
+            }
+        }
+
+        return [
+            'assets_reverted' => $expiredAssetsCount,
+            'bookings_expired' => static::where('status', 'expired')->count(),
+            'beauty_contest_active' => static::where('status', 'beauty_contest')->count(),
+        ];
     }
 }

@@ -83,8 +83,293 @@
         </div>
     @endif
 
-    <!-- 5-Day Booking Window Countdown Banner -->
-    @if($booking->asset && $booking->asset->isBookingOpen())
+    @php
+        $isBeautyContestLoser = ($booking->status === 'rejected' && ($booking->beauty_contest_status === 'completed' || str_contains($booking->alasan_penolakan ?? '', 'Beauty Contest') || str_contains($booking->catatan_admin ?? '', 'Beauty Contest')));
+    @endphp
+
+    {{-- 1. RUANG KHUSUS: PEMENANG BEAUTY CONTEST / MITRA TERPILIH (DITERIMA) --}}
+    @if($booking->is_beauty_contest_winner)
+        <div class="mb-8 bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-emerald-950/25 border-2 border-emerald-400/50 relative overflow-hidden">
+            <div class="absolute -right-12 -top-12 w-64 h-64 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-12 -bottom-12 w-64 h-64 bg-amber-400/15 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative z-10">
+                <div class="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                    <div class="flex items-start gap-4 sm:gap-5">
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-amber-400 text-amber-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-400/30 mt-0.5">
+                            <svg class="w-8 h-8 sm:w-9 sm:h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2.5 flex-wrap mb-2">
+                                <span class="px-3 py-1 rounded-full text-[11px] font-black bg-amber-400 text-amber-950 uppercase tracking-wider shadow-xs flex items-center gap-1.5">
+                                    <span>🏆</span>
+                                    <span>Pemenang Beauty Contest</span>
+                                </span>
+                                <span class="px-3 py-1 rounded-full text-[11px] font-bold bg-white/20 text-white backdrop-blur-xs border border-white/25">
+                                    Permohonan Diterima &amp; Ditetapkan
+                                </span>
+                            </div>
+                            <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">
+                                Selamat! Anda Ditetapkan Sebagai Pemenang Seleksi Sewa BMD
+                            </h2>
+                            <p class="text-xs sm:text-sm text-emerald-100 mt-1.5 max-w-3xl leading-relaxed">
+                                Berdasarkan hasil penilaian dan evaluasi sesi pemaparan (Beauty Contest), permohonan sewa untuk objek <strong class="text-white underline decoration-amber-400 decoration-2 underline-offset-2">{{ $booking->asset?->nama_objek }}</strong> resmi ditetapkan kepada <strong class="text-white">{{ $booking->nama_pemohon }}</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    @if($booking->beauty_contest_berita_acara_path)
+                        <div class="shrink-0">
+                            <a href="{{ $booking->berita_acara_seleksi_url ?? '#' }}" target="_blank" class="px-5 py-3 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-950 text-xs font-black shadow-md transition flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span>Unduh Berita Acara Seleksi (.pdf)</span>
+                            </a>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- RUANG KHUSUS: CATATAN RESMI PENETAPAN EVALUASI UPTD -->
+                <div class="mt-6 bg-white/95 backdrop-blur-md rounded-2xl p-5 sm:p-6 text-gray-900 shadow-md border border-emerald-300/60">
+                    <div class="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-800 mb-2">
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Catatan Resmi Penetapan Hasil Evaluasi UPTD:</span>
+                    </div>
+                    <p class="text-sm sm:text-base font-extrabold text-gray-900 leading-relaxed pl-4 border-l-4 border-amber-400">
+                        "{{ $booking->catatan_admin ?: 'Ditetapkan sebagai pemenang seleksi Beauty Contest. Selamat, permohonan Anda berhak melanjutkan ke proses sewa.' }}"
+                    </p>
+                </div>
+
+                <!-- Panduan Tahapan Selanjutnya (Roadmap) -->
+                <div class="mt-5 pt-5 border-t border-emerald-500/50 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div class="bg-emerald-800/40 rounded-xl p-3.5 border border-emerald-400/30">
+                        <span class="font-extrabold text-amber-300 block mb-1">1. BA Negosiasi &amp; Kepgub</span>
+                        <p class="text-[11px] text-emerald-100 leading-relaxed">Tim UPTD menyiapkan Berita Acara Negosiasi dan fasilitasi Keputusan Gubernur Jawa Barat.</p>
+                    </div>
+                    <div class="bg-emerald-800/40 rounded-xl p-3.5 border border-emerald-400/30">
+                        <span class="font-extrabold text-amber-300 block mb-1">2. Perjanjian Kerja Sama (PKS)</span>
+                        <p class="text-[11px] text-emerald-100 leading-relaxed">Penyusunan dan penandatanganan naskah resmi PKS pemanfaatan BMD.</p>
+                    </div>
+                    <div class="bg-emerald-800/40 rounded-xl p-3.5 border border-emerald-400/30">
+                        <span class="font-extrabold text-amber-300 block mb-1">3. Pembayaran via STS</span>
+                        <p class="text-[11px] text-emerald-100 leading-relaxed">Penyetoran uang sewa ke Kasda (RKUD) Pemprov Jabar sebelum serah terima fisik aset.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {{-- 2. RUANG KHUSUS: PESERTA BEAUTY CONTEST TIDAK TERPILIH (KALAH BEAUTY CONTEST) --}}
+    @elseif($isBeautyContestLoser)
+        <div class="mb-8 bg-gradient-to-br from-slate-900 via-slate-800 to-rose-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-slate-950/30 border-2 border-rose-500/40 relative overflow-hidden">
+            <div class="absolute -right-12 -top-12 w-64 h-64 bg-rose-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative z-10">
+                <div class="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                    <div class="flex items-start gap-4 sm:gap-5">
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-rose-600/90 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-600/30 mt-0.5">
+                            <svg class="w-8 h-8 sm:w-9 sm:h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2.5 flex-wrap mb-2">
+                                <span class="px-3 py-1 rounded-full text-[11px] font-black bg-rose-500 text-white uppercase tracking-wider shadow-xs">
+                                    Hasil Seleksi Beauty Contest
+                                </span>
+                                <span class="px-3 py-1 rounded-full text-[11px] font-bold bg-white/20 text-white backdrop-blur-xs border border-white/25">
+                                    Belum Terpilih Sebagai Mitra
+                                </span>
+                            </div>
+                            <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">
+                                Pemberitahuan Hasil Seleksi Terbuka (Beauty Contest)
+                            </h2>
+                            <p class="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-3xl leading-relaxed">
+                                Terima kasih atas partisipasi dan pemaparan rencana usaha yang telah Anda sampaikan untuk objek <strong class="text-white underline decoration-rose-400 decoration-2 underline-offset-2">{{ $booking->asset?->nama_objek }}</strong>. Berdasarkan hasil evaluasi komprehensif oleh Tim Penilai UPTD, objek sewa ini telah ditetapkan kepada mitra dengan perolehan nilai evaluasi tertinggi.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shrink-0">
+                        <a href="{{ route('catalog.index') }}" class="px-5 py-3 rounded-2xl bg-white hover:bg-rose-50 text-slate-950 text-xs font-black shadow-md transition flex items-center justify-center gap-2">
+                            <span>Jelajahi Aset Lain di Katalog &rarr;</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- RUANG KHUSUS: KETERANGAN & CATATAN RESMI HASIL EVALUASI TIM PENILAI UPTD -->
+                <div class="mt-6 bg-white/10 backdrop-blur-md rounded-2xl p-5 sm:p-6 border border-rose-400/40 text-white shadow-inner">
+                    <div class="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-rose-300 mb-3">
+                        <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Keterangan Resmi Hasil Evaluasi Tim Penilai UPTD:</span>
+                    </div>
+                    
+                    <div class="space-y-3 pl-4 border-l-4 border-rose-400">
+                        @if($booking->alasan_penolakan)
+                            <div>
+                                <span class="text-[11px] font-bold text-rose-300 uppercase tracking-wide block">Alasan Penetapan:</span>
+                                <p class="text-sm sm:text-base font-extrabold text-white mt-0.5 leading-relaxed">
+                                    {{ $booking->alasan_penolakan }}
+                                </p>
+                            </div>
+                        @endif
+                        
+                        @if($booking->catatan_admin)
+                            <div>
+                                <span class="text-[11px] font-bold text-rose-300 uppercase tracking-wide block">Catatan Tim Penilai UPTD:</span>
+                                <p class="text-xs sm:text-sm text-slate-200 mt-0.5 leading-relaxed italic">
+                                    "{{ $booking->catatan_admin }}"
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-slate-700/80 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span>Pemerintah Provinsi Jawa Barat mengapresiasi partisipasi Anda. Kesempatan sewa terbuka untuk objek BMD potensial lainnya.</span>
+                    <span class="text-rose-300 font-bold">Status: Permohonan Tidak Terpilih</span>
+                </div>
+            </div>
+        </div>
+
+    {{-- 3. RUANG KHUSUS: PERMOHONAN DITOLAK REGULER (BUKAN BEAUTY CONTEST) --}}
+    @elseif($booking->status === 'rejected')
+        <div class="mb-8 bg-gradient-to-br from-rose-500/10 via-rose-50/80 to-white rounded-3xl p-6 sm:p-7 border-2 border-rose-300 shadow-md shadow-rose-500/5 relative overflow-hidden">
+            <div class="flex flex-col md:flex-row md:items-start justify-between gap-6 relative z-10">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-rose-600/25 mt-0.5">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2.5 flex-wrap mb-1">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-rose-600 text-white uppercase tracking-wider">
+                                Permohonan Ditolak
+                            </span>
+                            <span class="text-xs text-rose-900 font-bold">
+                                Pemberitahuan Resmi UPTD
+                            </span>
+                        </div>
+                        <h3 class="text-base sm:text-lg font-extrabold text-gray-900">
+                            Permohonan Sewa Belum Dapat Disetujui
+                        </h3>
+                        <p class="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                            Mohon maaf, permohonan sewa Anda untuk objek <strong class="text-gray-900">{{ $booking->asset?->nama_objek }}</strong> belum dapat disetujui oleh tim verifikator UPTD.
+                        </p>
+
+                        <!-- RUANG KHUSUS CATATAN PENOLAKAN -->
+                        <div class="mt-4 p-4 rounded-2xl bg-rose-100/70 border border-rose-200 text-xs text-rose-950">
+                            <strong class="font-extrabold text-rose-900 block mb-1">Alasan Penolakan:</strong>
+                            <p class="leading-relaxed font-semibold">{{ $booking->alasan_penolakan ?? 'Dokumen atau permohonan tidak memenuhi kualifikasi pemanfaatan BMD.' }}</p>
+                            @if($booking->catatan_admin)
+                                <div class="mt-2 pt-2 border-t border-rose-200/80 text-[11.5px] text-rose-800">
+                                    <strong>Catatan Petugas:</strong> "{{ $booking->catatan_admin }}"
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shrink-0">
+                    <a href="{{ route('catalog.index') }}" class="px-5 py-3 rounded-2xl bg-gray-900 hover:bg-black text-white text-xs font-extrabold shadow-sm transition flex items-center justify-center gap-2">
+                        <span>Jelajahi Aset Lain di Katalog &rarr;</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    {{-- 4. TAHAP BEAUTY CONTEST SEDANG BERJALAN (BELUM FINAL) --}}
+    @elseif($booking->status === 'beauty_contest')
+        <div class="mb-8 bg-gradient-to-br from-purple-500/10 via-purple-50/80 to-white rounded-3xl p-6 sm:p-7 border-2 border-purple-300 shadow-md shadow-purple-500/5 relative overflow-hidden">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-purple-600/25 mt-0.5">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </div>
+                <div class="flex-grow">
+                    <div class="flex items-center gap-2.5 flex-wrap mb-1">
+                        <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-purple-600 text-white uppercase tracking-wider">
+                            Tahap Beauty Contest
+                        </span>
+                        <span class="text-xs text-purple-900 font-bold">
+                            Seleksi Terbuka Pemanfaatan BMD
+                        </span>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-extrabold text-gray-900">
+                        Permohonan Anda Masuk ke Tahap Seleksi Beauty Contest
+                    </h3>
+                    <p class="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                        Terdapat lebih dari satu peminat yang berhasil melengkapi seluruh dokumen persyaratan sebelum batas waktu berakhir. Pihak UPTD Pengamanan &amp; Pemanfaatan Aset menyelenggarakan sesi pemaparan rencana usaha untuk menentukan mitra pemanfaatan terbaik.
+                    </p>
+
+                    @if($booking->isBeautyContestScheduled())
+                        <div class="mt-4 p-4 rounded-2xl bg-white border border-purple-200 shadow-xs">
+                            <div class="flex items-center gap-2 font-black text-purple-900 text-xs mb-2.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                                <span>JADWAL RESMI SESI PEMAPARAN (BEAUTY CONTEST):</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <span class="text-gray-400 font-bold uppercase text-[10px] block">Waktu Pelaksanaan:</span>
+                                    <strong class="text-gray-900 text-sm">{{ $booking->formatted_beauty_contest_schedule }}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-gray-400 font-bold uppercase text-[10px] block">Lokasi / Media:</span>
+                                    @if(str_contains($booking->beauty_contest_location, 'http'))
+                                        <a href="{{ $booking->beauty_contest_location }}" target="_blank" class="inline-flex items-center gap-1.5 text-purple-700 font-bold hover:underline">
+                                            <span>Buka Tautan Video Conference</span>
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </a>
+                                    @else
+                                        <strong class="text-gray-900">{{ $booking->beauty_contest_location }}</strong>
+                                    @endif
+                                </div>
+                                @if($booking->beauty_contest_notes)
+                                    <div class="sm:col-span-2 pt-2 border-t border-gray-100 text-[11.5px] text-gray-600">
+                                        <strong class="text-gray-800">Petunjuk Materi:</strong> {{ $booking->beauty_contest_notes }}
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @else
+                        <div class="mt-3.5 p-3 rounded-xl bg-purple-50/80 border border-purple-200 text-xs text-purple-900 flex items-center gap-2 font-medium">
+                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Jadwal pemaparan sedang difinalisasi oleh tim UPTD dan akan diumumkan di sini serta melalui nomor WhatsApp Anda.</span>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+    {{-- 5. MASA TENGGANG KEDALUWARSA KARENA TIDAK LENGKAP 5 HARI KERJA (EXPIRED) --}}
+    @elseif($booking->status === 'expired' || ($booking->deadline_at && now()->gt($booking->deadline_at) && !$booking->getCompletenessStats()['is_complete']))
+        <div class="mb-8 bg-gradient-to-br from-rose-500/10 via-rose-50/80 to-white rounded-3xl p-6 sm:p-7 border-2 border-rose-300 shadow-md shadow-rose-500/5 relative overflow-hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-rose-600/25 mt-0.5">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2.5 flex-wrap mb-1">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-rose-600 text-white uppercase tracking-wider">
+                                Masa Pendaftaran Telah Kedaluwarsa
+                            </span>
+                            <span class="text-xs text-rose-900 font-bold">
+                                Batas Waktu 5 Hari Kerja Terlewati
+                            </span>
+                        </div>
+                        <h3 class="text-base sm:text-lg font-extrabold text-gray-900">
+                            Masa Tenggang Pengunggahan Berkas Telah Berakhir
+                        </h3>
+                        <p class="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                            Batas waktu melengkapi berkas persyaratan sewa untuk permohonan ini telah berakhir pada <strong class="text-gray-900">{{ $booking->formatted_deadline }}</strong>. Sesuai ketentuan, permohonan yang belum dilengkapi seluruh berkasnya dinyatakan gugur secara otomatis.
+                        </p>
+                    </div>
+                </div>
+                <div class="shrink-0">
+                    <a href="{{ route('catalog.index') }}" class="px-5 py-3 rounded-2xl bg-gray-900 hover:bg-black text-white text-xs font-extrabold shadow-sm transition flex items-center justify-center gap-2">
+                        <span>Jelajahi Aset Lain di Katalog &rarr;</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    {{-- 6. MASA TENGGANG MASIH BERJALAN & BERKAS BELUM LENGKAP --}}
+    @elseif($booking->deadline_at && now()->lte($booking->deadline_at) && !$booking->getCompletenessStats()['is_complete'])
         <div class="mb-8 bg-gradient-to-br from-amber-500/10 via-amber-50/80 to-white rounded-3xl p-6 sm:p-7 border-2 border-amber-300 shadow-md shadow-amber-500/5 relative overflow-hidden">
             <div class="absolute -right-8 -top-8 w-40 h-40 bg-amber-400/20 rounded-full blur-2xl pointer-events-none"></div>
 
@@ -99,14 +384,14 @@
                                 Masa Pendaftaran Terbuka (5 Hari Kerja)
                             </span>
                             <span class="text-xs text-amber-900 font-bold">
-                                Permendagri No. 7 Tahun 2024
+                                Batas Waktu Melengkapi Berkas
                             </span>
                         </div>
                         <h3 class="text-base sm:text-lg font-extrabold text-gray-900">
-                            Objek Sedang Menghitung Mundur Masa Minat Terbuka
+                            Lengkapi Seluruh Persyaratan Sebelum Batas Waktu
                         </h3>
                         <p class="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
-                            Permohonan Anda tercatat sebagai peminat objek <strong class="text-gray-900">{{ $booking->asset->nama_objek }}</strong>. Sesuai regulasi, pendaftaran dibuka selama 5 hari kerja bagi calon mitra lain sebelum masuk ke tahap verifikasi berkas dan survei lapangan secara serentak.
+                            Permohonan Anda tercatat untuk objek <strong class="text-gray-900">{{ $booking->asset?->nama_objek }}</strong>. Seluruh berkas wajib dilengkapi dan dikirimkan secara serentak dalam masa tenggang 5 hari kerja (hingga hari ke-5 pukul 23:59 WIB).
                         </p>
                     </div>
                 </div>
@@ -114,31 +399,81 @@
                 <!-- Live Countdown Box -->
                 <div class="bg-white rounded-2xl p-4 border border-amber-200 shadow-xs shrink-0 md:min-w-[260px] text-center md:text-right">
                     <span class="text-[10.5px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">
-                        Sisa Waktu Pendaftaran
+                        Sisa Waktu Anda
                     </span>
-                    <div class="text-lg sm:text-xl font-black font-mono text-amber-600" data-countdown-deadline="{{ $booking->asset->booking_deadline_iso }}">
-                        Sisa {{ $booking->asset->remaining_booking_time }}
+                    <div class="text-lg sm:text-xl font-black font-mono text-amber-600" id="live-countdown-timer" data-deadline="{{ $booking->deadline_at?->toIso8601String() }}">
+                        Sisa {{ $booking->remaining_time }}
                     </div>
                     <span class="text-[11px] text-gray-500 font-medium block mt-1">
-                        Batas: <strong class="text-gray-800">{{ $booking->asset->formatted_booking_deadline }}</strong>
+                        Batas: <strong class="text-gray-800">{{ $booking->formatted_deadline }}</strong>
                     </span>
+                </div>
+            </div>
+
+            <!-- Notice / Warning Box: Ketentuan Batas Waktu & Seleksi Peminat -->
+            <div class="mt-6 pt-5 border-t border-amber-200/90 relative z-10">
+                <div class="bg-gradient-to-r from-amber-100/90 via-amber-50/95 to-amber-100/70 border border-amber-300 rounded-2xl p-4 sm:p-5 text-xs text-amber-950 shadow-xs">
+                    <div class="flex items-center gap-2 font-black text-amber-900 uppercase tracking-wider text-[11px] mb-3">
+                        <svg class="w-4 h-4 text-amber-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>Ketentuan Penting Batas Waktu &amp; Seleksi Peminat (Permendagri No. 7/2024):</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 leading-relaxed">
+                        <div class="bg-white/90 rounded-xl p-3.5 border border-amber-200/80 shadow-xs flex flex-col justify-start">
+                            <div class="flex items-center gap-1.5 mb-1.5">
+                                <span class="w-5 h-5 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center shrink-0">1</span>
+                                <span class="font-extrabold text-amber-950 text-xs">Batas Waktu Mutlak</span>
+                            </div>
+                            <p class="text-[11px] text-gray-700">
+                                Batas waktu pengunggahan seluruh berkas persyaratan terikat penuh dengan masa aktif tombol sewa aset (maksimal hari kerja ke-5 pukul 23:59 WIB).
+                            </p>
+                        </div>
+                        <div class="bg-white/90 rounded-xl p-3.5 border border-rose-200/80 shadow-xs flex flex-col justify-start">
+                            <div class="flex items-center gap-1.5 mb-1.5">
+                                <span class="w-5 h-5 rounded-full bg-rose-600 text-white font-black text-[10px] flex items-center justify-center shrink-0">2</span>
+                                <span class="font-extrabold text-rose-950 text-xs">Gugur Otomatis &amp; Terbuka Lagi</span>
+                            </div>
+                            <p class="text-[11px] text-gray-700">
+                                Jika batas waktu habis dan berkas belum lengkap, permohonan <strong>otomatis dibatalkan</strong>, booking hilang, dan aset kembali berstatus <strong>"Tersedia"</strong> di beranda katalog untuk dapat diminati kembali oleh Anda maupun pihak lain.
+                            </p>
+                        </div>
+                        <div class="bg-white/90 rounded-xl p-3.5 border border-emerald-200/80 shadow-xs flex flex-col justify-start">
+                            <div class="flex items-center gap-1.5 mb-1.5">
+                                <span class="w-5 h-5 rounded-full bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center shrink-0">3</span>
+                                <span class="font-extrabold text-emerald-950 text-xs">Penentuan Peminat Terpilih</span>
+                            </div>
+                            <p class="text-[11px] text-gray-700">
+                                Apabila hanya <strong>1 peminat</strong> yang lengkap, langsung lanjut ke tahap verifikasi. Jika terdapat <strong>lebih dari 1 peminat yang berhasil melengkapi berkas</strong>, pihak UPTD akan mengadakan seleksi terbuka (<strong>Beauty Contest</strong>).
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    @elseif($booking->asset && $booking->asset->isBookingClosed() && $booking->asset->booking_deadline_at)
-        <div class="mb-8 bg-gray-50 rounded-3xl p-5 sm:p-6 border border-gray-200 shadow-xs flex items-center justify-between gap-4 flex-wrap">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-slate-600 text-white flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+
+    {{-- 7. BERKAS LENGKAP 100% (MENUNGGU VERIFIKASI PETUGAS / AKHIR BATAS WAKTU) --}}
+    @elseif($booking->getCompletenessStats()['is_complete'])
+        <div class="mb-8 bg-gradient-to-br from-emerald-500/10 via-emerald-50/80 to-white rounded-3xl p-6 sm:p-7 border-2 border-emerald-300 shadow-md shadow-emerald-500/5 relative overflow-hidden">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/25 mt-0.5">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                 </div>
                 <div>
-                    <span class="text-xs font-extrabold text-gray-900 block">Jendela Pendaftaran Minat Telah Berakhir</span>
-                    <p class="text-[11px] text-gray-500">Pendaftaran ditutup pada {{ $booking->asset->formatted_booking_deadline }}. Tim UPTD BPKAD sedang melakukan telaah berkas seluruh peminat.</p>
+                    <div class="flex items-center gap-2.5 flex-wrap mb-1">
+                        <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold bg-emerald-600 text-white uppercase tracking-wider">
+                            Berkas Persyaratan Lengkap (100%)
+                        </span>
+                        <span class="text-xs text-emerald-800 font-bold">
+                            Tahap Verifikasi Petugas
+                        </span>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-extrabold text-gray-900">
+                        Seluruh Berkas Telah Berhasil Dikirimkan
+                    </h3>
+                    <p class="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                        Terima kasih telah melengkapi seluruh persyaratan tepat waktu. Tim Verifikator UPTD Pengamanan dan Pemanfaatan Aset BPKAD Jawa Barat sedang menelaah keabsahan dokumen Anda.
+                    </p>
                 </div>
             </div>
-            <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-slate-100 text-slate-800 border border-slate-300">
-                Tahap Seleksi Berkas
-            </span>
         </div>
     @endif
     
@@ -146,12 +481,22 @@
     <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200/90 mb-10 overflow-x-auto">
         <div class="flex items-center justify-between mb-8 pb-3 border-b border-gray-100">
             <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                Timeline Progres Permohonan (Permendagri No. 7 Tahun 2024)
                 Linimasa Progres Permohonan (Permendagri No. 7 Tahun 2024)
             </h2>
-            <span class="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-3.5 py-1 rounded-full border border-emerald-200">
-                Tahap {{ $booking->status_step ?? '1' }} dari 6
-            </span>
+            @if($booking->is_beauty_contest_winner)
+                <span class="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-3.5 py-1 rounded-full border border-emerald-300 flex items-center gap-1.5">
+                    <span>🏆</span>
+                    <span>Tahap {{ $booking->status_step }} dari 6 (Mitra Terpilih)</span>
+                </span>
+            @elseif($booking->status === 'rejected')
+                <span class="text-xs font-extrabold text-rose-800 bg-rose-100 px-3.5 py-1 rounded-full border border-rose-300">
+                    Permohonan Selesai (Ditolak)
+                </span>
+            @else
+                <span class="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-3.5 py-1 rounded-full border border-emerald-200">
+                    Tahap {{ $booking->status_step }} dari 6
+                </span>
+            @endif
         </div>
 
         <div class="min-w-[700px] px-2 py-4">
@@ -188,12 +533,20 @@
         </div>
 
         @if($booking->catatan_admin)
-            <div class="mt-8 p-4 sm:p-5 rounded-2xl bg-gray-50 border border-gray-200 text-xs text-gray-700">
-                <div class="flex items-center gap-2 font-bold text-gray-900 mb-1.5">
-                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                    <span>Catatan Terakhir Petugas UPTD Pengamanan & Pemanfaatan Aset:</span>
+            <div class="mt-8 p-4 sm:p-5 rounded-2xl {{ $booking->is_beauty_contest_winner ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' : ($booking->status === 'rejected' ? 'bg-rose-50/80 border-rose-200 text-rose-950' : 'bg-gray-50 border-gray-200 text-gray-700') }} border text-xs">
+                <div class="flex items-center gap-2 font-black {{ $booking->is_beauty_contest_winner ? 'text-emerald-900' : ($booking->status === 'rejected' ? 'text-rose-900' : 'text-gray-900') }} mb-1.5">
+                    @if($booking->is_beauty_contest_winner)
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                        <span>Catatan Penetapan Pemenang Seleksi UPTD:</span>
+                    @elseif($booking->status === 'rejected')
+                        <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Catatan Hasil Evaluasi Seleksi UPTD:</span>
+                    @else
+                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                        <span>Catatan Terakhir Petugas UPTD Pengamanan &amp; Pemanfaatan Aset:</span>
+                    @endif
                 </div>
-                <p class="whitespace-pre-line leading-relaxed text-gray-600 pl-6 font-medium">{{ $booking->catatan_admin }}</p>
+                <p class="whitespace-pre-line leading-relaxed {{ $booking->is_beauty_contest_winner ? 'text-emerald-800' : ($booking->status === 'rejected' ? 'text-rose-800' : 'text-gray-600') }} pl-6 font-semibold">{{ $booking->catatan_admin }}</p>
             </div>
         @endif
     </div>
@@ -225,6 +578,9 @@
                         $totalWajib = $completeness['total_wajib'];
                         $totalTerunggah = $completeness['total_terunggah'];
                         $isAllComplete = $completeness['is_complete'];
+                        $isExpired = $booking->isExpired();
+                        $hasRevision = $booking->hasRevisionDocuments();
+                        $isBatchMode = (!$isAllComplete && !$isExpired && !$hasRevision);
                         $allReqs = \App\Models\BookingRequirement::orderBy('urutan')->get();
                         $uploadedDocs = $booking->documents->keyBy('booking_requirement_id');
                         $requiredCodes = $booking->getRequiredRequirementCodes();
@@ -326,7 +682,12 @@
                 </div>
 
                 <!-- Document List Items -->
-                <div class="space-y-4">
+                @if($isBatchMode)
+                    <form action="{{ route('booking.upload-all', $booking->kode_booking) }}" method="POST" enctype="multipart/form-data" id="batch-upload-form" class="space-y-4">
+                        @csrf
+                @else
+                    <div class="space-y-4">
+                @endif
                     @foreach($allReqs as $req)
                         @php
                             $doc = $uploadedDocs->get($req->id);
@@ -378,18 +739,13 @@
                                     <div>
                                         <h4 class="text-xs sm:text-sm font-extrabold text-gray-900 leading-snug flex items-center gap-1.5 flex-wrap">
                                             <span>
-                                                {{ $req->nama_persyaratan }}
                                                 @if($req->kode === 'REQ_BUKTI_BAYAR')
-                                                    @if($booking->skema_pembayaran === 'bertahap')
-                                                        Bukti Setor PAD (Termin Ke-1 - Tahun Pertama)
-                                                    @else
-                                                        Bukti Setor PAD (Pelunasan 100% Sewa)
-                                                    @endif
-                                                @else
                                                     {{ $req->nama_persyaratan }}
                                                     <span class="text-xs font-semibold text-gray-500">
                                                         - {{ $booking->skema_pembayaran === 'bertahap' ? 'Bukti Setor PAD (Termin Ke-1 - Tahun Pertama)' : 'Bukti Setor PAD (Pelunasan 100% Sewa)' }}
                                                     </span>
+                                                @else
+                                                    {{ $req->nama_persyaratan }}
                                                 @endif
                                             </span>
 
@@ -420,20 +776,19 @@
                                                     <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">Tidak Diwajibkan (&le; 5 Tahun)</span>
                                                 @endif
                                             @elseif($req->kode === 'REQ_LAPORAN_PENILAIAN')
-                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">1. Diinput Admin UPTD</span>
+                                                <span class="text-[10px] text-gray-600 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">1. Diinput Admin UPTD (Arsip Internal)</span>
                                             @elseif($req->kode === 'REQ_BA_NEGOSIASI')
-                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">2. Diinput Admin UPTD</span>
+                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">2. Diinput Admin UPTD (Dapat Diunduh)</span>
                                             @elseif($req->kode === 'REQ_FASILITASI_KEPGUB')
-                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">3. Diinput Admin UPTD</span>
+                                                <span class="text-[10px] text-gray-600 font-bold bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">3. Diinput Admin UPTD (Arsip Internal)</span>
                                             @elseif($req->kode === 'REQ_KEPUTUSAN_GUBERNUR')
-                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">4. Diinput Admin UPTD</span>
+                                                <span class="text-[10px] text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">4. Diinput Admin UPTD (Dapat Diunduh)</span>
                                             @elseif($req->kode === 'REQ_PEMBERITAHUAN_PEMBAYARAN')
-                                                <span class="text-[10px] text-amber-800 font-extrabold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">5. Diinput Admin UPTD (Tagihan)</span>
+                                                <span class="text-[10px] text-amber-800 font-extrabold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">5. Diinput Admin UPTD (Dapat Diunduh)</span>
                                             @elseif($req->kode === 'REQ_BUKTI_BAYAR')
-                                                <span class="text-[10px] text-emerald-800 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">Diunggah Setelah PKS Siap</span>
                                                 <span class="text-[10px] text-emerald-800 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">6. Khusus Diinput Mitra Penyewa</span>
                                             @elseif($req->kode === 'REQ_PERJANJIAN_SEWA')
-                                                <span class="text-[10px] text-purple-700 font-extrabold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">7. Diinput Admin UPTD (Akad PKS)</span>
+                                                <span class="text-[10px] text-purple-700 font-extrabold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">7. Diinput Admin UPTD (Dapat Diunduh)</span>
                                             @elseif($req->is_required)
                                                 <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">Diterbitkan UPTD</span>
                                             @endif
@@ -452,17 +807,24 @@
 
                                         @if($doc)
                                             <div class="mt-2.5 text-[11px] text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1">
-                                                @if($doc->file_name)
-                                                    <span>Berkas: <strong class="text-gray-800">{{ $doc->file_name }}</strong></span>
-                                                @endif
-                                                @if($doc->tanggal_dokumen)
-                                                    <span>Diunggah: {{ $doc->tanggal_dokumen->format('d/m/Y') }}</span>
-                                                @endif
-                                                @if($doc->file_path)
-                                                    <a href="{{ route('booking.documents.view', $doc) }}" target="_blank" class="text-emerald-700 font-extrabold hover:underline flex items-center gap-1">
-                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                                        <span>Lihat Berkas Scan</span>
-                                                    </a>
+                                                @if($req->isViewableByApplicant())
+                                                    @if($doc->file_name)
+                                                        <span>Berkas: <strong class="text-gray-800">{{ $doc->file_name }}</strong></span>
+                                                    @endif
+                                                    @if($doc->tanggal_dokumen)
+                                                        <span>Diunggah: {{ $doc->tanggal_dokumen->format('d/m/Y') }}</span>
+                                                    @endif
+                                                    @if($doc->file_path)
+                                                        <a href="{{ route('booking.documents.view', $doc) }}" target="_blank" class="text-emerald-700 font-extrabold hover:underline flex items-center gap-1">
+                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                            <span>Lihat Berkas Scan</span>
+                                                        </a>
+                                                    @endif
+                                                @else
+                                                    <span class="text-gray-500 italic flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200">
+                                                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                        <span>Dokumen Arsip Internal Kedinasan (Selesai Diproses UPTD)</span>
+                                                    </span>
                                                 @endif
                                             </div>
 
@@ -590,30 +952,62 @@
                                 </div>
                             @endif
 
-                            <!-- Form Upload Berkas (Jika Termasuk Berkas Pemohon dan Belum Terverifikasi) -->
-                            @if($canUpload && !$isNotApplicable)
-                                @if(!$isVerified)
-                                    <form action="{{ route('booking.upload-dokumen', $booking->kode_booking) }}" method="POST" enctype="multipart/form-data" class="mt-3.5 pt-3 border-t border-gray-200/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                                        @csrf
-                                        <input type="hidden" name="booking_requirement_id" value="{{ $req->id }}">
-                                        
+                            <!-- Form Upload Berkas -->
+                            @if($isExpired)
+                                <div class="mt-3 pt-2.5 border-t border-rose-100 text-[11px] text-rose-600 font-semibold flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>Masa tenggang 5 hari kerja telah berakhir. Pengunggahan berkas ditutup.</span>
+                                </div>
+                            @elseif($isBatchMode && $isMandatory && !$isVerified)
+                                <div class="mt-3.5 pt-3 border-t border-gray-200/80">
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                                         <div class="flex-grow">
-                                            <input type="file" name="dokumen_file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="w-full text-xs text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 file:cursor-pointer file:transition cursor-pointer bg-white p-1 rounded-xl border border-gray-200 focus:outline-none">
+                                            <input type="file" 
+                                                   name="documents[{{ $req->kode }}]" 
+                                                   id="input-file-{{ $req->kode }}" 
+                                                   data-req-code="{{ $req->kode }}" 
+                                                   data-req-title="{{ $req->nama_persyaratan }}" 
+                                                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                                                   class="batch-file-input sr-only">
+                                            
+                                            <label for="input-file-{{ $req->kode }}" id="label-for-{{ $req->kode }}" class="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-dashed border-gray-300 hover:border-emerald-500 hover:bg-emerald-50/40 text-xs font-bold text-gray-700 transition">
+                                                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                <span id="label-text-{{ $req->kode }}">Pilih Berkas (PDF / Scan, Maks. 20MB)</span>
+                                            </label>
                                         </div>
 
-                                        <button type="submit" class="px-4 py-2 rounded-xl {{ $isRevision ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700' }} active:scale-[0.98] text-white font-extrabold text-xs shadow-xs transition shrink-0 flex items-center justify-center gap-1.5 cursor-pointer">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                                            <span>{{ $doc ? 'Unggah Ulang Berkas' : 'Unggah Berkas Scan' }}</span>
-                                            <span>
-                                                @if($req->kode === 'REQ_BUKTI_BAYAR')
-                                                    {{ $doc ? 'Unggah Ulang Bukti Bayar (STS)' : 'Unggah Bukti Bayar Kasda (STS)' }}
-                                                @else
-                                                    {{ $doc ? 'Unggah Ulang Berkas' : 'Unggah Berkas Scan' }}
-                                                @endif
-                                            </span>
-                                        </button>
-                                    </form>
-                                @endif
+                                        <div id="file-badge-{{ $req->kode }}" class="hidden items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-extrabold shrink-0">
+                                            <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            <span id="file-name-{{ $req->kode }}" class="truncate max-w-[180px]"></span>
+                                            <span id="file-size-{{ $req->kode }}" class="text-[10px] text-emerald-600 font-mono"></span>
+                                            <button type="button" onclick="clearFileSelection('{{ $req->kode }}')" class="ml-1 text-gray-400 hover:text-rose-600 transition" title="Hapus pilihan berkas ini">&times;</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            @elseif($hasRevision && $isRevision)
+                                <form action="{{ route('booking.upload-dokumen', $booking->kode_booking) }}" method="POST" enctype="multipart/form-data" class="mt-3.5 pt-3 border-t border-rose-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                                    @csrf
+                                    <input type="hidden" name="booking_requirement_id" value="{{ $req->id }}">
+                                    <div class="flex-grow">
+                                        <input type="file" name="dokumen_file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="w-full text-xs text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-rose-600 file:text-white hover:file:bg-rose-700 file:cursor-pointer file:transition cursor-pointer bg-white p-1 rounded-xl border border-gray-200 focus:outline-none">
+                                    </div>
+                                    <button type="submit" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-xs transition shrink-0 flex items-center justify-center gap-1.5 cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                        <span>Unggah Berkas Perbaikan</span>
+                                    </button>
+                                </form>
+                            @elseif($req->kode === 'REQ_BUKTI_BAYAR' && $canUpload && !$isVerified)
+                                <form action="{{ route('booking.upload-dokumen', $booking->kode_booking) }}" method="POST" enctype="multipart/form-data" class="mt-3.5 pt-3 border-t border-gray-200/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                                    @csrf
+                                    <input type="hidden" name="booking_requirement_id" value="{{ $req->id }}">
+                                    <div class="flex-grow">
+                                        <input type="file" name="dokumen_file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="w-full text-xs text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 file:cursor-pointer file:transition cursor-pointer bg-white p-1 rounded-xl border border-gray-200 focus:outline-none">
+                                    </div>
+                                    <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition shrink-0 flex items-center justify-center gap-1.5 cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                        <span>{{ $doc ? 'Unggah Ulang Bukti Bayar (STS)' : 'Unggah Bukti Bayar Kasda (STS)' }}</span>
+                                    </button>
+                                </form>
                             @elseif($isNotApplicable)
                                 <div class="mt-3 pt-2.5 border-t border-gray-200/60 text-[11px] text-gray-400 italic">
                                     Dokumen ini khusus Badan Usaha/Hukum dan tidak diwajibkan untuk pemohon perorangan.
@@ -622,7 +1016,41 @@
 
                         </div>
                     @endforeach
-                </div>
+
+                    @if($isBatchMode)
+                        <!-- Sticky Bottom Bar: Single Submit Button -->
+                        <div class="mt-8 p-5 sm:p-6 rounded-3xl bg-white border border-gray-200/90 shadow-sm relative overflow-hidden">
+                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        <span id="batch-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                        <span id="batch-status-badge" class="text-xs font-black uppercase tracking-wider text-amber-500">
+                                            Menunggu Kelengkapan Berkas
+                                        </span>
+                                    </div>
+                                    <p id="batch-helper-text" class="text-xs text-gray-500 mt-1 max-w-xl leading-relaxed">
+                                        Tombol kirim akan otomatis aktif setelah semua berkas dilengkapi.
+                                    </p>
+                                    <div id="batch-missing-container" class="mt-2 text-xs text-amber-600 font-medium">
+                                        <!-- Diisi secara dinamis oleh JavaScript -->
+                                    </div>
+                                </div>
+
+                                <div class="shrink-0">
+                                    <button type="submit" 
+                                            id="btn-batch-submit" 
+                                            disabled 
+                                            class="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-xs sm:text-sm tracking-wide transition flex items-center justify-center gap-2.5 cursor-not-allowed opacity-50 bg-gray-400 text-white border border-gray-300 shadow-none">
+                                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                        <span id="btn-batch-submit-text">Kirim</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    @else
+                    </div>
+                    @endif
             </div>
 
             <!-- Detail Permohonan -->
@@ -1052,4 +1480,164 @@
 
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Live Countdown Timer
+    const timerEl = document.getElementById('live-countdown-timer');
+    if (timerEl && timerEl.dataset.deadline) {
+        const deadline = new Date(timerEl.dataset.deadline).getTime();
+        
+        function updateTimer() {
+            const now = new Date().getTime();
+            const diff = deadline - now;
+            
+            if (diff <= 0) {
+                timerEl.textContent = 'Waktu Habis';
+                timerEl.classList.remove('text-amber-600');
+                timerEl.classList.add('text-rose-600');
+                return;
+            }
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            let str = '';
+            if (days > 0) str += days + 'h ';
+            str += hours + 'j ' + minutes + 'm ' + seconds + 'd';
+            
+            timerEl.textContent = 'Sisa ' + str;
+        }
+        
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    }
+
+    // 2. Batch Upload Validation Logic
+    const batchForm = document.getElementById('batch-upload-form');
+    if (batchForm) {
+        const requiredCodes = @json($requiredCodes ?? []);
+        const fileInputs = document.querySelectorAll('.batch-file-input');
+        const submitBtn = document.getElementById('btn-batch-submit');
+        const submitBtnText = document.getElementById('btn-batch-submit-text');
+        const statusBadge = document.getElementById('batch-status-badge');
+        const statusDot = document.getElementById('batch-status-dot');
+        const missingContainer = document.getElementById('batch-missing-container');
+
+        const reqTitleMap = {};
+        fileInputs.forEach(input => {
+            reqTitleMap[input.dataset.reqCode] = input.dataset.reqTitle || input.dataset.reqCode;
+        });
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        window.clearFileSelection = function(code) {
+            const input = document.getElementById('input-file-' + code);
+            if (input) {
+                input.value = '';
+                handleFileChange(input);
+            }
+        };
+
+        function handleFileChange(input) {
+            const code = input.dataset.reqCode;
+            const badge = document.getElementById('file-badge-' + code);
+            const fileNameEl = document.getElementById('file-name-' + code);
+            const fileSizeEl = document.getElementById('file-size-' + code);
+            const labelText = document.getElementById('label-text-' + code);
+
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+
+                if (file.size > 20 * 1024 * 1024) {
+                    alert('Ukuran berkas ' + file.name + ' melebihi batas 20 MB. Silakan pilih berkas yang lebih kecil.');
+                    input.value = '';
+                    if (badge) {
+                        badge.classList.add('hidden');
+                        badge.classList.remove('flex');
+                    }
+                    if (labelText) {
+                        labelText.textContent = 'Pilih Berkas (PDF / Scan, Maks. 20MB)';
+                    }
+                    checkCompleteness();
+                    return;
+                }
+
+                if (fileNameEl) fileNameEl.textContent = file.name;
+                if (fileSizeEl) fileSizeEl.textContent = '(' + formatBytes(file.size) + ')';
+                if (badge) {
+                    badge.classList.remove('hidden');
+                    badge.classList.add('flex');
+                }
+                if (labelText) labelText.textContent = 'Ganti Berkas';
+            } else {
+                if (badge) {
+                    badge.classList.add('hidden');
+                    badge.classList.remove('flex');
+                }
+                if (labelText) labelText.textContent = 'Pilih Berkas (PDF / Scan, Maks. 20MB)';
+            }
+
+            checkCompleteness();
+        }
+
+        function checkCompleteness() {
+            const selectedCodes = new Set();
+            fileInputs.forEach(input => {
+                if (input.files && input.files.length > 0) {
+                    selectedCodes.add(input.dataset.reqCode);
+                }
+            });
+
+            const missing = requiredCodes.filter(c => !selectedCodes.has(c));
+
+            if (missing.length === 0) {
+                submitBtn.disabled = false;
+                submitBtn.className = 'w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-xs sm:text-sm tracking-wide transition flex items-center justify-center gap-2.5 cursor-pointer opacity-100 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 active:scale-[0.98] border border-emerald-500';
+                submitBtnText.textContent = 'Kirim';
+                
+                statusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+                statusBadge.textContent = '✓ Seluruh Berkas Wajib Siap Dikirim (' + requiredCodes.length + '/' + requiredCodes.length + ')';
+                statusBadge.className = 'text-xs font-black uppercase tracking-wider text-emerald-500';
+                missingContainer.innerHTML = '<span class="text-emerald-500 font-medium">Semua slot dokumen telah terisi. Klik tombol kirim untuk memproses pengajuan.</span>';
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.className = 'w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-xs sm:text-sm tracking-wide transition flex items-center justify-center gap-2.5 cursor-not-allowed opacity-50 bg-gray-400 text-white border border-gray-300 shadow-none';
+                submitBtnText.textContent = 'Kirim';
+                
+                statusDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
+                statusBadge.textContent = 'Belum Lengkap (' + selectedCodes.size + '/' + requiredCodes.length + ' Berkas Dipilih)';
+                statusBadge.className = 'text-xs font-black uppercase tracking-wider text-amber-500';
+                
+                const missingNames = missing.map(c => reqTitleMap[c] || c).join(', ');
+                missingContainer.innerHTML = '<span class="text-gray-500">Belum dipilih: <strong class="text-gray-700">' + missingNames + '</strong></span>';
+            }
+        }
+
+        fileInputs.forEach(input => {
+            input.addEventListener('change', function () {
+                handleFileChange(this);
+            });
+        });
+
+        batchForm.addEventListener('submit', function (e) {
+            submitBtn.disabled = true;
+            submitBtnText.textContent = 'Sedang Mengunggah & Memproses Berkas...';
+            submitBtn.classList.add('opacity-75');
+        });
+
+        checkCompleteness();
+    }
+});
+</script>
+@endpush
 @endsection

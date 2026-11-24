@@ -97,10 +97,11 @@ class MultiUnitClusterAndReactiveGalleryTest extends TestCase
         ]);
 
         // Mengirimkan booking tanpa memilih unit ruko
+        $uniquePhone = '089911223344';
         $response = $this->actingAs($user, 'web')->post('/aset/'.$asset->slug.'/booking', [
             'tipe_pemohon' => 'perorangan',
             'nama_pemohon' => 'Budi Santoso',
-            'nomor_whatsapp' => '081234567890',
+            'nomor_whatsapp' => $uniquePhone,
             'rencana_peruntukan' => 'Toko Retail Pakaian',
             'durasi_sewa_tahun' => 2,
             'skema_pembayaran' => 'sekaligus',
@@ -108,7 +109,7 @@ class MultiUnitClusterAndReactiveGalleryTest extends TestCase
 
         $response->assertSessionHas('error');
         $this->assertStringContainsString('Silakan pilih minimal 1 unit ruko', session('error'));
-        $this->assertEquals(0, Booking::where('nomor_whatsapp', '081234567890')->count());
+        $this->assertEquals(0, Booking::where('nomor_whatsapp', $uniquePhone)->count());
     }
 
     public function test_multi_unit_asset_allows_booking_single_or_multiple_units(): void

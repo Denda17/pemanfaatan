@@ -63,4 +63,12 @@ class BookingDocument extends Model implements HasMedia
 
         return route('booking.documents.download', $this);
     }
+
+    /**
+     * Cek apakah dokumen ini dapat dilihat dan diunduh oleh pemohon.
+     */
+    public function isViewableByApplicant(): bool
+    {
+        return $this->requirement?->isViewableByApplicant() ?? true;
+    }
 }

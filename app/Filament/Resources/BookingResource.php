@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BookingResource\Pages;
 use App\Filament\Resources\BookingResource\RelationManagers;
 use App\Models\Booking;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -143,10 +144,12 @@ class BookingResource extends Resource
                                 'pending' => 'Menunggu Tindak Lanjut (Baru Masuk)',
                                 'contacted' => 'Sudah Dihubungi via WhatsApp',
                                 'document_review' => 'Pengumpulan & Verifikasi Berkas',
+                                'beauty_contest' => 'Tahap Beauty Contest (Seleksi Terbuka)',
                                 'field_survey' => 'Peninjauan / Survey Lapangan',
                                 'approved' => 'Disetujui Pengelola Barang',
                                 'contract_signed' => 'PKS Ditandatangani & Sewa Aktif',
                                 'rejected' => 'Dibatalkan / Tidak Memenuhi Syarat',
+                                'expired' => 'Gugur / Melewati Batas Waktu 5 Hari Kerja',
                             ])
                             ->required()
                             ->live()
@@ -175,10 +178,43 @@ class BookingResource extends Resource
 
                         Forms\Components\Textarea::make('alasan_penolakan')
                             ->label('Alasan Penolakan (Jika Ditolak / Batal)')
-                            ->visible(fn (Forms\Get $get) => $get('status') === 'rejected')
+                            ->visible(fn (Forms\Get $get) => in_array($get('status'), ['rejected', 'expired']))
                             ->rows(2)
                             ->columnSpanFull(),
                     ])->columns(2),
+
+                Forms\Components\Section::make('Pelaksanaan Seleksi Terbuka (Beauty Contest)')
+                    ->schema([
+                        Forms\Components\DateTimePicker::make('beauty_contest_scheduled_at')
+                            ->label('Waktu Pelaksanaan Beauty Contest')
+                            ->nullable(),
+
+                        Forms\Components\TextInput::make('beauty_contest_location')
+                            ->label('Lokasi / Tautan Ruang Virtual')
+                            ->placeholder('Contoh: Ruang Rapat Kantor UPTD Lt. 2 atau link Google Meet')
+                            ->maxLength(255),
+
+                        Forms\Components\Textarea::make('beauty_contest_notes')
+                            ->label('Petunjuk Materi Paparan Bagi Peminat')
+                            ->rows(2)
+                            ->columnSpanFull(),
+
+                        Forms\Components\FileUpload::make('beauty_contest_berita_acara_path')
+                            ->label('Scan Dokumen Berita Acara Seleksi / Beauty Contest (.pdf)')
+                            ->disk('local')
+                            ->directory('booking-documents')
+                            ->acceptedFileTypes(['application/pdf'])
+                            ->openable()
+                            ->downloadable()
+                            ->columnSpanFull(),
+
+                        Forms\Components\Toggle::make('is_beauty_contest_winner')
+                            ->label('Ditetapkan Sebagai Pemenang Beauty Contest')
+                            ->inline(false),
+                    ])
+                    ->columns(2)
+                    ->collapsed(fn (?Booking $record) => $record?->status !== 'beauty_contest' && ! $record?->beauty_contest_scheduled_at)
+                    ->visible(fn (?Booking $record) => $record?->status === 'beauty_contest' || $record?->beauty_contest_scheduled_at !== null || $record?->is_beauty_contest_winner),
             ]);
     }
 
@@ -227,20 +263,24 @@ class BookingResource extends Resource
                         'pending' => 'warning',
                         'contacted' => 'info',
                         'document_review' => 'primary',
+                        'beauty_contest' => 'purple',
                         'field_survey' => 'indigo',
                         'approved' => 'success',
                         'contract_signed' => 'success',
                         'rejected' => 'danger',
+                        'expired' => 'danger',
                         default => 'secondary',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending' => 'Pending',
                         'contacted' => 'Dihubungi',
                         'document_review' => 'Verif Berkas',
+                        'beauty_contest' => 'Beauty Contest',
                         'field_survey' => 'Survei',
                         'approved' => 'Disetujui',
                         'contract_signed' => 'PKS Terbit',
                         'rejected' => 'Ditolak',
+                        'expired' => 'Gugur',
                         default => $state,
                     }),
 
@@ -300,13 +340,95 @@ class BookingResource extends Resource
                         'pending' => 'Pending (Menunggu Tindak Lanjut)',
                         'contacted' => 'Sudah Dihubungi WA',
                         'document_review' => 'Verifikasi Berkas',
+                        'beauty_contest' => 'Tahap Beauty Contest (Seleksi Terbuka)',
                         'field_survey' => 'Survey Lapangan',
                         'approved' => 'Disetujui',
                         'contract_signed' => 'PKS Terbit',
-                        'rejected' => 'Dibatalkan / Batal',
+                        'rejected' => 'Ditolak',
+                        'expired' => 'Gugur (Batas Waktu)',
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('jadwalkan_beauty_contest')
+                    ->label('Jadwalkan Seleksi')
+                    ->tooltip('Jadwalkan Beauty Contest untuk seluruh pemohon pada objek ini')
+                    ->icon('heroicon-o-calendar-days')
+                    ->color('purple')
+                    ->visible(fn (Booking $record): bool => $record->status === 'beauty_contest')
+                    ->form([
+                        Forms\Components\DateTimePicker::make('beauty_contest_scheduled_at')
+                            ->label('Waktu Pelaksanaan Beauty Contest')
+                            ->required()
+                            ->default(now()->addWeekdays(2)->setTime(9, 30)),
+
+                        Forms\Components\TextInput::make('beauty_contest_location')
+                            ->label('Tempat / Tautan Virtual Meet')
+                            ->required()
+                            ->default('Ruang Rapat Kantor UPTD Pengamanan & Pemanfaatan Aset, Jl. Ciliwung No. 11 Bandung')
+                            ->helperText('Dapat diisi alamat ruangan fisik atau tautan Google Meet / Zoom'),
+
+                        Forms\Components\Textarea::make('beauty_contest_notes')
+                            ->label('Petunjuk Materi Paparan Bagi Peminat')
+                            ->default('Peserta menyiapkan materi paparan rencana usaha, kesiapan modal, konsep penataan aset, dan estimasi dampak ekonomi/PAD (durasi paparan 30 menit).')
+                            ->rows(3),
+                    ])
+                    ->action(function (Booking $record, array $data) {
+                        $count = $record->scheduleBeautyContest(
+                            Carbon::parse($data['beauty_contest_scheduled_at']),
+                            $data['beauty_contest_location'],
+                            $data['beauty_contest_notes']
+                        );
+
+                        Notification::make()
+                            ->title('Jadwal Beauty Contest Berhasil Ditetapkan')
+                            ->body("Jadwal telah disimpan dan disinkronkan ke {$count} pemohon yang bersaing pada objek aset ini.")
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('kirim_undangan_wa')
+                    ->label('Undangan WA')
+                    ->tooltip('Kirim Surat Undangan Beauty Contest via WhatsApp')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('success')
+                    ->visible(fn (Booking $record): bool => $record->status === 'beauty_contest' && $record->isBeautyContestScheduled())
+                    ->url(fn (Booking $record): string => $record->beauty_contest_whatsapp_url, true),
+
+                Tables\Actions\Action::make('tetapkan_pemenang_bc')
+                    ->label('Tetapkan Pemenang')
+                    ->tooltip('Tetapkan pemohon ini sebagai pemenang Beauty Contest')
+                    ->icon('heroicon-o-trophy')
+                    ->color('warning')
+                    ->visible(fn (Booking $record): bool => $record->status === 'beauty_contest')
+                    ->requiresConfirmation()
+                    ->modalHeading('Tetapkan Pemenang Seleksi Beauty Contest')
+                    ->modalDescription(fn (Booking $record) => "Apakah Anda yakin ingin menetapkan {$record->nama_pemohon} sebagai pemenang sewa objek ini? Peminat pesaing lainnya akan otomatis dialihkan ke status ditolak.")
+                    ->form([
+                        Forms\Components\FileUpload::make('beauty_contest_berita_acara_path')
+                            ->label('Unggah Berita Acara Seleksi / Beauty Contest (.pdf)')
+                            ->disk('local')
+                            ->directory('booking-documents')
+                            ->acceptedFileTypes(['application/pdf'])
+                            ->downloadable(),
+
+                        Forms\Components\Textarea::make('catatan_admin')
+                            ->label('Catatan Penetapan Hasil Evaluasi UPTD')
+                            ->placeholder('Contoh: Berdasarkan hasil evaluasi tim penilai, proposal usaha dan kesiapan finansial dinilai paling layak dan berdaya guna tinggi bagi PAD Jabar.')
+                            ->rows(2),
+                    ])
+                    ->action(function (Booking $record, array $data) {
+                        $record->awardBeautyContestWinner(
+                            $data['beauty_contest_berita_acara_path'] ?? null,
+                            $data['catatan_admin'] ?? null
+                        );
+
+                        Notification::make()
+                            ->title('Pemenang Beauty Contest Ditetapkan')
+                            ->body("{$record->nama_pemohon} berhasil ditetapkan sebagai pemenang sewa objek ini.")
+                            ->success()
+                            ->send();
+                    }),
+
                 Tables\Actions\Action::make('hubungi_wa')
                     ->label('WA')
                     ->tooltip('Hubungi via WhatsApp')

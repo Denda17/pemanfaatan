@@ -182,7 +182,7 @@ class BanceuyUnitsSeeder extends Seeder
             } elseif (in_array($u['nomor'], $processBookingUnits)) {
                 $status = 'proses_booking';
                 $openedAt = now()->subDays(1);
-                $deadlineAt = now()->addWeekdays(4)->endOfDay();
+                $deadlineAt = Asset::calculateBookingDeadline($openedAt);
             }
 
             $zoneGallery = $galleriesByZone[$u['zona']] ?? $galleriesByZone['basic'];

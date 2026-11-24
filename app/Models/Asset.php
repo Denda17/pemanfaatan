@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
@@ -429,9 +430,9 @@ class Asset extends Model implements HasMedia
             return;
         }
 
-        $activeBookings = $this->bookings()->whereNotIn('status', ['rejected'])->get();
+        $activeBookings = $this->bookings()->whereNotIn('status', ['rejected', 'expired', 'cancelled'])->get();
         if ($activeBookings->isEmpty()) {
-            // Semua pengajuan ditolak atau tidak ada peminat aktif -> reset ke tersedia & bersihkan deadline
+            // Semua pengajuan ditolak/gugur atau tidak ada peminat aktif -> reset ke tersedia & bersihkan deadline
             $this->update([
                 'status_ketersediaan' => 'tersedia',
                 'booking_opened_at' => null,
@@ -447,9 +448,26 @@ class Asset extends Model implements HasMedia
             $earliest = $activeBookings->sortBy('created_at')->first();
             $opened = $earliest?->created_at ?? now();
             $updates['booking_opened_at'] = $opened;
-            $updates['booking_deadline_at'] = (clone $opened)->addWeekdays(5)->endOfDay();
+            $updates['booking_deadline_at'] = self::calculateBookingDeadline($opened);
         }
 
         $this->update($updates);
+    }
+
+    /**
+     * Hitung deadline booking 5 hari kerja presisi:
+     * - Hari klik dihitung sebagai hari kerja ke-1 (Senin-Jumat).
+     * - Batas waktu adalah hari kerja ke-5 pukul 23:59:59 WIB.
+     * - Akhir pekan (Sabtu & Minggu) tidak dihitung.
+     */
+    public static function calculateBookingDeadline(?\DateTimeInterface $from = null): Carbon
+    {
+        $start = $from ? Carbon::parse($from) : now();
+
+        if ($start->isWeekend()) {
+            $start = $start->nextWeekday();
+        }
+
+        return $start->addWeekdays(4)->endOfDay();
     }
 }

@@ -42,6 +42,59 @@ class SuratPermohonanService
     }
 
     /**
+     * Tentukan klasifikasi jenis objek sewa secara dinamis berdasarkan bentuk objek aset / unit terpilih.
+     * Mengembalikan salah satu dari: "Tanah", "Tanah dan Bangunan", atau "Bangunan".
+     */
+    public static function getJenisObjekSewa(Booking $booking): string
+    {
+        $asset = $booking->asset;
+        $bentuk = strtolower(trim((string) ($asset?->bentuk_objek ?? '')));
+
+        $hasTanah = str_contains($bentuk, 'tanah');
+        $hasBangunan = str_contains($bentuk, 'bangunan');
+
+        // 1. Cek dari teks eksplisit bentuk_objek aset
+        if ($hasTanah && $hasBangunan) {
+            return 'Tanah dan Bangunan';
+        }
+        if ($hasTanah && ! $hasBangunan) {
+            return 'Tanah';
+        }
+        if ($hasBangunan && ! $hasTanah) {
+            return 'Bangunan';
+        }
+
+        // 2. Fallback berdasarkan unit ruko yang dipilih (untuk multi-unit cluster)
+        $selectedUnits = $booking->selected_units;
+        if ($selectedUnits->isNotEmpty()) {
+            $totalTanah = (float) $selectedUnits->sum('luas_tanah');
+            $totalBangunan = (float) $selectedUnits->sum('luas_bangunan');
+
+            if ($totalTanah > 0 && $totalBangunan > 0) {
+                return 'Tanah dan Bangunan';
+            }
+            if ($totalBangunan > 0) {
+                return 'Bangunan';
+            }
+
+            return 'Tanah';
+        }
+
+        // 3. Fallback berdasarkan data luas tanah / bangunan aset induk
+        $luasTanah = (float) ($asset?->luas_tanah ?? 0);
+        $luasBangunan = (float) ($asset?->luas_bangunan ?? 0);
+
+        if ($luasTanah > 0 && $luasBangunan > 0) {
+            return 'Tanah dan Bangunan';
+        }
+        if ($luasBangunan > 0) {
+            return 'Bangunan';
+        }
+
+        return 'Tanah';
+    }
+
+    /**
      * Get path of template file.
      */
     public static function getTemplatePath(): string
@@ -110,10 +163,23 @@ class SuratPermohonanService
         $alamat = $user?->alamat ?: 'Sesuai KTP / Dokumen Domisili Pemohon';
         $nomorKontak = $booking->nomor_whatsapp ?: ($user?->phone ?: '-');
 
-        $lokasiAset = $asset ? ($asset->alamat_lokasi.', '.$asset->kabupaten_kota) : 'Objek Aset BMD Pemprov Jawa Barat';
-        $luasTanah = (int) ($asset?->luas_tanah_m2 ?? 0);
+        $lokasiAset = $asset ? ($asset->alamat ? $asset->alamat.', '.$asset->kabupaten_kota : ($asset->kabupaten_kota ?: 'Objek Aset BMD Pemprov Jawa Barat')) : 'Objek Aset BMD Pemprov Jawa Barat';
+
+        // Tentukan klasifikasi objek sewa secara dinamis: "Tanah", "Tanah dan Bangunan", atau "Bangunan"
+        $jenisObjek = self::getJenisObjekSewa($booking);
+        $perihalText = "Permohonan Sewa {$jenisObjek} Milik Pemerintah Provinsi Jawa Barat";
+
+        // Hitung luas tanah & luas bangunan (dukung aset reguler maupun multi-unit cluster)
+        $selectedUnits = $booking->selected_units;
+        if ($selectedUnits->isNotEmpty()) {
+            $luasTanah = (int) round((float) $selectedUnits->sum('luas_tanah'));
+            $luasBangunan = (int) round((float) $selectedUnits->sum('luas_bangunan'));
+        } else {
+            $luasTanah = (int) round((float) ($asset?->luas_tanah ?? 0));
+            $luasBangunan = (int) round((float) ($asset?->luas_bangunan ?? 0));
+        }
+
         $luasTanahTerbilang = $luasTanah > 0 ? trim(self::terbilang($luasTanah).' meter persegi') : '-';
-        $luasBangunan = (int) ($asset?->luas_bangunan_m2 ?? 0);
         $luasBangunanTerbilang = $luasBangunan > 0 ? trim(self::terbilang($luasBangunan).' meter persegi') : '-';
 
         $durasi = (int) $booking->durasi_sewa_tahun;
@@ -157,6 +223,11 @@ class SuratPermohonanService
                 self::setParagraphText($doc, $p, 'Nomor : '.$nomorSurat);
             }
 
+            // 2.5 Perihal Surat: Menyesuaikan apakah Tanah, Tanah dan Bangunan, atau Bangunan
+            if ($i === 26 || (str_contains($text, 'Permohonan Sewa') && str_contains($text, 'Pemerintah Provinsi'))) {
+                self::setParagraphText($doc, $p, $perihalText, '24');
+            }
+
             // 3. Identitas Pemohon
             if ($i === 36) {
                 self::setParagraphText($doc, $p, 'Nama : '.$namaPemohon.($isBadanUsaha ? ' (Mewakili '.$namaInstansi.')' : ''));
@@ -168,9 +239,20 @@ class SuratPermohonanService
                 self::setParagraphText($doc, $p, 'Alamat : '.$alamat.' (No. Kontak/WA: '.$nomorKontak.')');
             }
 
-            // 4. Paragraf Inti Permohonan
+            // 4. Paragraf Inti Permohonan: Sesuaikan klausul objek sewa dan luas
             if ($i === 40) {
-                $bodyText = "Dengan ini bermaksud mengajukan permohonan pemanfaatan sewa tanah dan/atau bangunan milik Pemerintah Provinsi Jawa Barat yang berlokasi di {$lokasiAset}, dengan luas tanah {$luasTanah} m2 ({$luasTanahTerbilang}) dan bangunan {$luasBangunan} m2 ({$luasBangunanTerbilang}) untuk digunakan sebagai {$peruntukan}. Rencana jangka waktu sewa selama {$durasi} ({$durasiTerbilang}) tahun, penawaran sewa sebesar Rp {$tarifFormat} per tahun, dan {$skemaBayar} yang akan digunakan untuk {$peruntukan}.";
+                if ($jenisObjek === 'Tanah') {
+                    $objekSewaText = 'sewa tanah';
+                    $luasSewaText = "dengan luas tanah {$luasTanah} m2 ({$luasTanahTerbilang})";
+                } elseif ($jenisObjek === 'Bangunan') {
+                    $objekSewaText = 'sewa bangunan';
+                    $luasSewaText = "dengan luas bangunan {$luasBangunan} m2 ({$luasBangunanTerbilang})";
+                } else {
+                    $objekSewaText = 'sewa tanah dan bangunan';
+                    $luasSewaText = "dengan luas tanah {$luasTanah} m2 ({$luasTanahTerbilang}) dan bangunan {$luasBangunan} m2 ({$luasBangunanTerbilang})";
+                }
+
+                $bodyText = "Dengan ini bermaksud mengajukan permohonan pemanfaatan {$objekSewaText} milik Pemerintah Provinsi Jawa Barat yang berlokasi di {$lokasiAset}, {$luasSewaText} untuk digunakan sebagai {$peruntukan}. Rencana jangka waktu sewa selama {$durasi} ({$durasiTerbilang}) tahun, penawaran sewa sebesar Rp {$tarifFormat} per tahun, dan {$skemaBayar} yang akan digunakan untuk {$peruntukan}.";
                 self::setParagraphText($doc, $p, $bodyText);
             }
 
@@ -193,7 +275,12 @@ class SuratPermohonanService
                 self::setParagraphText($doc, $p, 'Alamat : '.$alamat);
             }
             if ($i === 59) {
-                $pernyataanText = "Dengan ini menyatakan kesediaan untuk menyewa lahan milik Pemerintah Provinsi Jawa Barat yang terletak di {$lokasiAset} seluas {$luasTanah} m2 ({$luasTanahTerbilang}), dengan komitmen:";
+                $objekLahan = $jenisObjek === 'Tanah' ? 'tanah' : ($jenisObjek === 'Bangunan' ? 'bangunan' : 'tanah dan bangunan');
+                $luasPernyataan = $jenisObjek === 'Tanah'
+                    ? "seluas {$luasTanah} m2 ({$luasTanahTerbilang})"
+                    : ($jenisObjek === 'Bangunan' ? "seluas {$luasBangunan} m2 ({$luasBangunanTerbilang})" : "seluas tanah {$luasTanah} m2 ({$luasTanahTerbilang}) dan bangunan {$luasBangunan} m2 ({$luasBangunanTerbilang})");
+
+                $pernyataanText = "Dengan ini menyatakan kesediaan untuk menyewa {$objekLahan} milik Pemerintah Provinsi Jawa Barat yang terletak di {$lokasiAset} {$luasPernyataan}, dengan komitmen:";
                 self::setParagraphText($doc, $p, $pernyataanText);
             }
             if ($i === 61) {
@@ -222,7 +309,12 @@ class SuratPermohonanService
             }
             if ($i === 87) {
                 if ($isBadanUsaha) {
-                    $ketText = "Dengan ini menerangkan bahwa benar yang akan melakukan sewa lahan Pemerintah Provinsi Jawa Barat seluas {$luasTanah} m2 yang berlokasi di {$lokasiAset} adalah {$namaInstansi}.";
+                    $objekLahan = $jenisObjek === 'Tanah' ? 'tanah' : ($jenisObjek === 'Bangunan' ? 'bangunan' : 'tanah dan bangunan');
+                    $luasKet = $jenisObjek === 'Tanah'
+                        ? "seluas {$luasTanah} m2"
+                        : ($jenisObjek === 'Bangunan' ? "seluas {$luasBangunan} m2" : "seluas tanah {$luasTanah} m2 dan bangunan {$luasBangunan} m2");
+
+                    $ketText = "Dengan ini menerangkan bahwa benar yang akan melakukan sewa {$objekLahan} Pemerintah Provinsi Jawa Barat {$luasKet} yang berlokasi di {$lokasiAset} adalah {$namaInstansi}.";
                 } else {
                     $ketText = '[Bagian Surat Keterangan Badan Usaha ini tidak berlaku bagi pemohon perorangan]';
                 }
@@ -243,9 +335,67 @@ class SuratPermohonanService
     }
 
     /**
+     * Generate raw template docx with Perihal customized according to asset type.
+     */
+    public static function generateRaw(Booking $booking): string
+    {
+        $templatePath = self::getTemplatePath();
+        if (! file_exists($templatePath)) {
+            throw new \RuntimeException('Template surat permohonan tidak ditemukan di server.');
+        }
+
+        $tempDir = storage_path('app/temp-documents');
+        if (! is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $outputPath = $tempDir.'/DRAFT_Surat_Permohonan_'.preg_replace('/[^A-Za-z0-9_-]/', '_', $booking->kode_booking).'.docx';
+        copy($templatePath, $outputPath);
+
+        $zip = new ZipArchive;
+        if ($zip->open($outputPath) !== true) {
+            return $templatePath;
+        }
+
+        $xml = $zip->getFromName('word/document.xml');
+        if (! $xml) {
+            $zip->close();
+
+            return $templatePath;
+        }
+
+        $doc = new DOMDocument;
+        libxml_use_internal_errors(true);
+        $doc->loadXML($xml);
+        libxml_clear_errors();
+
+        $xpath = new DOMXPath($doc);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+        $jenisObjek = self::getJenisObjekSewa($booking);
+        $perihalText = "Permohonan Sewa {$jenisObjek} Milik Pemerintah Provinsi Jawa Barat";
+
+        $paragraphs = $xpath->query('//w:p');
+        for ($i = 0; $i < $paragraphs->length; $i++) {
+            $p = $paragraphs->item($i);
+            $text = trim($p->textContent);
+
+            if ($i === 26 || (str_contains($text, 'Permohonan Sewa') && str_contains($text, 'Pemerintah Provinsi'))) {
+                self::setParagraphText($doc, $p, $perihalText, '24');
+                break;
+            }
+        }
+
+        $zip->addFromString('word/document.xml', $doc->saveXML());
+        $zip->close();
+
+        return $outputPath;
+    }
+
+    /**
      * Replace all runs within a paragraph with a single run containing text.
      */
-    protected static function setParagraphText(DOMDocument $doc, \DOMNode $p, string $text): void
+    protected static function setParagraphText(DOMDocument $doc, \DOMNode $p, string $text, string $fontSize = '22'): void
     {
         // Preserve paragraph properties (<w:pPr>) if exists
         $pPr = null;
@@ -276,7 +426,7 @@ class SuratPermohonanService
         $rPr->appendChild($rFonts);
 
         $sz = $doc->createElement('w:sz');
-        $sz->setAttribute('w:val', '22'); // 11pt
+        $sz->setAttribute('w:val', $fontSize);
         $rPr->appendChild($sz);
 
         $r->appendChild($rPr);

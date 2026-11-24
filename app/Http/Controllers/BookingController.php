@@ -190,7 +190,7 @@ class BookingController extends Controller
             // Jika ini adalah peminat pertama pada aset reguler, tetapkan deadline penutupan (5 hari kerja s.d. 23:59 WIB)
             if ($asset->status_ketersediaan === 'tersedia' || ! $asset->booking_deadline_at) {
                 $openedAt = now();
-                $deadlineAt = now()->addWeekdays(5)->endOfDay();
+                $deadlineAt = Asset::calculateBookingDeadline($openedAt);
                 $asset->update([
                     'status_ketersediaan' => 'proses_booking',
                     'booking_opened_at' => $asset->booking_opened_at ?? $openedAt,
@@ -241,6 +241,17 @@ class BookingController extends Controller
         // Otorisasi: hanya pemilik permohonan atau admin yang dapat melihat status
         abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk melihat permohonan ini.');
 
+        // Evaluasi otomatis jika batas waktu telah berakhir
+        if ($booking->asset?->isMultiUnit()) {
+            foreach ($booking->selected_units as $unit) {
+                Booking::evaluateDeadlineForUnit($unit);
+            }
+        } else {
+            Booking::evaluateDeadlineForAsset($booking->asset);
+        }
+
+        $booking->refresh();
+
         // 6 Tahapan Proses Permohonan Pemanfaatan BMD
         $steps = [
             [
@@ -254,15 +265,15 @@ class BookingController extends Controller
                 'step' => 2,
                 'title' => 'Follow-up UPTD via WA',
                 'desc' => 'Petugas UPTD menghubungi pemohon via WhatsApp untuk koordinasi awal',
-                'completed' => in_array($booking->status, ['contacted', 'document_review', 'field_survey', 'approved', 'contract_signed']),
+                'completed' => in_array($booking->status, ['contacted', 'document_review', 'beauty_contest', 'field_survey', 'approved', 'contract_signed']),
                 'active' => ($booking->status === 'contacted'),
             ],
             [
                 'step' => 3,
-                'title' => 'Input & Verifikasi Berkas',
-                'desc' => 'Admin UPTD menginput & memverifikasi dokumen persyaratan (KTP/NIB, Proposal, dll)',
-                'completed' => in_array($booking->status, ['document_review', 'field_survey', 'approved', 'contract_signed']),
-                'active' => ($booking->status === 'document_review'),
+                'title' => ($booking->status === 'beauty_contest' ? 'Seleksi Beauty Contest' : ($booking->is_beauty_contest_winner ? 'Pemenang Seleksi & Verifikasi' : 'Input & Verifikasi Berkas')),
+                'desc' => ($booking->status === 'beauty_contest' ? 'UPTD menyelenggarakan seleksi pemaparan rencana usaha bagi beberapa peminat lengkap' : ($booking->is_beauty_contest_winner ? 'Mitra terpilih melanjutkan ke penetapan berita acara negosiasi dan fasilitasi Kepgub' : 'Admin UPTD menginput & memverifikasi dokumen persyaratan (KTP/NIB, Proposal, dll)')),
+                'completed' => in_array($booking->status, ['document_review', 'beauty_contest', 'field_survey', 'approved', 'contract_signed']),
+                'active' => in_array($booking->status, ['document_review', 'beauty_contest']),
             ],
             [
                 'step' => 4,
@@ -298,11 +309,11 @@ class BookingController extends Controller
         // Otorisasi: hanya pemilik booking atau admin
         abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk mengunduh dokumen permohonan ini.');
 
-        // Mode template mentah
+        // Mode template mentah (dengan perihal disesuaikan jenis aset)
         if ($request->query('mode') === 'raw') {
-            $templatePath = SuratPermohonanService::getTemplatePath();
+            $generatedRaw = SuratPermohonanService::generateRaw($booking);
 
-            return response()->download($templatePath, 'DRAFT_Surat_Permohonan_Sewa_BMD_2026.docx');
+            return response()->download($generatedRaw, 'DRAFT_Surat_Permohonan_Sewa_BMD_2026.docx');
         }
 
         // Mode auto-fill (otomatis terisi)
@@ -342,6 +353,106 @@ class BookingController extends Controller
         return response()->download($templatePath, 'Template_Surat_Keterangan_Badan_Hukum_Usaha.docx');
     }
 
+    public function uploadAllDocuments(Request $request, string $kode)
+    {
+        $booking = Booking::with(['user', 'asset', 'documents.requirement'])->where('kode_booking', $kode)->firstOrFail();
+        $user = Auth::user();
+
+        // Otorisasi
+        abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk mengunggah dokumen pada permohonan ini.');
+
+        // Proteksi status selesai / ditolak
+        if (in_array($booking->status, ['rejected', 'cancelled'], true)) {
+            return back()->with('error', 'Permohonan ini telah ditutup atau tidak aktif.');
+        }
+
+        // Proteksi masa tenggang 5 hari kerja
+        if ($booking->isExpired()) {
+            return back()->with('error', 'Masa tenggang 5 hari kerja untuk melengkapi dokumen persyaratan telah berakhir. Permohonan ini telah kedaluwarsa.');
+        }
+
+        $requiredCodes = $booking->getRequiredRequirementCodes();
+        $requirements = BookingRequirement::whereIn('kode', $requiredCodes)->get()->keyBy('kode');
+        $existingVerifiedDocs = $booking->documents->where('status_verifikasi', 'verified')->keyBy('requirement.kode');
+
+        $rules = [];
+        $messages = [];
+
+        foreach ($requiredCodes as $code) {
+            // Jika dokumen sudah verified (misal saat perbaikan bertahap), lewati
+            if ($existingVerifiedDocs->has($code)) {
+                continue;
+            }
+
+            $req = $requirements->get($code);
+            $nama = $req?->nama_persyaratan ?? $code;
+
+            $rules["documents.{$code}"] = 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:20480';
+            $messages["documents.{$code}.required"] = "Dokumen \"{$nama}\" wajib dipilih dan diunggah.";
+            $messages["documents.{$code}.file"] = "Berkas \"{$nama}\" harus berupa file valid.";
+            $messages["documents.{$code}.mimes"] = "Format berkas \"{$nama}\" harus berupa PDF, JPG, PNG, atau DOC/DOCX.";
+            $messages["documents.{$code}.max"] = "Ukuran berkas \"{$nama}\" tidak boleh melebihi 20 MB.";
+        }
+
+        $request->validate($rules, $messages);
+
+        $watermarkService = app(DocumentWatermarkService::class);
+        $uploadedCount = 0;
+
+        foreach ($rules as $fieldKey => $rule) {
+            $code = str_replace('documents.', '', $fieldKey);
+            $req = $requirements->get($code);
+            if (! $req) {
+                continue;
+            }
+
+            $file = $request->file("documents.{$code}");
+            if (! $file) {
+                continue;
+            }
+
+            // Watermark pelindungan data pribadi (UU PDP)
+            if (in_array($code, ['REQ_KTP', 'REQ_NPWP', 'REQ_NIB'], true)) {
+                $watermarkService->applyWatermarkIfImage($file, $booking->kode_booking);
+            }
+
+            $path = $file->store('booking-documents', 'local');
+
+            BookingDocument::updateOrCreate(
+                [
+                    'booking_id' => $booking->id,
+                    'booking_requirement_id' => $req->id,
+                ],
+                [
+                    'nomor_dokumen' => $req->kode.'/'.$booking->kode_booking,
+                    'tanggal_dokumen' => now(),
+                    'file_path' => $path,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_size' => $file->getSize(),
+                    'file_type' => $file->getClientMimeType(),
+                    'status_verifikasi' => 'pending',
+                    'catatan' => null,
+                ]
+            );
+
+            if ($code === 'REQ_PROPOSAL') {
+                $booking->update(['proposal_bisnis_path' => $path]);
+            }
+
+            $uploadedCount++;
+        }
+
+        // Perbarui status booking ke document_review (Verifikasi Berkas) jika sebelumnya pending
+        if ($booking->status === 'pending') {
+            $booking->update([
+                'status' => 'document_review',
+            ]);
+        }
+
+        return redirect()->route('booking.status', $booking->kode_booking)
+            ->with('success', "Seluruh ({$uploadedCount}) berkas persyaratan berhasil dikirim secara lengkap satu paket! Tim Verifikator UPTD BPKAD Jawa Barat akan segera menelaah berkas Anda.");
+    }
+
     public function uploadDocument(Request $request, string $kode)
     {
         $booking = Booking::where('kode_booking', $kode)->firstOrFail();
@@ -349,6 +460,16 @@ class BookingController extends Controller
 
         // Otorisasi
         abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk mengunggah dokumen pada permohonan ini.');
+
+        // Proteksi status selesai / ditolak
+        if (in_array($booking->status, ['rejected', 'cancelled'], true)) {
+            return back()->with('error', 'Permohonan ini telah ditutup atau tidak aktif.');
+        }
+
+        // Proteksi masa tenggang 5 hari kerja
+        if ($booking->isExpired()) {
+            return back()->with('error', 'Masa tenggang 5 hari kerja untuk melengkapi dokumen persyaratan telah berakhir. Permohonan ini telah kedaluwarsa.');
+        }
 
         $validated = $request->validate([
             'booking_requirement_id' => 'required|exists:booking_requirements,id',

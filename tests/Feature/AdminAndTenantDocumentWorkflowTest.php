@@ -217,7 +217,7 @@ class AdminAndTenantDocumentWorkflowTest extends TestCase
             'tanggal_booking' => now(),
         ]);
 
-        // Simulasikan admin telah mengunggah Laporan Penilaian
+        // Simulasikan admin telah mengunggah Laporan Penilaian (arsip internal)
         $reqPenilaian = BookingRequirement::where('kode', 'REQ_LAPORAN_PENILAIAN')->firstOrFail();
         BookingDocument::create([
             'booking_id' => $booking->id,
@@ -227,6 +227,20 @@ class AdminAndTenantDocumentWorkflowTest extends TestCase
             'file_name' => 'Laporan_Penilaian_Wajar_2026.pdf',
             'file_path' => 'booking-documents/sample_penilaian.pdf',
             'file_size' => 500000,
+            'status_verifikasi' => 'verified',
+            'admin_id' => $admin->id,
+        ]);
+
+        // Simulasikan admin juga mengunggah BA Negosiasi (dapat dilihat & diunduh peminat)
+        $reqBa = BookingRequirement::where('kode', 'REQ_BA_NEGOSIASI')->firstOrFail();
+        BookingDocument::create([
+            'booking_id' => $booking->id,
+            'booking_requirement_id' => $reqBa->id,
+            'nomor_dokumen' => 'BA/001/NEGOSIASI/2026',
+            'tanggal_dokumen' => now(),
+            'file_name' => 'BA_Negosiasi_Kesepakatan_2026.pdf',
+            'file_path' => 'booking-documents/sample_ba_negosiasi.pdf',
+            'file_size' => 450000,
             'status_verifikasi' => 'verified',
             'admin_id' => $admin->id,
         ]);
@@ -247,7 +261,12 @@ class AdminAndTenantDocumentWorkflowTest extends TestCase
         $response->assertSee('1. Diinput Admin UPTD');
         $response->assertSee('6. Khusus Diinput Mitra Penyewa');
 
-        // File yang sudah diunggah admin tampak di halaman pemohon
-        $response->assertSee('Laporan_Penilaian_Wajar_2026.pdf');
+        // Dokumen internal tidak menampilkan link download / nama file untuk pemohon
+        $response->assertDontSee('Laporan_Penilaian_Wajar_2026.pdf');
+        $response->assertSee('Dokumen Arsip Internal Kedinasan (Selesai Diproses UPTD)');
+
+        // Dokumen yang diizinkan (BA Negosiasi) tampak di halaman pemohon
+        $response->assertSee('BA_Negosiasi_Kesepakatan_2026.pdf');
+        $response->assertSee('Lihat Berkas Scan');
     }
 }

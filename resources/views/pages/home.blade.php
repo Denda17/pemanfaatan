@@ -232,7 +232,7 @@
                     <!-- Bottom Price Overlay -->
                     <div class="absolute bottom-3.5 inset-x-3.5 z-10 text-white flex items-end justify-between">
                         <div>
-                            <span class="text-[10px] text-gray-200 uppercase tracking-wider font-bold block">Tarif Retribusi Sewa</span>
+                            <span class="text-[10px] text-gray-200 uppercase tracking-wider font-bold block">Tarif Sewa</span>
                             <div class="text-base font-extrabold text-white">
                                 @if($asset->estimasi_tarif_tahunan)
                                     Rp {{ number_format($asset->estimasi_tarif_tahunan, 0, ',', '.') }} <span class="text-xs font-normal text-gray-200">/ thn</span>

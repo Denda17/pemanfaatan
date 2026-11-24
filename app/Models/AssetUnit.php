@@ -210,12 +210,53 @@ class AssetUnit extends Model
     public function startBookingCountdown(): void
     {
         $openedAt = now();
-        $deadlineAt = now()->addWeekdays(5)->endOfDay();
+        $deadlineAt = Asset::calculateBookingDeadline($openedAt);
 
         $this->update([
             'status_ketersediaan' => 'proses_booking',
             'booking_opened_at' => $this->booking_opened_at ?? $openedAt,
             'booking_deadline_at' => $deadlineAt,
         ]);
+    }
+
+    public function syncBookingStatus(): void
+    {
+        $hasContract = Booking::where(function ($q) {
+            $q->where('asset_unit_id', $this->id)
+                ->orWhereJsonContains('selected_unit_ids', $this->id)
+                ->orWhereJsonContains('selected_unit_ids', (string) $this->id);
+        })->where('status', 'contract_signed')->exists();
+
+        if ($hasContract) {
+            $this->update(['status_ketersediaan' => 'tersewa']);
+
+            return;
+        }
+
+        $activeBookings = Booking::where(function ($q) {
+            $q->where('asset_unit_id', $this->id)
+                ->orWhereJsonContains('selected_unit_ids', $this->id)
+                ->orWhereJsonContains('selected_unit_ids', (string) $this->id);
+        })->whereNotIn('status', ['rejected', 'expired', 'cancelled'])->get();
+
+        if ($activeBookings->isEmpty()) {
+            $this->update([
+                'status_ketersediaan' => 'tersedia',
+                'booking_opened_at' => null,
+                'booking_deadline_at' => null,
+            ]);
+
+            return;
+        }
+
+        $updates = ['status_ketersediaan' => 'proses_booking'];
+        if (! $this->booking_deadline_at) {
+            $earliest = $activeBookings->sortBy('created_at')->first();
+            $opened = $earliest?->created_at ?? now();
+            $updates['booking_opened_at'] = $opened;
+            $updates['booking_deadline_at'] = Asset::calculateBookingDeadline($opened);
+        }
+
+        $this->update($updates);
     }
 }

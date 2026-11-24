@@ -99,6 +99,29 @@ class BookingDocumentAccessController extends Controller
     }
 
     /**
+     * Lihat berkas Berita Acara Seleksi / Beauty Contest (PDF).
+     */
+    public function viewBeritaAcaraSeleksi(Request $request, Booking $booking): BinaryFileResponse
+    {
+        $user = Auth::user();
+        abort_unless($user && ($user->isAdmin() || $booking->isOwnedBy($user)), 403, 'Akses ditolak.');
+
+        if (! $booking->beauty_contest_berita_acara_path) {
+            abort(404, 'Berita acara seleksi belum dilampirkan.');
+        }
+
+        $path = $this->resolveFilePath($booking->beauty_contest_berita_acara_path);
+
+        $this->logAccess('Lihat Berita Acara Seleksi', "Booking #{$booking->id} ({$booking->kode_booking})", $booking);
+
+        return response()->file($path, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Berita_Acara_Seleksi_Beauty_Contest.pdf"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
      * Verifikasi otorisasi akses: Hanya pemilik akun atau admin yang berhak.
      */
     protected function authorizeDocumentAccess(BookingDocument $document): void
@@ -108,6 +131,11 @@ class BookingDocumentAccessController extends Controller
 
         if (! $user || ! $booking || ! $booking->isOwnedBy($user)) {
             abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk mengakses dokumen ini.');
+        }
+
+        // Jika bukan admin (peminat / pemohon), batasi akses hanya ke dokumen publik/eksternal yang sah
+        if (! $user->isAdmin() && ! $document->isViewableByApplicant()) {
+            abort(403, 'Akses ditolak: Dokumen ini merupakan arsip internal kedinasan UPTD dan tidak dipublikasikan kepada pemohon.');
         }
     }
 

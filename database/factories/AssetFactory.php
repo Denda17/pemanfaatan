@@ -47,7 +47,7 @@ class AssetFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status_ketersediaan' => 'proses_booking',
             'booking_opened_at' => now(),
-            'booking_deadline_at' => now()->addWeekdays(5)->endOfDay(),
+            'booking_deadline_at' => Asset::calculateBookingDeadline(now()),
         ]);
     }
 

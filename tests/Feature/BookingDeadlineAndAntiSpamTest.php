@@ -58,8 +58,8 @@ class BookingDeadlineAndAntiSpamTest extends TestCase
         $this->assertNotNull($asset->booking_opened_at);
         $this->assertNotNull($asset->booking_deadline_at);
 
-        // 5 hari kerja dari Senin 16 Nov -> Senin 23 Nov 2026 pukul 23:59:59
-        $expectedDeadline = Carbon::parse('2026-11-23 23:59:59');
+        // 5 hari kerja dari Senin 16 Nov -> Jumat 20 Nov 2026 pukul 23:59:59 (Senin-Jumat pada minggu yang sama)
+        $expectedDeadline = Carbon::parse('2026-11-20 23:59:59');
         $this->assertEquals($expectedDeadline->toDateTimeString(), $asset->booking_deadline_at->toDateTimeString());
 
         Carbon::setTestNow();

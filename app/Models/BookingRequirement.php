@@ -41,6 +41,32 @@ class BookingRequirement extends Model
         return in_array($this->diunggah_oleh, ['mitra', 'pemohon'], true);
     }
 
+    /**
+     * Kode dokumen terbitan admin yang sah untuk dilihat dan diunduh oleh peminat:
+     * 1. REQ_BA_NEGOSIASI (Berita Acara Negosiasi)
+     * 2. REQ_KEPUTUSAN_GUBERNUR (Keputusan Gubernur)
+     * 3. REQ_PERJANJIAN_SEWA (Perjanjian Sewa / PKS)
+     * 4. REQ_PEMBERITAHUAN_PEMBAYARAN (Surat Pemberitahuan Pembayaran / Tagihan)
+     */
+    public const APPLICANT_ACCESSIBLE_ADMIN_CODES = [
+        'REQ_BA_NEGOSIASI',
+        'REQ_KEPUTUSAN_GUBERNUR',
+        'REQ_PERJANJIAN_SEWA',
+        'REQ_PEMBERITAHUAN_PEMBAYARAN',
+    ];
+
+    /**
+     * Cek apakah dokumen persyaratan ini dapat dilihat dan diunduh oleh peminat.
+     */
+    public function isViewableByApplicant(): bool
+    {
+        if ($this->isMitraUploadable()) {
+            return true;
+        }
+
+        return in_array($this->kode, self::APPLICANT_ACCESSIBLE_ADMIN_CODES, true);
+    }
+
     public function scopeAdminProcess(Builder $query): Builder
     {
         return $query->where('kategori', 'administrasi');

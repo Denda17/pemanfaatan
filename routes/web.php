@@ -54,6 +54,10 @@ Route::post('/status-booking/{kode}/upload-dokumen', [BookingController::class, 
     ->middleware('auth')
     ->name('booking.upload-dokumen');
 
+Route::post('/status-booking/{kode}/upload-all', [BookingController::class, 'uploadAllDocuments'])
+    ->middleware('auth')
+    ->name('booking.upload-all');
+
 Route::post('/status-booking/{kode}/upload-termin', [BookingController::class, 'uploadTerminPayment'])
     ->middleware('auth')
     ->name('booking.upload-termin');
@@ -68,6 +72,8 @@ Route::middleware('auth')->group(function () {
         ->name('booking.payments.view');
     Route::get('/status-booking/{booking}/proposal-bisnis', [BookingDocumentAccessController::class, 'viewProposal'])
         ->name('booking.proposal.view');
+    Route::get('/status-booking/{booking}/berita-acara-seleksi', [BookingDocumentAccessController::class, 'viewBeritaAcaraSeleksi'])
+        ->name('booking.beauty-contest.berita-acara');
 });
 
 // Pengalihan Login Admin ke Portal Login Terpadu
