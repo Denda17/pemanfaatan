@@ -6,6 +6,7 @@ use App\Filament\Resources\BookingResource\Pages\EditBooking;
 use App\Models\Asset;
 use App\Models\AssetPemanfaatan;
 use App\Models\Booking;
+use App\Models\BookingPayment;
 use App\Models\BookingRequirement;
 use App\Models\Regulation;
 use App\Models\User;
@@ -953,6 +954,19 @@ class MarketplaceAndBookingTest extends TestCase
             'termin_ke' => 1,
             'status_pembayaran' => 'pending_verifikasi',
         ]);
+
+        // Minta kode pembayaran & terbitkan kode bayar oleh admin sebelum unggah termin ke-2
+        $this->actingAs($userBertahap, 'web')->post('/status-booking/'.$bookingBertahap->kode_booking.'/minta-kode-termin', [
+            'termin_ke' => 2,
+        ])->assertSessionHas('success');
+
+        BookingPayment::where('booking_id', $bookingBertahap->id)
+            ->where('termin_ke', 2)
+            ->update([
+                'kode_pembayaran' => '8800123456',
+                'status_pembayaran' => 'kode_terbit',
+                'kode_diterbitkan_at' => now(),
+            ]);
 
         // Unggah mandiri bukti setor termin ke-2 oleh pemohon
         $fileTermin2 = UploadedFile::fake()->create('slip_bjb_termin2.jpg', 400, 'image/jpeg');

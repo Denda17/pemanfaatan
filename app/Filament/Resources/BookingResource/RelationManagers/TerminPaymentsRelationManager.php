@@ -39,6 +39,28 @@ class TerminPaymentsRelationManager extends RelationManager
                     ->placeholder('Contoh: Tahun ke-2')
                     ->maxLength(50),
 
+                Forms\Components\DatePicker::make('tanggal_jatuh_tempo')
+                    ->label('Tanggal Jatuh Tempo (Sesuai PKS)'),
+
+                Forms\Components\TextInput::make('nominal_kewajiban')
+                    ->label('Nominal Tagihan / Kewajiban (Rp)')
+                    ->numeric()
+                    ->prefix('Rp'),
+
+                Forms\Components\TextInput::make('kode_pembayaran')
+                    ->label('Kode Pembayaran / Billing Kasda')
+                    ->maxLength(100),
+
+                Forms\Components\FileUpload::make('kode_bayar_file_path')
+                    ->label('Berkas Kode Bayar / Surat Tagihan (PDF/Gambar)')
+                    ->disk('local')
+                    ->directory('booking-termin-billing')
+                    ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
+                    ->maxSize(10240)
+                    ->openable()
+                    ->downloadable()
+                    ->columnSpanFull(),
+
                 Forms\Components\TextInput::make('nominal_disetor')
                     ->label('Nominal Setoran Riil (Rp)')
                     ->numeric()
@@ -54,13 +76,15 @@ class TerminPaymentsRelationManager extends RelationManager
                 Forms\Components\Select::make('status_pembayaran')
                     ->label('Status Verifikasi Setoran')
                     ->options([
-                        'lunas' => 'Lunas (Disetor ke Rekening Kasda)',
-                        'pending_verifikasi' => 'Menunggu Verifikasi Kasda',
-                        'ditolak' => 'Perlu Perbaikan / Ditolak',
                         'menunggu_pembayaran' => 'Belum Dibayar',
+                        'kode_diminta' => 'Diminta Kode Bayar oleh Penyewa',
+                        'kode_terbit' => 'Kode Bayar Terbit (Siap Dibayar)',
+                        'pending_verifikasi' => 'Menunggu Verifikasi Kasda',
+                        'lunas' => 'Lunas (Disetor ke Rekening Kasda)',
+                        'ditolak' => 'Perlu Perbaikan / Ditolak',
                     ])
                     ->required()
-                    ->default('pending_verifikasi'),
+                    ->default('menunggu_pembayaran'),
 
                 Forms\Components\FileUpload::make('file_path')
                     ->label('File Bukti Setor Bank BJB')
@@ -108,6 +132,24 @@ class TerminPaymentsRelationManager extends RelationManager
                     ->placeholder('Rp 0')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('tanggal_jatuh_tempo')
+                    ->label('Jatuh Tempo')
+                    ->date('d/m/Y')
+                    ->badge()
+                    ->color(fn (BookingPayment $record): string => match ($record->due_urgency) {
+                        'overdue' => 'danger',
+                        'warning' => 'warning',
+                        default => 'gray',
+                    })
+                    ->sortable()
+                    ->placeholder('Belum Diatur'),
+
+                Tables\Columns\TextColumn::make('kode_pembayaran')
+                    ->label('Kode Bayar')
+                    ->placeholder('-')
+                    ->searchable()
+                    ->copyable(),
+
                 Tables\Columns\TextColumn::make('nomor_sts')
                     ->label('Nomor STS / NTPD')
                     ->placeholder('-')
@@ -125,13 +167,16 @@ class TerminPaymentsRelationManager extends RelationManager
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'lunas' => 'success',
-                        'pending_verifikasi' => 'warning',
+                        'pending_verifikasi', 'kode_diminta' => 'warning',
+                        'kode_terbit' => 'info',
                         'ditolak' => 'danger',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'lunas' => 'Lunas Kasda',
                         'pending_verifikasi' => 'Menunggu Verifikasi',
+                        'kode_diminta' => 'Minta Kode Bayar',
+                        'kode_terbit' => 'Kode Bayar Terbit',
                         'ditolak' => 'Ditolak / Revisi',
                         default => 'Belum Bayar',
                     }),
@@ -142,6 +187,72 @@ class TerminPaymentsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
+                Tables\Actions\Action::make('terbitkan_kode_bayar')
+                    ->label(fn (BookingPayment $record): string => $record->hasIssuedPaymentCode() ? 'Perbarui Kode Bayar' : 'Upload Kode Bayar')
+                    ->icon('heroicon-o-qr-code')
+                    ->color('info')
+                    ->visible(fn (BookingPayment $record): bool => $record->termin_ke >= 2 && $record->status_pembayaran !== 'lunas')
+                    ->form(fn (BookingPayment $record): array => [
+                        Forms\Components\TextInput::make('kode_pembayaran')
+                            ->label('Kode Pembayaran / Kode Billing')
+                            ->default($record->kode_pembayaran)
+                            ->placeholder('Contoh: 8801234567890')
+                            ->maxLength(100),
+
+                        Forms\Components\FileUpload::make('kode_bayar_file_path')
+                            ->label('Upload Berkas Kode Bayar / Surat Tagihan (Opsional)')
+                            ->disk('local')
+                            ->directory('booking-termin-billing')
+                            ->default($record->kode_bayar_file_path)
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(10240)
+                            ->openable()
+                            ->downloadable(),
+
+                        Forms\Components\DatePicker::make('tanggal_jatuh_tempo')
+                            ->label('Tanggal Jatuh Tempo (Sesuai PKS)')
+                            ->default($record->tanggal_jatuh_tempo),
+
+                        Forms\Components\TextInput::make('nominal_kewajiban')
+                            ->label('Nominal Tagihan (Rp)')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->default($record->nominal_kewajiban),
+
+                        Forms\Components\Textarea::make('catatan')
+                            ->label('Catatan untuk Penyewa')
+                            ->default($record->catatan)
+                            ->rows(2),
+                    ])
+                    ->action(function (BookingPayment $record, array $data): void {
+                        if (empty($data['kode_pembayaran']) && empty($data['kode_bayar_file_path'])) {
+                            Notification::make()
+                                ->title('Kode Bayar Belum Diisi')
+                                ->body('Harap isi teks Kode Pembayaran atau unggah file kode bayar.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $record->update([
+                            'kode_pembayaran' => $data['kode_pembayaran'] ?? $record->kode_pembayaran,
+                            'kode_bayar_file_path' => $data['kode_bayar_file_path'] ?? $record->kode_bayar_file_path,
+                            'kode_bayar_file_name' => ! empty($data['kode_bayar_file_path']) ? basename($data['kode_bayar_file_path']) : $record->kode_bayar_file_name,
+                            'tanggal_jatuh_tempo' => $data['tanggal_jatuh_tempo'] ?? $record->tanggal_jatuh_tempo,
+                            'nominal_kewajiban' => $data['nominal_kewajiban'] ?? $record->nominal_kewajiban,
+                            'catatan' => $data['catatan'] ?? $record->catatan,
+                            'status_pembayaran' => 'kode_terbit',
+                            'kode_diterbitkan_at' => now(),
+                        ]);
+
+                        Notification::make()
+                            ->title('Kode Pembayaran Diterbitkan')
+                            ->body("Kode pembayaran Termin ke-{$record->termin_ke} telah tersedia untuk penyewa.")
+                            ->success()
+                            ->send();
+                    }),
+
                 Tables\Actions\Action::make('lihat_slip')
                     ->label('Lihat Bukti')
                     ->icon('heroicon-o-eye')

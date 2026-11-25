@@ -73,6 +73,33 @@ class BookingDocumentAccessController extends Controller
     }
 
     /**
+     * Tampilkan / stream berkas kode bayar / surat tagihan termin secara aman.
+     */
+    public function viewBillingCode(Request $request, BookingPayment $payment): BinaryFileResponse
+    {
+        $booking = $payment->booking;
+        $user = Auth::user();
+
+        if (! $booking || ! $booking->isOwnedBy($user)) {
+            abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk melihat kode pembayaran ini.');
+        }
+
+        if (! $payment->kode_bayar_file_path) {
+            abort(404, 'Berkas kode pembayaran belum diunggah oleh petugas.');
+        }
+
+        $path = $this->resolveFilePath($payment->kode_bayar_file_path);
+
+        $this->logAccess('Lihat Kode Bayar Termin', "BookingPayment #{$payment->id} (Termin ke-{$payment->termin_ke})", $booking);
+
+        return response()->file($path, [
+            'Content-Type' => mime_content_type($path) ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.addslashes($payment->kode_bayar_file_name ?? basename($path)).'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
      * Tampilkan / stream proposal bisnis secara aman.
      */
     public function viewProposal(Request $request, Booking $booking): BinaryFileResponse

@@ -58,6 +58,10 @@ Route::post('/status-booking/{kode}/upload-all', [BookingController::class, 'upl
     ->middleware('auth')
     ->name('booking.upload-all');
 
+Route::post('/status-booking/{kode}/minta-kode-termin', [BookingController::class, 'requestTerminPaymentCode'])
+    ->middleware('auth')
+    ->name('booking.request-termin-code');
+
 Route::post('/status-booking/{kode}/upload-termin', [BookingController::class, 'uploadTerminPayment'])
     ->middleware('auth')
     ->name('booking.upload-termin');
@@ -70,6 +74,8 @@ Route::middleware('auth')->group(function () {
         ->name('booking.documents.download');
     Route::get('/booking-payments/{payment}/view', [BookingDocumentAccessController::class, 'viewPaymentProof'])
         ->name('booking.payments.view');
+    Route::get('/booking-payments/{payment}/kode-bayar', [BookingDocumentAccessController::class, 'viewBillingCode'])
+        ->name('booking.payments.billing-code');
     Route::get('/status-booking/{booking}/proposal-bisnis', [BookingDocumentAccessController::class, 'viewProposal'])
         ->name('booking.proposal.view');
     Route::get('/status-booking/{booking}/berita-acara-seleksi', [BookingDocumentAccessController::class, 'viewBeritaAcaraSeleksi'])

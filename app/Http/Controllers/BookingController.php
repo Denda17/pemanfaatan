@@ -541,6 +541,52 @@ class BookingController extends Controller
         return back()->with('success', 'Dokumen "'.$requirement->nama_persyaratan.'" berhasil diunggah dan sedang menunggu verifikasi Tim UPTD BPKAD Jabar.');
     }
 
+    public function requestTerminPaymentCode(Request $request, string $kode)
+    {
+        $booking = Booking::where('kode_booking', $kode)->firstOrFail();
+        $user = Auth::user();
+
+        abort_unless($booking->isOwnedBy($user), 403, 'Anda tidak memiliki hak akses untuk mengajukan kode pembayaran pada permohonan ini.');
+
+        if ($booking->skema_pembayaran !== 'bertahap') {
+            return back()->with('error', 'Permintaan kode pembayaran termin hanya berlaku untuk skema pembayaran bertahap.');
+        }
+
+        $validated = $request->validate([
+            'termin_ke' => 'required|integer|min:2|max:'.max(2, (int) $booking->durasi_sewa_tahun),
+        ], [
+            'termin_ke.required' => 'Nomor termin sewa wajib ditentukan.',
+            'termin_ke.min' => 'Permintaan kode pembayaran hanya untuk termin ke-2 dan seterusnya.',
+        ]);
+
+        $terminKe = (int) $validated['termin_ke'];
+        $existing = BookingPayment::where('booking_id', $booking->id)
+            ->where('termin_ke', $terminKe)
+            ->first();
+
+        if ($existing && $existing->status_pembayaran === 'lunas') {
+            return back()->with('success', "Setoran Termin ke-{$terminKe} sudah diverifikasi lunas.");
+        }
+
+        if ($existing && $existing->hasIssuedPaymentCode()) {
+            return back()->with('success', "Kode pembayaran Termin ke-{$terminKe} sudah diterbitkan oleh Admin UPTD.");
+        }
+
+        BookingPayment::updateOrCreate(
+            [
+                'booking_id' => $booking->id,
+                'termin_ke' => $terminKe,
+            ],
+            [
+                'tahun_ke' => 'Tahun ke-'.$terminKe,
+                'status_pembayaran' => 'kode_diminta',
+                'kode_diminta_at' => now(),
+            ]
+        );
+
+        return back()->with('success', "Permintaan kode pembayaran Termin ke-{$terminKe} berhasil dikirim ke Admin UPTD BPKAD Jabar.");
+    }
+
     public function uploadTerminPayment(Request $request, string $kode)
     {
         $booking = Booking::where('kode_booking', $kode)->firstOrFail();
@@ -561,6 +607,15 @@ class BookingController extends Controller
             'bukti_file.max' => 'Ukuran file maksimal adalah 20 MB.',
         ]);
 
+        $terminKe = (int) $validated['termin_ke'];
+        $existingPayment = BookingPayment::where('booking_id', $booking->id)
+            ->where('termin_ke', $terminKe)
+            ->first();
+
+        if ($terminKe >= 2 && (! $existingPayment || (! $existingPayment->hasIssuedPaymentCode() && ! in_array($existingPayment->status_pembayaran, ['kode_terbit', 'pending_verifikasi', 'ditolak'], true)))) {
+            return back()->with('error', "Silakan klik \"Minta Kode Pembayaran\" untuk Termin ke-{$terminKe} dan tunggu Admin UPTD mengunggah kode bayar terlebih dahulu.");
+        }
+
         $file = $request->file('bukti_file');
         // Simpan bukti bayar ke private disk
         $path = $file->store('booking-termin-payments', 'local');
@@ -568,10 +623,10 @@ class BookingController extends Controller
         BookingPayment::updateOrCreate(
             [
                 'booking_id' => $booking->id,
-                'termin_ke' => $validated['termin_ke'],
+                'termin_ke' => $terminKe,
             ],
             [
-                'tahun_ke' => 'Tahun ke-'.$validated['termin_ke'],
+                'tahun_ke' => 'Tahun ke-'.$terminKe,
                 'nominal_disetor' => $validated['nominal_disetor'] ?? null,
                 'nomor_sts' => $validated['nomor_sts'] ?? null,
                 'tanggal_bayar' => $validated['tanggal_bayar'] ?? now(),

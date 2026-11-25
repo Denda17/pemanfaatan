@@ -1185,6 +1185,26 @@
                                     $paymentDate = null;
                                     $statusKey = 'menunggu_pembayaran';
                                     $catatanTermin = null;
+                                    $dueDate = $terminPayment?->tanggal_jatuh_tempo;
+                                    $dueUrgency = $terminPayment?->due_urgency ?? 'normal';
+                                    $daysUntilDue = $terminPayment?->days_until_due;
+                                    $hasIssuedCode = $terminPayment?->hasIssuedPaymentCode() ?? false;
+                                    $kodePembayaran = $terminPayment?->kode_pembayaran;
+                                    $kodeBayarUrl = $terminPayment?->kode_bayar_file_url;
+                                    $nominalKewajiban = $terminPayment?->nominal_kewajiban;
+
+                                    $btnColorClass = match ($dueUrgency) {
+                                        'overdue' => 'bg-rose-600 hover:bg-rose-700 text-white',
+                                        'warning' => 'bg-amber-500 hover:bg-amber-600 text-white',
+                                        default => 'bg-blue-600 hover:bg-blue-700 text-white',
+                                    };
+
+                                    $urgencySuffix = '';
+                                    if ($dueUrgency === 'overdue' && $daysUntilDue !== null) {
+                                        $urgencySuffix = ' (Terlambat ' . abs($daysUntilDue) . ' Hari)';
+                                    } elseif ($dueUrgency === 'warning' && $daysUntilDue !== null) {
+                                        $urgencySuffix = $daysUntilDue === 0 ? ' (Jatuh Tempo Hari Ini)' : " (Sisa {$daysUntilDue} Hari)";
+                                    }
 
                                     if ($t === 1) {
                                         $reqBukti = $allReqs->firstWhere('kode', 'REQ_BUKTI_BAYAR');
@@ -1207,14 +1227,16 @@
                                             $catatanTermin = $docBukti1->catatan;
                                         }
                                     } else {
+                                        if ($terminPayment) {
+                                            $statusKey = $terminPayment->status_pembayaran ?? 'menunggu_pembayaran';
+                                            $catatanTermin = $terminPayment->catatan;
+                                        }
                                         if ($terminPayment && $terminPayment->file_path) {
                                             $hasUploaded = true;
                                             $filePath = $terminPayment->bukti_url;
                                             $fileName = $terminPayment->file_name;
                                             $stsNumber = $terminPayment->nomor_sts;
                                             $paymentDate = $terminPayment->tanggal_bayar;
-                                            $statusKey = $terminPayment->status_pembayaran;
-                                            $catatanTermin = $terminPayment->catatan;
                                         }
                                     }
                                 @endphp
@@ -1257,6 +1279,14 @@
                                                         <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">
                                                             Perlu Perbaikan / Ditolak
                                                         </span>
+                                                    @elseif($statusKey === 'kode_terbit')
+                                                        <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300">
+                                                            Kode Bayar Terbit (Siap Dibayar)
+                                                        </span>
+                                                    @elseif($statusKey === 'kode_diminta')
+                                                        <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                                                            Menunggu Kode Bayar UPTD
+                                                        </span>
                                                     @else
                                                         <span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
                                                             Belum Ada Setoran
@@ -1268,7 +1298,7 @@
                                                     @if($t === 1)
                                                         Wajib disetor lunas setelah persetujuan Sekda terbit, sebelum tanda tangan naskah PKS dan serah terima kunci/fisik aset.
                                                     @else
-                                                        Jatuh tempo paling lambat H-30 hari sebelum masa sewa Tahun ke-{{ $t - 1 }} berakhir (sekitar bulan ke-{{ (($t - 1) * 12) - 1 }} masa sewa).
+                                                        Untuk termin lanjutan, klik <strong>Minta Kode Pembayaran</strong> terlebih dahulu agar Admin UPTD menerbitkan kode billing sebelum penyetoran.
                                                     @endif
                                                 </p>
 
@@ -1302,9 +1332,30 @@
 
                                         <div class="text-left sm:text-right shrink-0">
                                             <span class="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Jatuh Tempo:</span>
-                                            <span class="text-xs font-extrabold {{ $t === 1 ? 'text-emerald-700' : 'text-blue-800' }}">
-                                                {{ $t === 1 ? 'Sebelum Penandatanganan PKS' : 'H-30 Hari Tahun ke-' . $t }}
-                                            </span>
+                                            @if($t === 1)
+                                                <span class="text-xs font-extrabold text-emerald-700">
+                                                    Sebelum Penandatanganan PKS
+                                                </span>
+                                            @elseif($dueDate)
+                                                <span class="text-xs font-extrabold {{ $dueUrgency === 'overdue' ? 'text-rose-700' : ($dueUrgency === 'warning' ? 'text-amber-700' : 'text-blue-800') }}">
+                                                    {{ $dueDate->locale('id')->translatedFormat('d M Y') }}
+                                                </span>
+                                                @if($statusKey !== 'lunas')
+                                                    @if($dueUrgency === 'overdue' && $daysUntilDue !== null)
+                                                        <span class="block mt-0.5 text-[10px] font-black text-rose-600">
+                                                            Terlambat {{ abs($daysUntilDue) }} hari
+                                                        </span>
+                                                    @elseif($dueUrgency === 'warning' && $daysUntilDue !== null)
+                                                        <span class="block mt-0.5 text-[10px] font-black text-amber-600">
+                                                            {{ $daysUntilDue === 0 ? 'Jatuh tempo hari ini' : "Sisa {$daysUntilDue} hari lagi" }}
+                                                        </span>
+                                                    @endif
+                                                @endif
+                                            @else
+                                                <span class="text-xs font-bold text-gray-500">
+                                                    Sesuai PKS (Menunggu Input Admin)
+                                                </span>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -1321,12 +1372,60 @@
                                                 </a>
                                             </div>
                                         @else
-                                            <!-- Form Upload Bukti Setor Termin Lanjutan (Termin 2 dst.) -->
-                                            @if($statusKey !== 'lunas')
+                                            <!-- Alur Termin Lanjutan (Termin 2 dst.): Minta Kode Bayar -> Admin Upload Kode -> Unggah Bukti Setor -->
+                                            @if($statusKey === 'lunas')
+                                                <div class="flex items-center gap-1.5 text-emerald-800 text-xs font-bold">
+                                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                    <span>Setoran Kasda Termin ke-{{ $t }} telah diverifikasi sah dan lunas.</span>
+                                                </div>
+                                            @elseif(! $hasIssuedCode && ! in_array($statusKey, ['kode_terbit', 'pending_verifikasi', 'ditolak'], true))
+                                                @if($statusKey === 'kode_diminta')
+                                                    <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                        <div class="flex items-center gap-2 font-semibold">
+                                                            <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                            <span>Permintaan kode pembayaran Termin ke-{{ $t }} sudah dikirim. Menunggu Admin UPTD menerbitkan kode bayar.</span>
+                                                        </div>
+                                                        @if($urgencySuffix)
+                                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black {{ $dueUrgency === 'overdue' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white' }} shrink-0">
+                                                                {{ trim($urgencySuffix, ' ()') }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                @else
+                                                    <form action="{{ route('booking.request-termin-code', $booking->kode_booking) }}" method="POST" class="inline-block">
+                                                        @csrf
+                                                        <input type="hidden" name="termin_ke" value="{{ $t }}">
+                                                        <button type="submit" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl {{ $btnColorClass }} active:scale-[0.98] font-extrabold text-xs transition cursor-pointer shadow-2xs">
+                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                                                            <span>Minta Kode Pembayaran Termin ke-{{ $t }}{{ $urgencySuffix }}</span>
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            @else
+                                                @if($kodePembayaran || $kodeBayarUrl || $nominalKewajiban)
+                                                    <div class="mb-3 p-3 rounded-xl bg-blue-50/80 border border-blue-200 text-xs text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                        <div class="space-y-0.5">
+                                                            <span class="text-[10px] font-black uppercase tracking-wider text-blue-700 block">Kode Pembayaran / Billing Resmi UPTD</span>
+                                                            @if($kodePembayaran)
+                                                                <div class="font-mono text-sm font-black text-gray-900 select-all">{{ $kodePembayaran }}</div>
+                                                            @endif
+                                                            @if($nominalKewajiban)
+                                                                <div class="text-[11px] font-semibold text-gray-700">Nominal Tagihan: <strong class="text-gray-900">Rp {{ number_format((float) $nominalKewajiban, 0, ',', '.') }}</strong></div>
+                                                            @endif
+                                                        </div>
+                                                        @if($kodeBayarUrl)
+                                                            <a href="{{ $kodeBayarUrl }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-300 text-blue-800 hover:bg-blue-100 font-extrabold text-[11px] transition shrink-0">
+                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                                <span>Lihat / Unduh Berkas Kode Bayar</span>
+                                                            </a>
+                                                        @endif
+                                                    </div>
+                                                @endif
+
                                                 <details class="group">
-                                                    <summary class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl {{ $hasUploaded ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700' }} active:scale-[0.98] text-white font-extrabold text-xs transition cursor-pointer select-none shadow-2xs">
+                                                    <summary class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl {{ $btnColorClass }} active:scale-[0.98] font-extrabold text-xs transition cursor-pointer select-none shadow-2xs">
                                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                                                        <span>{{ $hasUploaded ? 'Unggah Ulang Bukti Setor Termin ke-' . $t : 'Unggah Bukti Setor Termin ke-' . $t }}</span>
+                                                        <span>{{ $hasUploaded ? 'Unggah Ulang Bukti Setor Termin ke-' . $t : 'Unggah Bukti Setor Termin ke-' . $t }}{{ $urgencySuffix }}</span>
                                                     </summary>
 
                                                     <form action="{{ route('booking.upload-termin', $booking->kode_booking) }}" method="POST" enctype="multipart/form-data" class="mt-3 p-4 rounded-2xl bg-white border border-blue-200/90 shadow-2xs space-y-3">
@@ -1363,11 +1462,6 @@
                                                         </div>
                                                     </form>
                                                 </details>
-                                            @else
-                                                <div class="flex items-center gap-1.5 text-emerald-800 text-xs font-bold">
-                                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                    <span>Setoran Kasda Termin ke-{{ $t }} telah diverifikasi sah dan lunas.</span>
-                                                </div>
                                             @endif
                                         @endif
                                     </div>
