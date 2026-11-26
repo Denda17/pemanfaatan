@@ -168,6 +168,15 @@ class BookingRequirementSeeder extends Seeder
                 'is_required' => true,
                 'urutan' => 15,
             ],
+            [
+                'kode' => 'REQ_ADDENDUM_PKS',
+                'nama_persyaratan' => 'Addendum Perjanjian Sewa (Opsional)',
+                'deskripsi' => 'Dokumen perubahan/addendum atas Perjanjian Kerjasama (PKS) Induk (opsional, dapat lebih dari satu berkas).',
+                'kategori' => 'administrasi',
+                'diunggah_oleh' => 'admin',
+                'is_required' => false,
+                'urutan' => 16,
+            ],
         ];
 
         foreach ($requirements as $req) {

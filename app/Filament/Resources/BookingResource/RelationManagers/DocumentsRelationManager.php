@@ -66,6 +66,10 @@ class DocumentsRelationManager extends RelationManager
                             return 'Perhatian: Berkas Bukti Bayar secara SOP diunggah langsung oleh Mitra Penyewa melalui portal status permohonan. Admin dapat menginput jika mitra menyerahkan bukti setor fisik/offline.';
                         }
 
+                        if ($req->kode === 'REQ_ADDENDUM_PKS') {
+                            return 'Opsional: Dapat diinput lebih dari satu kali untuk dokumen Addendum PKS (Addendum I, II, dst.).';
+                        }
+
                         if ($req->diunggah_oleh === 'admin') {
                             return 'Berkas resmi ini diterbitkan dan diinput oleh Tim UPTD BPKAD Jawa Barat.';
                         }
@@ -197,6 +201,32 @@ class DocumentsRelationManager extends RelationManager
                     }),
             ])
             ->actions([
+                Tables\Actions\Action::make('verifikasi')
+                    ->label('Verifikasi')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn ($record): bool => $record->status_verifikasi !== 'verified')
+                    ->action(fn ($record) => $record->update([
+                        'status_verifikasi' => 'verified',
+                        'admin_id' => Auth::id(),
+                    ])),
+                Tables\Actions\Action::make('minta_revisi')
+                    ->label('Minta Revisi')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('danger')
+                    ->visible(fn ($record): bool => $record->status_verifikasi === 'pending')
+                    ->form([
+                        Forms\Components\Textarea::make('catatan')
+                            ->label('Catatan Perbaikan untuk Pemohon')
+                            ->required()
+                            ->rows(3),
+                    ])
+                    ->action(fn ($record, array $data) => $record->update([
+                        'status_verifikasi' => 'revision',
+                        'catatan' => $data['catatan'],
+                        'admin_id' => Auth::id(),
+                    ])),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
@@ -210,11 +240,33 @@ class DocumentsRelationManager extends RelationManager
     public function getTabs(): array
     {
         return [
-            'administrasi' => Tab::make('Berkas Administrasi & Sewa (7 Berkas)')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereHas('requirement', fn ($q) => $q->where('kategori', 'administrasi'))),
             'pemohon' => Tab::make('Berkas Pengajuan Pemohon')
+                ->badge(fn (): ?int => $this->countPendingDocuments('pemohon'))
+                ->badgeColor('warning')
                 ->modifyQueryUsing(fn (Builder $query) => $query->whereHas('requirement', fn ($q) => $q->where('kategori', 'pemohon'))),
+            'administrasi' => Tab::make('Berkas Administrasi & Sewa (7 Berkas)')
+                ->badge(fn (): ?int => $this->countPendingDocuments('administrasi'))
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereHas('requirement', fn ($q) => $q->where('kategori', 'administrasi'))),
             'all' => Tab::make('Semua Dokumen'),
         ];
+    }
+
+    public function getDefaultActiveTab(): string|int|null
+    {
+        return 'pemohon';
+    }
+
+    /**
+     * Hitung dokumen berstatus pending untuk kategori persyaratan tertentu.
+     */
+    protected function countPendingDocuments(string $kategori): ?int
+    {
+        $count = $this->getOwnerRecord()->documents()
+            ->where('status_verifikasi', 'pending')
+            ->whereHas('requirement', fn ($q) => $q->where('kategori', $kategori))
+            ->count();
+
+        return $count > 0 ? $count : null;
     }
 }

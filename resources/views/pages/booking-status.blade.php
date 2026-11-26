@@ -583,6 +583,7 @@
                         $isBatchMode = (!$isAllComplete && !$isExpired && !$hasRevision);
                         $allReqs = \App\Models\BookingRequirement::orderBy('urutan')->get();
                         $uploadedDocs = $booking->documents->keyBy('booking_requirement_id');
+                        $uploadedDocsByReq = $booking->documents->groupBy('booking_requirement_id');
                         $requiredCodes = $booking->getRequiredRequirementCodes();
                         $isApplicantUploadable = fn($kode) => in_array($kode, [
                             'REQ_SURAT_PERMOHONAN', 
@@ -616,6 +617,7 @@
                             'REQ_PEMBERITAHUAN_PEMBAYARAN' => '5',
                             'REQ_BUKTI_BAYAR' => '6',
                             'REQ_PERJANJIAN_SEWA' => '7',
+                            'REQ_ADDENDUM_PKS' => '7+',
                         ];
                     @endphp
 
@@ -691,14 +693,17 @@
                     @foreach($allReqs as $req)
                         @php
                             $doc = $uploadedDocs->get($req->id);
+                            $docsForReq = $uploadedDocsByReq->get($req->id, collect());
+                            $isAddendumReq = ($req->kode === 'REQ_ADDENDUM_PKS');
+                            $hasAddendumDocs = ($isAddendumReq && $docsForReq->isNotEmpty());
                             $canUpload = $isApplicantUploadable($req->kode);
                             $isMandatory = in_array($req->kode, $requiredCodes);
                             $isProposal = ($req->kode === 'REQ_PROPOSAL');
                             $proposalRequired = ($isProposal && $booking->durasi_sewa_tahun > 5);
                             $isNotApplicable = (!$booking->isBadanUsaha() && in_array($req->kode, ['REQ_AKTA_PENDIRIAN']));
-                            $isVerified = ($doc && $doc->status_verifikasi === 'verified');
-                            $isRevision = ($doc && $doc->status_verifikasi === 'revision');
-                            $isPending = ($doc && $doc->status_verifikasi === 'pending');
+                            $isVerified = $isAddendumReq ? $hasAddendumDocs : ($doc && $doc->status_verifikasi === 'verified');
+                            $isRevision = (!$isAddendumReq && $doc && $doc->status_verifikasi === 'revision');
+                            $isPending = (!$isAddendumReq && $doc && $doc->status_verifikasi === 'pending');
                             $itemNumber = $displayNumberMap[$req->kode] ?? (string)$req->urutan;
                         @endphp
 
@@ -789,6 +794,8 @@
                                                 <span class="text-[10px] text-emerald-800 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">6. Khusus Diinput Mitra Penyewa</span>
                                             @elseif($req->kode === 'REQ_PERJANJIAN_SEWA')
                                                 <span class="text-[10px] text-purple-700 font-extrabold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">7. Diinput Admin UPTD (Dapat Diunduh)</span>
+                                            @elseif($req->kode === 'REQ_ADDENDUM_PKS')
+                                                <span class="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">Opsional &bull; Diinput Admin UPTD (Bisa &gt; 1 Berkas)</span>
                                             @elseif($req->is_required)
                                                 <span class="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">Diterbitkan UPTD</span>
                                             @endif
@@ -805,7 +812,39 @@
                                             @endif
                                         </p>
 
-                                        @if($doc)
+                                        @if($isAddendumReq)
+                                            @if($docsForReq->isNotEmpty())
+                                                <div class="mt-3 space-y-2">
+                                                    @foreach($docsForReq as $index => $addendumDoc)
+                                                        <div class="p-2.5 rounded-xl bg-white border border-purple-200/80 text-[11px] text-gray-600 flex flex-wrap items-center justify-between gap-2">
+                                                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                                <span class="font-extrabold text-purple-900">Addendum #{{ $index + 1 }}</span>
+                                                                @if($addendumDoc->nomor_dokumen)
+                                                                    <span>No: <strong class="text-gray-800">{{ $addendumDoc->nomor_dokumen }}</strong></span>
+                                                                @endif
+                                                                @if($addendumDoc->tanggal_dokumen)
+                                                                    <span>Tgl: {{ $addendumDoc->tanggal_dokumen->format('d/m/Y') }}</span>
+                                                                @endif
+                                                                @if($addendumDoc->file_name)
+                                                                    <span>Berkas: <strong class="text-gray-800">{{ $addendumDoc->file_name }}</strong></span>
+                                                                @endif
+                                                                @if($addendumDoc->catatan)
+                                                                    <span class="italic text-gray-500">({{ $addendumDoc->catatan }})</span>
+                                                                @endif
+                                                            </div>
+                                                            @if($addendumDoc->file_path)
+                                                                <a href="{{ route('booking.documents.view', $addendumDoc) }}" target="_blank" class="text-emerald-700 font-extrabold hover:underline flex items-center gap-1 shrink-0">
+                                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                                    <span>Lihat Berkas Scan</span>
+                                                                </a>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <p class="mt-2 text-[11px] text-gray-400 italic">Belum ada dokumen addendum yang diterbitkan.</p>
+                                            @endif
+                                        @elseif($doc)
                                             <div class="mt-2.5 text-[11px] text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1">
                                                 @if($req->isViewableByApplicant())
                                                     @if($doc->file_name)
@@ -847,7 +886,17 @@
 
                                 <!-- Status Badge -->
                                 <div class="shrink-0">
-                                    @if($isVerified)
+                                    @if($isAddendumReq)
+                                        @if($hasAddendumDocs)
+                                            <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                {{ $docsForReq->count() }} Addendum Terbit
+                                            </span>
+                                        @else
+                                            <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500">
+                                                Opsional (Belum Ada)
+                                            </span>
+                                        @endif
+                                    @elseif($isVerified)
                                         <span class="inline-flex px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
                                             ✓ Terverifikasi
                                         </span>
