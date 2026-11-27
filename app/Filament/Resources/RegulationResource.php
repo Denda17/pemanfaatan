@@ -9,11 +9,14 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class RegulationResource extends Resource
 {
     protected static ?string $model = Regulation::class;
+
+    protected static ?string $recordTitleAttribute = 'judul';
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
 
@@ -25,9 +28,21 @@ class RegulationResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
-    public static function getNavigationBadge(): ?string
+    public static function getGloballySearchableAttributes(): array
     {
-        return (string) static::getModel()::count();
+        return ['nomor', 'judul', 'penerbit'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        /** @var Regulation $record */
+        return [
+            'Nomor' => $record->nomor,
+            'Kategori' => $record->kategori_label,
+        ];
     }
 
     public static function form(Form $form): Form
@@ -37,8 +52,38 @@ class RegulationResource extends Resource
                 Forms\Components\Group::make()
                     ->schema([
                         Forms\Components\Section::make('Identitas Dokumen Hukum & SOP')
-                            ->description('Informasi legalitas, nomor surat keputusan, jenis hierarki, dan penerbit.')
+                            ->description('Pilih kategori utama regulasi terlebih dahulu, lalu lengkapi nomor, judul, dan hierarki penerbit.')
                             ->schema([
+                                Forms\Components\ToggleButtons::make('kategori_regulasi')
+                                    ->label('Kategori Utama Regulasi')
+                                    ->options(Regulation::kategoriOptions())
+                                    ->icons([
+                                        Regulation::KATEGORI_PENGELOLAAN_BMD => 'heroicon-m-scale',
+                                        Regulation::KATEGORI_KDKMP => 'heroicon-m-building-library',
+                                        Regulation::KATEGORI_SOP => 'heroicon-m-clipboard-document-check',
+                                    ])
+                                    ->colors([
+                                        Regulation::KATEGORI_PENGELOLAAN_BMD => 'success',
+                                        Regulation::KATEGORI_KDKMP => 'info',
+                                        Regulation::KATEGORI_SOP => 'warning',
+                                    ])
+                                    ->inline()
+                                    ->required()
+                                    ->default(Regulation::KATEGORI_PENGELOLAAN_BMD)
+                                    ->live()
+                                    ->afterStateUpdated(function (?string $state, Forms\Set $set): void {
+                                        if ($state === Regulation::KATEGORI_SOP) {
+                                            $set('jenis', 'Standar Operasional Prosedur (SOP)');
+                                            $set('tingkat', 'sop');
+                                            $set('badge_color', 'amber');
+                                        } elseif ($state === Regulation::KATEGORI_KDKMP) {
+                                            $set('badge_color', 'blue');
+                                        } elseif ($state === Regulation::KATEGORI_PENGELOLAAN_BMD) {
+                                            $set('badge_color', 'emerald');
+                                        }
+                                    })
+                                    ->columnSpanFull(),
+
                                 Forms\Components\TextInput::make('nomor')
                                     ->label('Nomor Peraturan / SK / SOP')
                                     ->placeholder('Contoh: Nomor 3 Tahun 2026 atau 01/SOP/BPKAD/2026')
@@ -74,13 +119,15 @@ class RegulationResource extends Resource
                                 Forms\Components\Select::make('jenis')
                                     ->label('Jenis Dokumen')
                                     ->options([
+                                        'Undang-Undang / Inpres' => 'Undang-Undang / Instruksi Presiden (Inpres)',
+                                        'Peraturan Pemerintah (PP)' => 'Peraturan Pemerintah (PP)',
+                                        'Peraturan Menteri Dalam Negeri' => 'Peraturan Menteri Dalam Negeri (Permendagri)',
+                                        'Peraturan Menteri Koperasi / Terkait' => 'Peraturan Menteri Koperasi / Kementerian Terkait',
                                         'Peraturan Daerah (Perda)' => 'Peraturan Daerah (Perda)',
                                         'Peraturan Gubernur (Pergub)' => 'Peraturan Gubernur (Pergub)',
-                                        'Peraturan Menteri Dalam Negeri' => 'Peraturan Menteri Dalam Negeri (Permendagri)',
-                                        'Peraturan Pemerintah (PP)' => 'Peraturan Pemerintah (PP)',
-                                        'Standar Operasional Prosedur (SOP)' => 'Standar Operasional Prosedur (SOP)',
                                         'Keputusan Gubernur (Kepgub)' => 'Keputusan Gubernur (Kepgub)',
                                         'Surat Edaran (SE)' => 'Surat Edaran (SE)',
+                                        'Standar Operasional Prosedur (SOP)' => 'Standar Operasional Prosedur (SOP)',
                                         'Petunjuk Teknis (Juknis)' => 'Petunjuk Teknis (Juknis)',
                                         'Lainnya' => 'Lainnya',
                                     ])
@@ -88,12 +135,12 @@ class RegulationResource extends Resource
                                     ->required(),
 
                                 Forms\Components\Select::make('tingkat')
-                                    ->label('Kategori Hierarki / Wilayah')
+                                    ->label('Tingkat / Hierarki Penerbit')
                                     ->options([
                                         'daerah' => 'Pemerintah Daerah Prov. Jabar (Perda / Pergub / Kepgub)',
-                                        'kemendagri' => 'Kementerian Dalam Negeri (Permendagri)',
-                                        'pusat' => 'Pemerintah Pusat (PP / UU / Kemenkeu)',
-                                        'sop' => 'SOP & Petunjuk Teknis UPTD / Dinas',
+                                        'kemendagri' => 'Kementerian / Lembaga Pusat',
+                                        'pusat' => 'Pemerintah Pusat (UU / PP / Inpres)',
+                                        'sop' => 'Internal UPTD / BPKAD (SOP & Juknis)',
                                         'lainnya' => 'Lainnya / Regulasi Terkait',
                                     ])
                                     ->required()
@@ -119,8 +166,8 @@ class RegulationResource extends Resource
 
                                 Forms\Components\TagsInput::make('poin_kunci')
                                     ->label('Poin-Poin Pokok untuk Calon Mitra / Penyewa')
-                                    ->placeholder('Ketik poin lalu tekan Enter (misal: "Batas permohonan H-6 bulan sebelum masa sewa habis")')
-                                    ->helperText('Poin-poin ini akan muncul sebagai daftar checklist pada kartu regulasi di web publik.')
+                                    ->placeholder('Ketik poin lalu tekan Enter')
+                                    ->helperText('Poin-poin ini muncul sebagai daftar checklist pada kartu di web publik.')
                                     ->columnSpanFull(),
                             ]),
                     ])
@@ -136,7 +183,7 @@ class RegulationResource extends Resource
                                     ->disk('public')
                                     ->directory('regulasi-docs')
                                     ->acceptedFileTypes(['application/pdf'])
-                                    ->maxSize(51200) // 50 MB
+                                    ->maxSize(51200)
                                     ->openable()
                                     ->downloadable()
                                     ->required(fn (?Regulation $record) => $record === null)
@@ -153,7 +200,7 @@ class RegulationResource extends Resource
                             ->schema([
                                 Forms\Components\Toggle::make('is_active')
                                     ->label('Publikasikan di Portal')
-                                    ->helperText('Aktifkan agar dapat dilihat dan diunduh oleh peminat sewa di website.')
+                                    ->helperText('Aktifkan agar dapat dilihat dan diunduh di halaman publik.')
                                     ->default(true),
 
                                 Forms\Components\TextInput::make('urutan')
@@ -167,7 +214,7 @@ class RegulationResource extends Resource
                                     ->options([
                                         'emerald' => 'Emerald (Hijau Daerah)',
                                         'teal' => 'Teal (Toska)',
-                                        'blue' => 'Blue (Biru)',
+                                        'blue' => 'Blue (Biru KDKMP)',
                                         'indigo' => 'Indigo',
                                         'purple' => 'Purple (Ungu Pusat)',
                                         'amber' => 'Amber (Kuning SOP)',
@@ -188,68 +235,54 @@ class RegulationResource extends Resource
                 Tables\Columns\TextColumn::make('urutan')
                     ->label('No')
                     ->sortable()
-                    ->width('60px'),
+                    ->width('50px'),
 
                 Tables\Columns\TextColumn::make('nomor')
-                    ->label('Nomor & Judul Regulasi')
+                    ->label('Nomor & Judul Dokumen')
                     ->searchable(['nomor', 'judul', 'penerbit', 'deskripsi'])
                     ->description(fn (Regulation $record): string => Str::limit($record->judul, 70))
                     ->wrap()
                     ->weight('bold'),
 
-                Tables\Columns\TextColumn::make('jenis')
-                    ->label('Kategori')
+                Tables\Columns\TextColumn::make('kategori_regulasi')
+                    ->label('Kategori Utama')
                     ->badge()
-                    ->color(fn (Regulation $record): string => match ($record->tingkat) {
-                        'daerah' => 'success',
-                        'kemendagri' => 'info',
-                        'pusat' => 'primary',
-                        'sop' => 'warning',
-                        default => 'gray',
+                    ->color(fn (?string $state): string => match ($state) {
+                        Regulation::KATEGORI_KDKMP => 'info',
+                        Regulation::KATEGORI_SOP => 'warning',
+                        default => 'success',
                     })
-                    ->description(fn (Regulation $record): string => match ($record->tingkat) {
-                        'daerah' => 'Prov. Jabar',
-                        'kemendagri' => 'Kemendagri',
-                        'pusat' => 'Pemerintah Pusat',
-                        'sop' => 'SOP & Juknis UPTD',
-                        default => 'Lainnya',
-                    }),
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        Regulation::KATEGORI_KDKMP => 'Dasar Hukum KDKMP',
+                        Regulation::KATEGORI_SOP => 'SOP & Juknis',
+                        default => 'Pengelolaan BMD',
+                    })
+                    ->description(fn (Regulation $record): string => $record->jenis),
 
                 Tables\Columns\TextColumn::make('tahun')
                     ->label('Tahun')
+                    ->description(fn (Regulation $record): string => $record->formatted_size)
                     ->sortable()
                     ->alignCenter(),
 
-                Tables\Columns\TextColumn::make('file_size')
-                    ->label('Ukuran')
-                    ->state(fn (Regulation $record): string => $record->formatted_size)
-                    ->color('gray')
-                    ->alignCenter(),
-
                 Tables\Columns\ToggleColumn::make('is_active')
-                    ->label('Tayang Publik')
+                    ->label('Tayang')
                     ->alignCenter(),
             ])
             ->defaultSort('urutan', 'asc')
             ->filters([
+                Tables\Filters\SelectFilter::make('kategori_regulasi')
+                    ->label('Kategori Utama')
+                    ->options(Regulation::kategoriOptions()),
+
                 Tables\Filters\SelectFilter::make('tingkat')
                     ->label('Hierarki Tingkat')
                     ->options([
                         'daerah' => 'Prov. Jabar',
-                        'kemendagri' => 'Kemendagri',
+                        'kemendagri' => 'Kementerian',
                         'pusat' => 'Pemerintah Pusat',
                         'sop' => 'SOP & Juknis',
                         'lainnya' => 'Lainnya',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('jenis')
-                    ->label('Jenis Regulasi')
-                    ->options([
-                        'Peraturan Daerah (Perda)' => 'Perda',
-                        'Peraturan Gubernur (Pergub)' => 'Pergub',
-                        'Peraturan Menteri Dalam Negeri' => 'Permendagri',
-                        'Peraturan Pemerintah (PP)' => 'Peraturan Pemerintah',
-                        'Standar Operasional Prosedur (SOP)' => 'SOP',
                     ]),
 
                 Tables\Filters\TernaryFilter::make('is_active')
@@ -261,13 +294,17 @@ class RegulationResource extends Resource
             ->actions([
                 Tables\Actions\Action::make('preview')
                     ->label('Lihat')
+                    ->tooltip('Pratinjau PDF')
                     ->icon('heroicon-o-eye')
                     ->color('gray')
+                    ->iconButton()
                     ->url(fn (Regulation $record) => $record->url_preview)
                     ->openUrlInNewTab(),
 
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->iconButton(),
+                Tables\Actions\DeleteAction::make()
+                    ->iconButton(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

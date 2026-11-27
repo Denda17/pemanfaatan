@@ -180,7 +180,7 @@ class DocumentsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('admin.name')
                     ->label('Diinput Oleh')
                     ->formatStateUsing(fn ($state, $record) => $state ?: ($record->booking?->nama_pemohon.' (Mitra)'))
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status_verifikasi')
@@ -203,8 +203,10 @@ class DocumentsRelationManager extends RelationManager
             ->actions([
                 Tables\Actions\Action::make('verifikasi')
                     ->label('Verifikasi')
+                    ->tooltip('Verifikasi Dokumen')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
+                    ->iconButton()
                     ->requiresConfirmation()
                     ->visible(fn ($record): bool => $record->status_verifikasi !== 'verified')
                     ->action(fn ($record) => $record->update([
@@ -213,8 +215,10 @@ class DocumentsRelationManager extends RelationManager
                     ])),
                 Tables\Actions\Action::make('minta_revisi')
                     ->label('Minta Revisi')
+                    ->tooltip('Minta Revisi Dokumen')
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('danger')
+                    ->iconButton()
                     ->visible(fn ($record): bool => $record->status_verifikasi === 'pending')
                     ->form([
                         Forms\Components\Textarea::make('catatan')

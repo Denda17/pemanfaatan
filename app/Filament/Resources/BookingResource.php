@@ -12,15 +12,21 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class BookingResource extends Resource
 {
     protected static ?string $model = Booking::class;
 
+    protected static ?string $recordTitleAttribute = 'kode_booking';
+
     protected static ?string $navigationIcon = 'heroicon-o-inbox-arrow-down';
 
     protected static ?string $navigationGroup = 'Pelayanan Pemanfaatan';
+
+    protected static ?string $navigationLabel = 'Pengajuan Booking';
 
     protected static ?string $modelLabel = 'Booking Aset';
 
@@ -28,9 +34,40 @@ class BookingResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['kode_booking', 'nama_pemohon', 'nama_instansi', 'nomor_whatsapp', 'asset.nama_objek'];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()->with(['asset']);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        /** @var Booking $record */
+        return [
+            'Pemohon' => $record->nama_pemohon,
+            'Objek' => $record->asset?->nama_objek ?? '-',
+            'Status' => strtoupper($record->status),
+        ];
+    }
+
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::where('status', 'pending')->count();
+        $count = static::getModel()::where(function (Builder $query): void {
+            $query->where('status', 'pending')
+                ->orWhere(function (Builder $q): void {
+                    $q->where('status', 'beauty_contest')
+                        ->whereNull('beauty_contest_scheduled_at');
+                })
+                ->orWhereHas('documents', fn (Builder $dq) => $dq->where('status_verifikasi', 'pending'))
+                ->orWhereHas('payments', fn (Builder $pq) => $pq->whereIn('status_pembayaran', ['kode_diminta', 'pending_verifikasi']));
+        })->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -40,199 +77,257 @@ class BookingResource extends Resource
         return 'warning';
     }
 
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Jumlah pengajuan, berkas, atau permintaan kode bayar yang menunggu tindak lanjut UPTD';
+    }
+
+    /**
+     * Guardrail: Status PKS Terbit (contract_signed) hanya boleh diaktifkan jika berkas PKS sudah terverifikasi.
+     */
+    public static function canSignContract(Booking $booking): bool
+    {
+        return $booking->documents()
+            ->where('status_verifikasi', 'verified')
+            ->whereHas('requirement', fn (Builder $q) => $q->where('kode', 'REQ_PERJANJIAN_SEWA'))
+            ->exists();
+    }
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Informasi Pengajuan & Peminat')
+                Forms\Components\Grid::make(12)
                     ->schema([
-                        Forms\Components\TextInput::make('kode_booking')
-                            ->label('Kode Booking')
-                            ->disabled()
-                            ->dehydrated(false),
+                        // KOLOM KIRI (8/12): Objek Sewa, Biodata Collapsible, & Beauty Contest
+                        Forms\Components\Group::make()
+                            ->columnSpan(['default' => 12, 'lg' => 8])
+                            ->schema([
+                                Forms\Components\Section::make('Ringkasan Objek & Rencana Sewa')
+                                    ->description(' Spesifikasi aset BMD, durasi, skema pembayaran, dan rencana usaha pemohon.')
+                                    ->icon('heroicon-o-building-office-2')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('kode_booking')
+                                            ->label('Kode Booking')
+                                            ->disabled()
+                                            ->dehydrated(false),
 
-                        Forms\Components\Select::make('asset_id')
-                            ->label('Objek Aset BMD')
-                            ->relationship('asset', 'nama_objek')
-                            ->required()
-                            ->searchable()
-                            ->preload(),
+                                        Forms\Components\Select::make('asset_id')
+                                            ->label('Objek Aset BMD')
+                                            ->relationship('asset', 'nama_objek')
+                                            ->required()
+                                            ->searchable()
+                                            ->preload(),
 
-                        Forms\Components\Placeholder::make('unit_terpilih')
-                            ->label('Unit Ruko / Cluster Terpilih')
-                            ->content(fn (?Booking $record): string => $record?->unit_names_text ?? '-')
-                            ->visible(fn (?Booking $record): bool => ! empty($record?->selected_unit_ids) || ! empty($record?->asset_unit_id)),
+                                        Forms\Components\Placeholder::make('unit_terpilih')
+                                            ->label('Unit Ruko / Cluster Terpilih')
+                                            ->content(fn (?Booking $record): string => $record?->unit_names_text ?? '-')
+                                            ->visible(fn (?Booking $record): bool => ! empty($record?->selected_unit_ids) || ! empty($record?->asset_unit_id))
+                                            ->columnSpanFull(),
 
-                        Forms\Components\Select::make('tipe_pemohon')
-                            ->label('Kategori Pemohon')
-                            ->options([
-                                'perorangan' => 'Perorangan / Pribadi',
-                                'badan_usaha' => 'Badan Usaha / Badan Hukum',
-                            ])
-                            ->default('perorangan')
-                            ->required(),
+                                        Forms\Components\TextInput::make('durasi_sewa_tahun')
+                                            ->label('Rencana Durasi Sewa (Tahun)')
+                                            ->numeric()
+                                            ->default(1)
+                                            ->minValue(1)
+                                            ->maxValue(10)
+                                            ->suffix('Tahun')
+                                            ->live(),
 
-                        Forms\Components\TextInput::make('nama_pemohon')
-                            ->label('Nama Lengkap Pemohon / Penanggung Jawab')
-                            ->required()
-                            ->maxLength(255),
+                                        Forms\Components\Select::make('skema_pembayaran')
+                                            ->label('Skema Pembayaran')
+                                            ->options([
+                                                'sekaligus' => 'Dibayar Full Sekaligus di Awal',
+                                                'bertahap' => 'Pembayaran Bertahap (Termin Tahunan)',
+                                            ])
+                                            ->default('sekaligus')
+                                            ->required()
+                                            ->live()
+                                            ->helperText(fn ($get) => $get('skema_pembayaran') === 'bertahap'
+                                                ? 'Termin 1 wajib lunas sebelum tanda tangan PKS. Termin ke-2 dst. menggunakan fitur Kode Bayar.'
+                                                : 'Pelunasan 100% penuh di awal sebelum penandatanganan naskah PKS.'),
 
-                        Forms\Components\TextInput::make('nomor_whatsapp')
-                            ->label('Nomor WhatsApp Aktif')
-                            ->required()
-                            ->tel()
-                            ->helperText('Nomor WhatsApp akan digunakan petugas UPTD untuk follow-up.'),
+                                        Forms\Components\Textarea::make('rencana_peruntukan')
+                                            ->label('Rencana Penggunaan / Peruntukan Usaha')
+                                            ->placeholder('Jelaskan jenis usaha, konsep bisnis, atau fasilitas yang akan dibangun...')
+                                            ->rows(2)
+                                            ->columnSpanFull(),
 
-                        Forms\Components\TextInput::make('nik_atau_nib')
-                            ->label('NIK / NIB Pemohon (Data Pribadi)')
-                            ->helperText('Dilindungi UU PDP No. 27/2022. Akses tercatat dalam audit trail log.')
-                            ->maxLength(255),
+                                        Forms\Components\FileUpload::make('proposal_bisnis_path')
+                                            ->label('Dokumen Proposal Bisnis / Feasibility Study')
+                                            ->disk('local')
+                                            ->directory('booking-documents')
+                                            ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                                            ->openable()
+                                            ->downloadable()
+                                            ->helperText('Wajib dilampirkan oleh pemohon jika durasi sewa lebih dari 5 tahun.')
+                                            ->columnSpanFull(),
+                                    ])->columns(2),
 
-                        Forms\Components\TextInput::make('nama_instansi')
-                            ->label('Nama Badan Usaha / Koperasi / Perorangan')
-                            ->maxLength(255),
+                                Forms\Components\Section::make('Identitas & Kontak Pemohon')
+                                    ->description('Klik untuk membuka/menyembunyikan rincian biodata pemohon (dilindungi UU PDP).')
+                                    ->icon('heroicon-o-identification')
+                                    ->collapsible()
+                                    ->collapsed(fn (string $operation): bool => $operation === 'edit')
+                                    ->schema([
+                                        Forms\Components\Select::make('tipe_pemohon')
+                                            ->label('Kategori Pemohon')
+                                            ->options([
+                                                'perorangan' => 'Perorangan / Pribadi',
+                                                'badan_usaha' => 'Badan Usaha / Badan Hukum',
+                                            ])
+                                            ->default('perorangan')
+                                            ->required(),
 
-                        Forms\Components\TextInput::make('email')
-                            ->label('Alamat Email')
-                            ->email()
-                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('nama_pemohon')
+                                            ->label('Nama Lengkap Pemohon / Penanggung Jawab')
+                                            ->required()
+                                            ->maxLength(255),
 
-                        Forms\Components\TextInput::make('durasi_sewa_tahun')
-                            ->label('Rencana Durasi Sewa (Tahun)')
-                            ->numeric()
-                            ->default(1)
-                            ->minValue(1)
-                            ->maxValue(10)
-                            ->suffix('Tahun')
-                            ->live(),
+                                        Forms\Components\TextInput::make('nama_instansi')
+                                            ->label('Nama Badan Usaha / Koperasi / Perorangan')
+                                            ->maxLength(255),
 
-                        Forms\Components\Select::make('skema_pembayaran')
-                            ->label('Skema Pembayaran')
-                            ->options([
-                                'sekaligus' => 'Dibayar Full Sekaligus di Awal',
-                                'bertahap' => 'Pembayaran Bertahap (Termin Tahunan)',
-                            ])
-                            ->default('sekaligus')
-                            ->required()
-                            ->live()
-                            ->helperText(fn ($get) => $get('skema_pembayaran') === 'bertahap'
-                                ? 'Skema Bertahap: Termin 1 wajib lunas sebelum penandatanganan PKS. Jadwal termin tahun ke-2 dst. wajib dicantumkan dalam klausul naskah PKS.'
-                                : 'Skema Sekaligus: Pelunasan 100% penuh di awal sebelum penandatanganan naskah PKS.'),
+                                        Forms\Components\TextInput::make('nik_atau_nib')
+                                            ->label('NIK / NIB Pemohon (Data Pribadi)')
+                                            ->helperText('Dilindungi UU PDP No. 27/2022.')
+                                            ->maxLength(255),
 
-                        Forms\Components\FileUpload::make('proposal_bisnis_path')
-                            ->label('Dokumen Proposal Bisnis / Feasibility Study')
-                            ->disk('local')
-                            ->directory('booking-documents')
-                            ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
-                            ->openable()
-                            ->downloadable()
-                            ->helperText('Wajib dilampirkan oleh pemohon jika durasi sewa lebih dari 5 tahun.')
-                            ->columnSpanFull(),
+                                        Forms\Components\TextInput::make('nomor_whatsapp')
+                                            ->label('Nomor WhatsApp Aktif')
+                                            ->required()
+                                            ->tel(),
 
-                        Forms\Components\Textarea::make('rencana_peruntukan')
-                            ->label('Rencana Penggunaan / Peruntukan Usaha')
-                            ->placeholder('Jelaskan jenis usaha, konsep bisnis, atau fasilitas yang akan dibangun...')
-                            ->rows(3)
-                            ->columnSpanFull(),
-                    ])->columns(2),
+                                        Forms\Components\TextInput::make('email')
+                                            ->label('Alamat Email')
+                                            ->email()
+                                            ->maxLength(255),
+                                    ])->columns(2),
 
-                Forms\Components\Section::make('Tindak Lanjut & Verifikasi UPTD Pengamanan & Pemanfaatan Aset')
-                    ->schema([
-                        Forms\Components\Select::make('status')
-                            ->label('Status Tahapan Proses')
-                            ->options([
-                                'pending' => 'Menunggu Tindak Lanjut (Baru Masuk)',
-                                'contacted' => 'Sudah Dihubungi via WhatsApp',
-                                'document_review' => 'Pengumpulan & Verifikasi Berkas',
-                                'beauty_contest' => 'Tahap Beauty Contest (Seleksi Terbuka)',
-                                'field_survey' => 'Peninjauan / Survey Lapangan',
-                                'approved' => 'Disetujui Pengelola Barang',
-                                'contract_signed' => 'PKS Ditandatangani & Sewa Aktif',
-                                'rejected' => 'Dibatalkan / Tidak Memenuhi Syarat',
-                                'expired' => 'Gugur / Melewati Batas Waktu 5 Hari Kerja',
-                            ])
-                            ->required()
-                            ->live()
-                            ->default('pending'),
+                                Forms\Components\Section::make('Pelaksanaan Seleksi Terbuka (Beauty Contest)')
+                                    ->icon('heroicon-o-trophy')
+                                    ->schema([
+                                        Forms\Components\DateTimePicker::make('beauty_contest_scheduled_at')
+                                            ->label('Waktu Pelaksanaan Beauty Contest')
+                                            ->nullable(),
 
-                        Forms\Components\Select::make('petugas_uptd_id')
-                            ->label('Petugas Verifikator UPTD')
-                            ->relationship('petugasUptd', 'name', fn ($query) => $query->where('role', 'admin'))
-                            ->searchable()
-                            ->preload()
-                            ->default(fn () => Auth::id()),
+                                        Forms\Components\TextInput::make('beauty_contest_location')
+                                            ->label('Lokasi / Tautan Ruang Virtual')
+                                            ->placeholder('Contoh: Ruang Rapat Kantor UPTD Lt. 2 atau link Google Meet')
+                                            ->maxLength(255),
 
-                        Forms\Components\DateTimePicker::make('tanggal_booking')
-                            ->label('Waktu Booking Masuk')
-                            ->disabled()
-                            ->dehydrated(false),
+                                        Forms\Components\Textarea::make('beauty_contest_notes')
+                                            ->label('Petunjuk Materi Paparan Bagi Peminat')
+                                            ->rows(2)
+                                            ->columnSpanFull(),
 
-                        Forms\Components\DateTimePicker::make('tanggal_dihubungi')
-                            ->label('Waktu Dihubungi Petugas')
-                            ->nullable(),
+                                        Forms\Components\FileUpload::make('beauty_contest_berita_acara_path')
+                                            ->label('Scan Dokumen Berita Acara Seleksi / Beauty Contest (.pdf)')
+                                            ->disk('local')
+                                            ->directory('booking-documents')
+                                            ->acceptedFileTypes(['application/pdf'])
+                                            ->openable()
+                                            ->downloadable()
+                                            ->columnSpanFull(),
 
-                        Forms\Components\Textarea::make('catatan_admin')
-                            ->label('Catatan Hasil Koordinasi / Survey Lapangan')
-                            ->rows(3)
-                            ->columnSpanFull(),
+                                        Forms\Components\Toggle::make('is_beauty_contest_winner')
+                                            ->label('Ditetapkan Sebagai Pemenang Beauty Contest')
+                                            ->inline(false),
+                                    ])
+                                    ->columns(2)
+                                    ->collapsed(fn (?Booking $record) => $record?->status !== 'beauty_contest' && ! $record?->beauty_contest_scheduled_at)
+                                    ->visible(fn (?Booking $record) => $record?->status === 'beauty_contest' || $record?->beauty_contest_scheduled_at !== null || $record?->is_beauty_contest_winner),
+                            ]),
 
-                        Forms\Components\Textarea::make('alasan_penolakan')
-                            ->label('Alasan Penolakan (Jika Ditolak / Batal)')
-                            ->visible(fn (Forms\Get $get) => in_array($get('status'), ['rejected', 'expired']))
-                            ->rows(2)
-                            ->columnSpanFull(),
-                    ])->columns(2),
+                        // KOLOM KANAN (4/12): Panel Kendali Verifikator UPTD
+                        Forms\Components\Group::make()
+                            ->columnSpan(['default' => 12, 'lg' => 4])
+                            ->schema([
+                                Forms\Components\Section::make('Panel Kendali Verifikator UPTD')
+                                    ->description('Kelola tahapan progres, petugas PIC, dan catatan resmi.')
+                                    ->icon('heroicon-o-shield-check')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('ringkasan_kelengkapan')
+                                            ->label('Kelengkapan Berkas Wajib Pemohon')
+                                            ->visible(fn (?Booking $record): bool => $record !== null)
+                                            ->content(function (?Booking $record): string {
+                                                if (! $record) {
+                                                    return '-';
+                                                }
+                                                $stats = $record->getCompletenessStats();
 
-                Forms\Components\Section::make('Pelaksanaan Seleksi Terbuka (Beauty Contest)')
-                    ->schema([
-                        Forms\Components\DateTimePicker::make('beauty_contest_scheduled_at')
-                            ->label('Waktu Pelaksanaan Beauty Contest')
-                            ->nullable(),
+                                                return "{$stats['total_terunggah']} dari {$stats['total_wajib']} berkas wajib ({$stats['persentase']}%)";
+                                            }),
 
-                        Forms\Components\TextInput::make('beauty_contest_location')
-                            ->label('Lokasi / Tautan Ruang Virtual')
-                            ->placeholder('Contoh: Ruang Rapat Kantor UPTD Lt. 2 atau link Google Meet')
-                            ->maxLength(255),
+                                        Forms\Components\Select::make('status')
+                                            ->label('Status Tahapan Proses')
+                                            ->options([
+                                                'pending' => 'Menunggu Tindak Lanjut (Baru Masuk)',
+                                                'contacted' => 'Sudah Dihubungi via WhatsApp',
+                                                'document_review' => 'Pengumpulan & Verifikasi Berkas',
+                                                'beauty_contest' => 'Tahap Beauty Contest (Seleksi Terbuka)',
+                                                'field_survey' => 'Peninjauan / Survey Lapangan',
+                                                'approved' => 'Disetujui Pengelola Barang',
+                                                'contract_signed' => 'PKS Ditandatangani & Sewa Aktif',
+                                                'rejected' => 'Dibatalkan / Tidak Memenuhi Syarat',
+                                                'expired' => 'Gugur / Melewati Batas Waktu 5 Hari Kerja',
+                                            ])
+                                            ->required()
+                                            ->live()
+                                            ->default('pending')
+                                            ->helperText('Status "PKS Ditandatangani" mewajibkan dokumen PKS sudah terverifikasi.'),
 
-                        Forms\Components\Textarea::make('beauty_contest_notes')
-                            ->label('Petunjuk Materi Paparan Bagi Peminat')
-                            ->rows(2)
-                            ->columnSpanFull(),
+                                        Forms\Components\Select::make('petugas_uptd_id')
+                                            ->label('Petugas Verifikator UPTD')
+                                            ->relationship('petugasUptd', 'name', fn ($query) => $query->where('role', 'admin'))
+                                            ->searchable()
+                                            ->preload()
+                                            ->default(fn () => Auth::id()),
 
-                        Forms\Components\FileUpload::make('beauty_contest_berita_acara_path')
-                            ->label('Scan Dokumen Berita Acara Seleksi / Beauty Contest (.pdf)')
-                            ->disk('local')
-                            ->directory('booking-documents')
-                            ->acceptedFileTypes(['application/pdf'])
-                            ->openable()
-                            ->downloadable()
-                            ->columnSpanFull(),
+                                        Forms\Components\Textarea::make('catatan_admin')
+                                            ->label('Catatan Hasil Koordinasi / Survey Lapangan')
+                                            ->rows(4),
 
-                        Forms\Components\Toggle::make('is_beauty_contest_winner')
-                            ->label('Ditetapkan Sebagai Pemenang Beauty Contest')
-                            ->inline(false),
-                    ])
-                    ->columns(2)
-                    ->collapsed(fn (?Booking $record) => $record?->status !== 'beauty_contest' && ! $record?->beauty_contest_scheduled_at)
-                    ->visible(fn (?Booking $record) => $record?->status === 'beauty_contest' || $record?->beauty_contest_scheduled_at !== null || $record?->is_beauty_contest_winner),
+                                        Forms\Components\Textarea::make('alasan_penolakan')
+                                            ->label('Alasan Penolakan (Jika Ditolak / Batal)')
+                                            ->visible(fn (Forms\Get $get) => in_array($get('status'), ['rejected', 'expired']))
+                                            ->rows(2),
+
+                                        Forms\Components\DateTimePicker::make('tanggal_booking')
+                                            ->label('Waktu Booking Masuk')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        Forms\Components\DateTimePicker::make('tanggal_dihubungi')
+                                            ->label('Waktu Dihubungi Petugas')
+                                            ->nullable(),
+                                    ]),
+                            ]),
+                    ]),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['asset']))
             ->columns([
                 Tables\Columns\TextColumn::make('kode_booking')
                     ->label('Kode Booking')
                     ->weight('bold')
                     ->copyable()
-                    ->description(fn (Booking $record): string => $record->created_at ? $record->created_at->format('d/m/Y H:i') : '-')
+                    ->description(function (Booking $record): string {
+                        $tgl = $record->created_at ? $record->created_at->format('d/m/Y') : '-';
+                        $skema = $record->skema_pembayaran === 'bertahap' ? 'Termin' : 'Full';
+
+                        return "{$tgl} • {$record->durasi_sewa_tahun} Thn ({$skema})";
+                    })
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('asset.nama_objek')
                     ->label('Objek Aset')
                     ->wrap()
-                    ->limit(35)
+                    ->limit(42)
                     ->tooltip(fn (Booking $record): ?string => $record->asset?->nama_objek)
                     ->description(fn (Booking $record): string => ($record->unit_names_text ? 'Unit: '.$record->unit_names_text.' • ' : '').($record->asset?->kabupaten_kota ?? '-'))
                     ->searchable(),
@@ -241,7 +336,11 @@ class BookingResource extends Resource
                     ->label('Pemohon')
                     ->weight('medium')
                     ->wrap()
-                    ->description(fn (Booking $record): string => ($record->nama_instansi && $record->nama_instansi !== 'Perorangan' ? $record->nama_instansi.' • ' : '').$record->nomor_whatsapp)
+                    ->description(function (Booking $record): string {
+                        $kategori = $record->isBadanUsaha() ? ($record->nama_instansi ?: 'Badan Usaha') : 'Perorangan';
+
+                        return "{$kategori} • {$record->nomor_whatsapp}";
+                    })
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('tipe_pemohon')
@@ -254,7 +353,8 @@ class BookingResource extends Resource
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'badan_usaha' => 'Badan Usaha',
                         default => 'Perorangan',
-                    }),
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
@@ -323,7 +423,7 @@ class BookingResource extends Resource
                         'bertahap' => 'Bertahap / Termin',
                         default => ucfirst($state ?? '-'),
                     })
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
@@ -354,6 +454,7 @@ class BookingResource extends Resource
                     ->tooltip('Jadwalkan Beauty Contest untuk seluruh pemohon pada objek ini')
                     ->icon('heroicon-o-calendar-days')
                     ->color('purple')
+                    ->iconButton()
                     ->visible(fn (Booking $record): bool => $record->status === 'beauty_contest')
                     ->form([
                         Forms\Components\DateTimePicker::make('beauty_contest_scheduled_at')
@@ -391,6 +492,7 @@ class BookingResource extends Resource
                     ->tooltip('Kirim Surat Undangan Beauty Contest via WhatsApp')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
+                    ->iconButton()
                     ->visible(fn (Booking $record): bool => $record->status === 'beauty_contest' && $record->isBeautyContestScheduled())
                     ->url(fn (Booking $record): string => $record->beauty_contest_whatsapp_url, true),
 
@@ -399,6 +501,7 @@ class BookingResource extends Resource
                     ->tooltip('Tetapkan pemohon ini sebagai pemenang Beauty Contest')
                     ->icon('heroicon-o-trophy')
                     ->color('warning')
+                    ->iconButton()
                     ->visible(fn (Booking $record): bool => $record->status === 'beauty_contest')
                     ->requiresConfirmation()
                     ->modalHeading('Tetapkan Pemenang Seleksi Beauty Contest')
@@ -494,6 +597,16 @@ class BookingResource extends Resource
                                 ->rows(2),
                         ])
                         ->action(function (Booking $record, array $data) {
+                            if ($data['status'] === 'contract_signed' && ! static::canSignContract($record)) {
+                                Notification::make()
+                                    ->title('Dokumen PKS Belum Terverifikasi')
+                                    ->body('Unggah dan verifikasi dokumen "Perjanjian Sewa (PKS)" terlebih dahulu sebelum mengaktifkan status PKS Ditandatangani.')
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
                             $record->update([
                                 'status' => $data['status'],
                                 'catatan_admin' => $data['catatan_admin'] ? ($record->catatan_admin."\n".now()->format('d/m/Y H:i').': '.$data['catatan_admin']) : $record->catatan_admin,

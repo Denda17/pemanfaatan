@@ -10,10 +10,13 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class AssetResource extends Resource
 {
     protected static ?string $model = Asset::class;
+
+    protected static ?string $recordTitleAttribute = 'nama_objek';
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
 
@@ -24,6 +27,24 @@ class AssetResource extends Resource
     protected static ?string $pluralModelLabel = 'Katalog Aset BMD';
 
     protected static ?int $navigationSort = 2;
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['kode_aset', 'nama_objek', 'alamat', 'kabupaten_kota'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        /** @var Asset $record */
+        return [
+            'Kode' => $record->kode_aset ?? '-',
+            'Lokasi' => $record->kabupaten_kota ?? '-',
+            'Status' => ucfirst(str_replace('_', ' ', $record->status_ketersediaan ?? '-')),
+        ];
+    }
 
     protected static array $regencies = [
         'Kota Bandung', 'Kota Bogor', 'Kota Bekasi', 'Kota Depok', 'Kota Cirebon',
@@ -237,10 +258,14 @@ class AssetResource extends Resource
                 Tables\Columns\TextColumn::make('nama_objek')
                     ->label('Nama Aset')
                     ->wrap()
-                    ->limit(35)
+                    ->limit(42)
                     ->tooltip(fn (Asset $record): ?string => $record->nama_objek)
                     ->searchable()
-                    ->description(fn (Asset $record): string => ($record->bentuk_objek ? $record->bentuk_objek.' • ' : '').($record->kabupaten_kota ?? '-')),
+                    ->description(function (Asset $record): string {
+                        $tipe = $record->isMultiUnit() ? 'Multi-Unit' : ($record->bentuk_objek ?: 'Tunggal');
+
+                        return "{$tipe} • ".($record->kabupaten_kota ?? '-');
+                    }),
 
                 Tables\Columns\TextColumn::make('status_ketersediaan')
                     ->label('Status')
@@ -265,7 +290,7 @@ class AssetResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => $state === 'multi_unit' ? 'purple' : 'gray')
                     ->formatStateUsing(fn (string $state, Asset $record): string => $state === 'multi_unit' ? 'Multi-Unit ('.$record->units()->count().' Unit)' : 'Tunggal')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('booking_deadline_at')
                     ->label('Batas Minat (5 Hari Kerja)')

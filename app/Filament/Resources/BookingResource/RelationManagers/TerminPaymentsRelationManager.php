@@ -117,6 +117,7 @@ class TerminPaymentsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('termin_ke')
                     ->label('Termin')
                     ->formatStateUsing(fn ($state) => 'Termin ke-'.$state)
+                    ->description(fn (BookingPayment $record): string => $record->tahun_ke ?: '-')
                     ->sortable()
                     ->weight('bold'),
 
@@ -124,12 +125,14 @@ class TerminPaymentsRelationManager extends RelationManager
                     ->label('Periode Tahun')
                     ->badge()
                     ->color('info')
-                    ->default('-'),
+                    ->default('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('nominal_disetor')
                     ->label('Nominal Disetor')
                     ->money('IDR', locale: 'id')
                     ->placeholder('Rp 0')
+                    ->description(fn (BookingPayment $record): ?string => $record->nomor_sts ? 'STS: '.$record->nomor_sts : null)
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('tanggal_jatuh_tempo')
@@ -154,7 +157,8 @@ class TerminPaymentsRelationManager extends RelationManager
                     ->label('Nomor STS / NTPD')
                     ->placeholder('-')
                     ->searchable()
-                    ->copyable(),
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('tanggal_bayar')
                     ->label('Tanggal Setor')

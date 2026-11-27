@@ -3,9 +3,38 @@
 @section('title', 'Dasar Hukum & Regulasi Pemanfaatan BMD Jawa Barat - BPKAD')
 
 @section('content')
-<!-- Page Header (Behance Style: Ultra-Clean, Light & Modern) -->
-<div class="relative bg-mesh-light text-gray-900 py-12 lg:py-16 border-b border-gray-200/80 overflow-hidden">
-    <!-- Ambient Blur Glows -->
+@php
+    $groupMeta = [
+        'pengelolaan_bmd' => [
+            'title' => 'Dasar Hukum Pengelolaan BMD',
+            'short' => 'Pengelolaan BMD',
+            'desc' => 'Payung hukum Pusat, Kemendagri, hingga Perda & Pergub Jawa Barat terkait tata cara sewa, tarif pokok, dan kerjasama aset daerah.',
+            'empty' => 'Dokumen Dasar Hukum Pengelolaan BMD sedang dalam pemutakhiran oleh Tim UPTD.',
+        ],
+        'kdkmp' => [
+            'title' => 'Dasar Hukum KDKMP',
+            'short' => 'Regulasi KDKMP',
+            'desc' => 'Landasan regulasi, kebijakan afirmasi, dan ketentuan kerjasama Koperasi Desa/Kelurahan Merah Putih (KDKMP) pada pemanfaatan BMD.',
+            'empty' => 'Dokumen Dasar Hukum KDKMP sedang disiapkan dan akan segera dipublikasikan oleh Tim UPTD.',
+        ],
+        'sop' => [
+            'title' => 'Standar Operasional Prosedur (SOP)',
+            'short' => 'SOP & Juknis',
+            'desc' => 'Panduan teknis alur pengajuan sewa, verifikasi berkas, survei lapangan, seleksi beauty contest, hingga serah terima aset.',
+            'empty' => 'Dokumen SOP & Petunjuk Teknis sedang dalam tahap pemutakhiran oleh Tim UPTD.',
+        ],
+        'semua' => [
+            'title' => 'Seluruh Dokumen Regulasi & SOP',
+            'short' => 'Semua Kategori',
+            'desc' => 'Menampilkan gabungan seluruh dokumen Dasar Hukum Pengelolaan BMD, KDKMP, dan SOP UPTD.',
+            'empty' => 'Belum ada dokumen regulasi yang dipublikasikan.',
+        ],
+    ];
+    $currentMeta = $groupMeta[$kelompok] ?? $groupMeta['pengelolaan_bmd'];
+@endphp
+
+<!-- Page Header -->
+<div class="relative bg-mesh-light text-gray-900 py-10 lg:py-14 border-b border-gray-200/80 overflow-hidden">
     <div class="absolute top-0 right-10 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute bottom-0 left-10 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -24,23 +53,23 @@
                 </div>
 
                 <h1 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight">
-                    Dasar Hukum, Regulasi & SOP Pemanfaatan BMD
+                    Dasar Hukum & Regulasi Pemanfaatan BMD
                 </h1>
 
                 <p class="text-sm sm:text-base text-gray-600 mt-3 font-normal leading-relaxed">
-                    Kumpulan peraturan perundang-undangan resmi dari tingkat Pemerintah Pusat, Kementerian Dalam Negeri, Pemerintah Provinsi Jawa Barat, hingga Standar Operasional Prosedur (SOP) internal yang menjadi landasan hukum pelaksanaan sewa dan kerjasama pemanfaatan aset daerah.
+                    Pilih kategori di bawah untuk menelusuri regulasi <strong>Pengelolaan BMD</strong>, <strong>Dasar Hukum KDKMP</strong>, maupun <strong>Standar Operasional Prosedur (SOP)</strong> pelayanan resmi di lingkungan Pemprov Jawa Barat.
                 </p>
             </div>
 
-            <!-- Quick Download Summary Chip -->
+            <!-- Total Dokumen Chip -->
             <div class="bg-white p-4 rounded-3xl border border-gray-200/90 shadow-xs self-start md:self-auto shrink-0 flex items-center gap-3.5">
                 <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 </div>
                 <div>
-                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Total Dokumen</span>
-                    <span class="block text-lg font-black text-gray-900 leading-none mt-0.5">{{ $counts['semua'] }} Regulasi & SOP</span>
-                    <span class="text-[11px] text-emerald-700 font-extrabold">Format PDF Asli / OCR</span>
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Pusat Dokumen</span>
+                    <span class="block text-lg font-black text-gray-900 leading-none mt-0.5">{{ $groupCounts['semua'] }} Berkas Resmi</span>
+                    <span class="text-[11px] text-emerald-700 font-extrabold">3 Kategori Terpisah &bull; PDF</span>
                 </div>
             </div>
         </div>
@@ -49,142 +78,204 @@
 
 <!-- Main Content Area -->
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    
-    <!-- Highlight Bento Cards (Dynamic 3 or 4 cols) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 {{ ($counts['sop'] ?? 0) > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-5 mb-10">
-        <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-emerald-200 transition">
-            <div class="flex items-center gap-3.5 mb-3">
-                <div class="w-10 h-10 rounded-2xl bg-emerald-50/80 border border-emerald-100/90 flex items-center justify-center shrink-0 p-1.5 shadow-2xs">
-                    <img src="{{ asset('images/logo-jabar.svg') }}" alt="Logo Provinsi Jawa Barat" class="w-full h-full object-contain">
-                </div>
-                <div>
-                    <h3 class="font-extrabold text-sm text-gray-900">Perda & Pergub Jabar</h3>
-                    <span class="text-[11px] text-gray-500 font-medium">{{ $counts['daerah'] }} Dokumen Kebijakan Daerah</span>
-                </div>
-            </div>
-            <p class="text-xs text-gray-600 leading-relaxed">
-                Mengatur tata laksana teknis pengajuan, wewenang Gubernur & Sekda selaku Pengelola Barang, serta penetapan perjanjian sewa (PKS) di Jawa Barat.
-            </p>
-        </div>
 
-        <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-blue-200 transition">
-            <div class="flex items-center gap-3.5 mb-3">
-                <div class="w-10 h-10 rounded-2xl bg-blue-50/80 border border-blue-100/90 flex items-center justify-center shrink-0 p-1.5 shadow-2xs">
-                    <img src="{{ asset('images/logo-kemendagri.svg') }}" alt="Logo Kementerian Dalam Negeri" class="w-full h-full object-contain">
-                </div>
-                <div>
-                    <h3 class="font-extrabold text-sm text-gray-900">Permendagri 7/2024 & 19/2016</h3>
-                    <span class="text-[11px] text-gray-500 font-medium">{{ $counts['kemendagri'] }} Pedoman Nasional BMD</span>
-                </div>
-            </div>
-            <p class="text-xs text-gray-600 leading-relaxed">
-                Formula matematis perhitungan tarif pokok sewa, faktor penyesuaian kegiatan usaha, serta insentif afirmatif potongan tarif untuk UMKM & Koperasi.
-            </p>
-        </div>
-
-        <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-purple-200 transition">
-            <div class="flex items-center gap-3.5 mb-3">
-                <div class="w-10 h-10 rounded-2xl bg-amber-50/80 border border-amber-100/90 flex items-center justify-center shrink-0 p-1.5 shadow-2xs">
-                    <img src="{{ asset('images/logo-garuda.svg') }}" alt="Lambang Burung Garuda RI" class="w-full h-full object-contain">
-                </div>
-                <div>
-                    <h3 class="font-extrabold text-sm text-gray-900">PP No. 28/2020 & 27/2014</h3>
-                    <span class="text-[11px] text-gray-500 font-medium">{{ $counts['pusat'] }} Peraturan Pemerintah</span>
-                </div>
-            </div>
-            <p class="text-xs text-gray-600 leading-relaxed">
-                Payung hukum nasional pengelolaan barang milik negara/daerah untuk menjamin fleksibilitas kerjasama investasi dan peningkatan PAD.
-            </p>
-        </div>
-
-        @if(($counts['sop'] ?? 0) > 0)
-            <div class="bg-white p-5 rounded-3xl border border-gray-200/90 shadow-2xs hover:border-amber-200 transition">
-                <div class="flex items-center gap-3.5 mb-3">
-                    <div class="w-10 h-10 rounded-2xl bg-amber-50/80 border border-amber-100/90 flex items-center justify-center shrink-0 p-2 shadow-2xs text-amber-700">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    <!-- 3 INTERACTIVE CATEGORY PILLAR CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <!-- Pilar 1: Dasar Hukum Pengelolaan BMD -->
+        <a
+            href="{{ route('regulasi.index', ['kelompok' => 'pengelolaan_bmd']) }}"
+            class="group relative text-left p-5 sm:p-6 rounded-3xl border transition-all duration-200 flex flex-col justify-between {{ $kelompok === 'pengelolaan_bmd' ? 'bg-emerald-50/60 border-emerald-500 ring-2 ring-emerald-500/20 shadow-md shadow-emerald-900/5' : 'bg-white border-gray-200/90 hover:border-emerald-300 hover:shadow-sm' }}"
+        >
+            <div>
+                <div class="flex items-start justify-between gap-3 mb-3.5">
+                    <div class="w-11 h-11 rounded-2xl {{ $kelompok === 'pengelolaan_bmd' ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-100' }} flex items-center justify-center shrink-0 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
                     </div>
-                    <div>
-                        <h3 class="font-extrabold text-sm text-gray-900">SOP & Juknis UPTD</h3>
-                        <span class="text-[11px] text-gray-500 font-medium">{{ $counts['sop'] }} Panduan Operasional</span>
-                    </div>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold {{ $kelompok === 'pengelolaan_bmd' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 group-hover:bg-emerald-100 group-hover:text-emerald-800' }} transition">
+                        {{ $groupCounts['pengelolaan_bmd'] }} Dokumen
+                    </span>
                 </div>
-                <p class="text-xs text-gray-600 leading-relaxed">
-                    Petunjuk teknis operasional, alur survei lapangan, standar waktu pelayanan, serta tata cara serah terima aset BMD di lingkungan dinas.
+                <h2 class="text-base font-extrabold text-gray-900 group-hover:text-emerald-800 transition">
+                    1. Dasar Hukum Pengelolaan BMD
+                </h2>
+                <p class="text-xs text-gray-600 leading-relaxed mt-1.5">
+                    PP, Permendagri, serta Perda & Pergub Jawa Barat mengenai tata kelola, perhitungan tarif pokok sewa, dan kerjasama aset daerah.
                 </p>
             </div>
-        @endif
+            <div class="mt-4 pt-3 border-t {{ $kelompok === 'pengelolaan_bmd' ? 'border-emerald-200/80 text-emerald-800' : 'border-gray-100 text-gray-500 group-hover:text-emerald-700' }} flex items-center justify-between text-xs font-extrabold">
+                <span>{{ $kelompok === 'pengelolaan_bmd' ? 'Sedang Ditampilkan' : 'Buka Kategori Ini' }}</span>
+                <span>&rarr;</span>
+            </div>
+        </a>
+
+        <!-- Pilar 2: Dasar Hukum KDKMP -->
+        <a
+            href="{{ route('regulasi.index', ['kelompok' => 'kdkmp']) }}"
+            class="group relative text-left p-5 sm:p-6 rounded-3xl border transition-all duration-200 flex flex-col justify-between {{ $kelompok === 'kdkmp' ? 'bg-blue-50/60 border-blue-500 ring-2 ring-blue-500/20 shadow-md shadow-blue-900/5' : 'bg-white border-gray-200/90 hover:border-blue-300 hover:shadow-sm' }}"
+        >
+            <div>
+                <div class="flex items-start justify-between gap-3 mb-3.5">
+                    <div class="w-11 h-11 rounded-2xl {{ $kelompok === 'kdkmp' ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30' : 'bg-blue-50 text-blue-700 border border-blue-100' }} flex items-center justify-center shrink-0 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    </div>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold {{ $kelompok === 'kdkmp' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 group-hover:bg-blue-100 group-hover:text-blue-800' }} transition">
+                        {{ $groupCounts['kdkmp'] }} Dokumen
+                    </span>
+                </div>
+                <h2 class="text-base font-extrabold text-gray-900 group-hover:text-blue-800 transition">
+                    2. Dasar Hukum KDKMP
+                </h2>
+                <p class="text-xs text-gray-600 leading-relaxed mt-1.5">
+                    Regulasi khusus, kebijakan afirmasi, dan dasar hukum kemitraan Koperasi Desa/Kelurahan Merah Putih (KDKMP) dalam pemanfaatan BMD.
+                </p>
+            </div>
+            <div class="mt-4 pt-3 border-t {{ $kelompok === 'kdkmp' ? 'border-blue-200/80 text-blue-800' : 'border-gray-100 text-gray-500 group-hover:text-blue-700' }} flex items-center justify-between text-xs font-extrabold">
+                <span>{{ $kelompok === 'kdkmp' ? 'Sedang Ditampilkan' : 'Buka Kategori Ini' }}</span>
+                <span>&rarr;</span>
+            </div>
+        </a>
+
+        <!-- Pilar 3: Standar Operasional Prosedur (SOP) -->
+        <a
+            href="{{ route('regulasi.index', ['kelompok' => 'sop']) }}"
+            class="group relative text-left p-5 sm:p-6 rounded-3xl border transition-all duration-200 flex flex-col justify-between {{ $kelompok === 'sop' ? 'bg-amber-50/60 border-amber-500 ring-2 ring-amber-500/20 shadow-md shadow-amber-900/5' : 'bg-white border-gray-200/90 hover:border-amber-300 hover:shadow-sm' }}"
+        >
+            <div>
+                <div class="flex items-start justify-between gap-3 mb-3.5">
+                    <div class="w-11 h-11 rounded-2xl {{ $kelompok === 'sop' ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-100' }} flex items-center justify-center shrink-0 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    </div>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold {{ $kelompok === 'sop' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-700 group-hover:bg-amber-100 group-hover:text-amber-800' }} transition">
+                        {{ $groupCounts['sop'] }} Dokumen
+                    </span>
+                </div>
+                <h2 class="text-base font-extrabold text-gray-900 group-hover:text-amber-800 transition">
+                    3. SOP &amp; Petunjuk Teknis
+                </h2>
+                <p class="text-xs text-gray-600 leading-relaxed mt-1.5">
+                    Standar Operasional Prosedur pelayanan pengajuan sewa, verifikasi berkas, survei lapangan, seleksi beauty contest, dan serah terima aset.
+                </p>
+            </div>
+            <div class="mt-4 pt-3 border-t {{ $kelompok === 'sop' ? 'border-amber-200/80 text-amber-800' : 'border-gray-100 text-gray-500 group-hover:text-amber-700' }} flex items-center justify-between text-xs font-extrabold">
+                <span>{{ $kelompok === 'sop' ? 'Sedang Ditampilkan' : 'Buka Kategori Ini' }}</span>
+                <span>&rarr;</span>
+            </div>
+        </a>
     </div>
 
-    <!-- Search & Filter Controls -->
-    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/90 shadow-xs mb-8">
+    <!-- Active Category Banner + Search & Contextual Sub-Filter -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/90 shadow-xs mb-8 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-gray-100">
+            <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="text-sm sm:text-base font-extrabold text-gray-900">{{ $currentMeta['title'] }}</h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-gray-100 text-gray-700">
+                        {{ $regulations->count() }} ditampilkan
+                    </span>
+                </div>
+                <p class="text-xs text-gray-500 mt-0.5">{{ $currentMeta['desc'] }}</p>
+            </div>
+
+            @if($kelompok !== 'semua')
+                <a href="{{ route('regulasi.index', ['kelompok' => 'semua', 'q' => $search ?: null]) }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 transition shrink-0 self-start sm:self-auto">
+                    <span>Gabungkan Semua Kategori ({{ $groupCounts['semua'] }})</span>
+                </a>
+            @endif
+        </div>
+
         <form action="{{ route('regulasi.index') }}" method="GET" class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            
+            <input type="hidden" name="kelompok" id="filter-kelompok-input" value="{{ $kelompok }}">
+            <input type="hidden" name="kategori" id="filter-kategori-input" value="{{ $kategori }}">
+
             <!-- Search Input Bar -->
             <div class="relative flex-grow max-w-xl">
                 <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
-                <input type="text" name="q" value="{{ $search }}" placeholder="Cari nomor peraturan, topik, atau kata kunci (contoh: Permendagri, Tarif, SOP, UMKM)..." class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                <input type="text" name="q" value="{{ $search }}" placeholder="Cari nomor peraturan, judul, atau kata kunci di {{ strtolower($currentMeta['short']) }}..." class="w-full pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
                 @if($search)
-                    <a href="{{ route('regulasi.index', ['kategori' => $kategori]) }}" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" title="Hapus pencarian">
+                    <a href="{{ route('regulasi.index', ['kelompok' => $kelompok]) }}" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600" title="Hapus pencarian">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </a>
                 @endif
             </div>
 
-            <!-- Category Pills Filter -->
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 shrink-0">
-                <input type="hidden" name="kategori" id="filter-kategori-input" value="{{ $kategori }}">
-
-                <button type="button" onclick="setKategori('semua')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition {{ $kategori === 'semua' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-                    Semua ({{ $counts['semua'] }})
-                </button>
-                <button type="button" onclick="setKategori('daerah')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition {{ $kategori === 'daerah' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-                    Prov. Jabar ({{ $counts['daerah'] }})
-                </button>
-                <button type="button" onclick="setKategori('kemendagri')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition {{ $kategori === 'kemendagri' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-                    Kemendagri ({{ $counts['kemendagri'] }})
-                </button>
-                <button type="button" onclick="setKategori('pusat')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition {{ $kategori === 'pusat' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-                    PP Pusat ({{ $counts['pusat'] }})
-                </button>
-                <button type="button" onclick="setKategori('sop')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition {{ $kategori === 'sop' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-                    SOP & Juknis ({{ $counts['sop'] }})
-                </button>
-            </div>
+            <!-- Hierarchy Sub-Filter Pills (Disembunyikan saat berada di tab SOP agar bersih) -->
+            @if($kelompok !== 'sop')
+                <div class="flex items-center gap-1.5 flex-wrap shrink-0">
+                    <button type="button" onclick="setKategori('semua')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition cursor-pointer {{ $kategori === 'semua' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Semua Tingkat ({{ $counts['semua'] }})
+                    </button>
+                    <button type="button" onclick="setKategori('daerah')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition cursor-pointer {{ $kategori === 'daerah' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Prov. Jabar ({{ $counts['daerah'] }})
+                    </button>
+                    <button type="button" onclick="setKategori('kemendagri')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition cursor-pointer {{ $kategori === 'kemendagri' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Kementerian ({{ $counts['kemendagri'] }})
+                    </button>
+                    <button type="button" onclick="setKategori('pusat')" class="px-3.5 py-2 rounded-full text-xs font-extrabold transition cursor-pointer {{ $kategori === 'pusat' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Pusat ({{ $counts['pusat'] }})
+                    </button>
+                </div>
+            @endif
         </form>
     </div>
 
-    <!-- Regulation Cards Grid (Ultra-Clean Behance Cards) -->
+    <!-- Regulation Cards Grid -->
     @if($regulations->isEmpty())
-        <div class="bg-white rounded-3xl p-12 text-center border border-gray-200/90 shadow-xs max-w-xl mx-auto my-8">
-            <div class="w-16 h-16 rounded-3xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="bg-white rounded-3xl p-10 sm:p-12 text-center border border-gray-200/90 shadow-xs max-w-xl mx-auto my-6">
+            <div class="w-14 h-14 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
-            <h3 class="text-base font-extrabold text-gray-900 mb-1">Dokumen Regulasi / SOP Tidak Ditemukan</h3>
-            <p class="text-xs text-gray-500 mb-5 leading-relaxed">
-                Tidak ada dokumen yang cocok dengan kata kunci "{{ $search }}". Silakan coba kata kunci lain atau reset filter.
-            </p>
-            <a href="{{ route('regulasi.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition shadow-sm">
-                <span>Reset Pencarian</span>
-            </a>
+            @if($search)
+                <h3 class="text-base font-extrabold text-gray-900 mb-1">Dokumen Tidak Ditemukan</h3>
+                <p class="text-xs text-gray-500 mb-5 leading-relaxed">
+                    Tidak ada dokumen pada <strong>{{ $currentMeta['title'] }}</strong> yang cocok dengan kata kunci "{{ $search }}".
+                </p>
+                <a href="{{ route('regulasi.index', ['kelompok' => $kelompok]) }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition shadow-sm">
+                    <span>Reset Pencarian</span>
+                </a>
+            @else
+                <h3 class="text-base font-extrabold text-gray-900 mb-1">Belum Ada Dokumen pada Kategori Ini</h3>
+                <p class="text-xs text-gray-500 mb-5 leading-relaxed">
+                    {{ $currentMeta['empty'] }}
+                </p>
+                @if($kelompok !== 'pengelolaan_bmd')
+                    <a href="{{ route('regulasi.index', ['kelompok' => 'pengelolaan_bmd']) }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition shadow-sm">
+                        <span>Lihat Dasar Hukum Pengelolaan BMD</span>
+                    </a>
+                @endif
+            @endif
         </div>
     @else
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             @foreach($regulations as $reg)
+                @php
+                    $isKdkmp = $reg->kategori_regulasi === 'kdkmp';
+                    $isSop = $reg->kategori_regulasi === 'sop' || $reg->tingkat === 'sop';
+                    $badgeTheme = $isSop
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : ($isKdkmp ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200');
+                    $btnTheme = $isSop
+                        ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                        : ($isKdkmp ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20');
+                @endphp
                 <div class="bg-white rounded-3xl p-6 sm:p-7 border border-gray-200/90 shadow-md shadow-gray-200/40 hover:shadow-lg hover:border-emerald-200/90 transition flex flex-col justify-between group">
-                    
+
                     <div>
                         <!-- Top Badges Row -->
                         <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                            <div class="flex items-center gap-2">
-                                <span class="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wide border shadow-2xs {{ $badgeTheme }}">
                                     {{ $reg->jenis }}
                                 </span>
                                 <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
                                     Tahun {{ $reg->tahun }}
                                 </span>
-                                @if($reg->tingkat === 'sop')
+                                @if($isKdkmp)
+                                    <span class="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-blue-100/80 text-blue-900 border border-blue-200">
+                                        KDKMP
+                                    </span>
+                                @elseif($isSop)
                                     <span class="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
                                         Internal SOP
                                     </span>
@@ -223,7 +314,7 @@
                         @if(!empty($poinKunci))
                             <div class="bg-gray-50/90 rounded-2xl p-4 border border-gray-100 mb-6">
                                 <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-2">
-                                    Poin Pokok untuk Peminat Sewa / Calon Mitra:
+                                    {{ $isSop ? 'Tahapan & Ketentuan Layanan:' : 'Poin Pokok untuk Peminat Sewa / Calon Mitra:' }}
                                 </span>
                                 <ul class="space-y-1.5">
                                     @foreach($poinKunci as $pk)
@@ -244,7 +335,7 @@
                             <span>Lihat Dokumen</span>
                         </a>
 
-                        <a href="{{ $reg->url_download }}" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-1.5">
+                        <a href="{{ $reg->url_download }}" class="flex-1 py-2.5 px-4 rounded-xl {{ $btnTheme }} active:scale-[0.98] text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-1.5">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             <span>Unduh PDF</span>
                         </a>
@@ -264,7 +355,7 @@
                 Pusat Bantuan & Konsultasi Regulasi
             </span>
             <h3 class="text-xl sm:text-2xl font-black tracking-tight leading-snug">
-                Butuh Penjelasan Klausul PKS, SOP, atau Simulasi Retribusi Sewa?
+                Butuh Penjelasan Klausul PKS, KDKMP, SOP, atau Simulasi Retribusi Sewa?
             </h3>
             <p class="text-xs sm:text-sm text-emerald-100 mt-2 font-normal leading-relaxed">
                 Tim UPTD Pengamanan dan Pemanfaatan Aset BPKAD Jabar siap memberikan pendampingan hukum dan simulasi resmi sesuai ketentuan peraturan perundang-undangan.

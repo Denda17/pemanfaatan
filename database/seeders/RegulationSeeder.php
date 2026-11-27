@@ -142,6 +142,8 @@ class RegulationSeeder extends Seeder
         ];
 
         foreach ($regulations as $data) {
+            $data['kategori_regulasi'] ??= 'pengelolaan_bmd';
+
             Regulation::updateOrCreate(
                 ['slug' => $data['slug']],
                 $data

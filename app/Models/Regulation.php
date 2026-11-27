@@ -12,8 +12,27 @@ class Regulation extends Model
 {
     use HasFactory;
 
+    public const KATEGORI_PENGELOLAAN_BMD = 'pengelolaan_bmd';
+
+    public const KATEGORI_KDKMP = 'kdkmp';
+
+    public const KATEGORI_SOP = 'sop';
+
+    /**
+     * @return array<string, string>
+     */
+    public static function kategoriOptions(): array
+    {
+        return [
+            self::KATEGORI_PENGELOLAAN_BMD => 'Dasar Hukum Pengelolaan BMD',
+            self::KATEGORI_KDKMP => 'Dasar Hukum KDKMP',
+            self::KATEGORI_SOP => 'Standar Operasional Prosedur (SOP)',
+        ];
+    }
+
     protected $fillable = [
         'slug',
+        'kategori_regulasi',
         'nomor',
         'tahun',
         'jenis',
@@ -42,6 +61,17 @@ class Regulation extends Model
     protected static function booted(): void
     {
         static::saving(function (Regulation $regulation) {
+            if (empty($regulation->kategori_regulasi)) {
+                $isSop = ($regulation->tingkat === 'sop') || str_contains((string) $regulation->jenis, 'SOP');
+                $regulation->kategori_regulasi = $isSop ? self::KATEGORI_SOP : self::KATEGORI_PENGELOLAAN_BMD;
+            } elseif (
+                ! $regulation->isDirty('kategori_regulasi')
+                && $regulation->kategori_regulasi === self::KATEGORI_PENGELOLAAN_BMD
+                && ($regulation->tingkat === 'sop' || str_contains((string) $regulation->jenis, 'SOP'))
+            ) {
+                $regulation->kategori_regulasi = self::KATEGORI_SOP;
+            }
+
             if (empty($regulation->slug)) {
                 $regulation->slug = Str::slug($regulation->nomor.'-'.$regulation->judul);
             }
@@ -56,6 +86,11 @@ class Regulation extends Model
                 $regulation->file_size = filesize($realPath);
             }
         });
+    }
+
+    public function getKategoriLabelAttribute(): string
+    {
+        return self::kategoriOptions()[$this->kategori_regulasi ?? self::KATEGORI_PENGELOLAAN_BMD] ?? 'Dasar Hukum Pengelolaan BMD';
     }
 
     /**

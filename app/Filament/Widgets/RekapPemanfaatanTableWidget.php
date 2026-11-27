@@ -18,6 +18,11 @@ class RekapPemanfaatanTableWidget extends BaseWidget
 
     protected static ?string $heading = 'Rekapitulasi Pemanfaatan Barang Milik Daerah (BMD) Pemprov Jawa Barat';
 
+    public static function canView(): bool
+    {
+        return false;
+    }
+
     public function table(Table $table): Table
     {
         return $table

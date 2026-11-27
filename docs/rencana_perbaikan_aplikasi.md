@@ -1,13 +1,13 @@
 # Rencana Teknis Perbaikan Aplikasi SIP Aset Jabar
 
-**Repositori:** github.com/Denda17/pemanfaatan · **Commit acuan:** `4434939` · **Tanggal audit:** 26 November 2026
+**Repositori:** github.com/Denda17/pemanfaatan · **Commit acuan:** `3fde7a7` · **Tanggal pembaruan:** 27 November 2026
 **Stack:** Laravel 13 · PHP 8.4 · Filament · PostgreSQL 16 · Docker (nginx + php-fpm)
 
 ## Ringkasan Hasil Audit
 
 | Aspek | Hasil |
 |---|---|
-| Test suite | ✅ 69 tes lulus (524 assertions) |
+| Test suite | ✅ 70 tes lulus (538 assertions) |
 | Log error | ✅ Bersih (hanya error migrasi lama yang sudah diperbaiki) |
 | Dependency audit | ❌ 1 kerentanan (`symfony/routing`, CVE-2026-118516) |
 | Rate limiting | ❌ Tidak ada di seluruh rute |
@@ -18,7 +18,7 @@
 | Prioritas | Jumlah | Estimasi total |
 |---|---|---|
 | 🔴 Tinggi (Keamanan) | 5 | ± 3–4 hari |
-| 🟠 Menengah (Fungsi bisnis) | 4 | ± 3–4 minggu |
+| 🟠 Menengah (Fungsi bisnis & bahan diskusi) | 11 (poin 6–9h) | ± 4–6 minggu |
 | 🟡 Rendah (Kualitas kode) | 5 | Bertahap |
 
 > [!NOTE]
@@ -240,6 +240,57 @@
   4. **Lewat batas waktu:** Jika melewati 3 bulan belum ada pembayaran terverifikasi, status menjadi *"Lewat Batas Bayar (3 Bulan Kepgub)"* untuk ditindaklanjuti/dibatalkan oleh Admin (tidak *auto-cancel* sepihak).
 - **Estimasi:** 2 hari.
 
+### 9d. Widget "Antrian Tindakan Admin" (*Action Inbox*) di Dashboard Filament *(Menunggu Diskusi User)*
+
+- **Masalah:** Permintaan kode pembayaran termin ke-2 dst. (`kode_diminta`), bukti setor termin yang menunggu rekonsiliasi (`pending_verifikasi`), termin yang sudah melewati jatuh tempo (`overdue` / merah), dokumen pemohon berstatus `pending`, serta pengajuan `beauty_contest` yang belum dijadwalkan rawan terlewat apabila Admin tidak membuka detail setiap booking satu per satu.
+- **Aturan yang diusulkan:**
+  1. Buat widget ringkasan prioritas di halaman utama `/admin` (*Action Inbox UPTD*) yang menampilkan jumlah item aktif per kategori tindakan mendesak:
+     - **Permintaan Kode Bayar Termin Baru** (`status_pembayaran = kode_diminta`)
+     - **Bukti Setor Menunggu Verifikasi Kasda** (`status_pembayaran = pending_verifikasi`)
+     - **Termin Lewat Jatuh Tempo / Merah** (`tanggal_jatuh_tempo < today` dan belum `lunas`)
+     - **Berkas Pemohon Menunggu Verifikasi** (`status_verifikasi = pending`)
+     - **Beauty Contest Belum Dijadwalkan** (`status = beauty_contest` dan `beauty_contest_scheduled_at = null`)
+  2. Setiap kartu/baris pada widget dapat diklik langsung menuju daftar atau detail `BookingResource` yang sudah terfilter otomatis.
+- **Estimasi:** 1–1,5 hari.
+
+### 9e. Auto-Generate Jadwal Termin Tahunan saat PKS Terbit *(Menunggu Diskusi User)*
+
+- **Masalah:** Untuk penyewa dengan skema pembayaran `bertahap` (mis. durasi 3–5 tahun), Admin saat ini masih harus menambahkan baris `BookingPayment` Termin ke-2, ke-3, dst. satu per satu secara manual agar `tanggal_jatuh_tempo` tampil di portal penyewa.
+- **Aturan yang diusulkan:**
+  1. Saat dokumen `REQ_PERJANJIAN_SEWA` (PKS) diverifikasi atau saat `ContractIssuanceService` (poin 7a) dijalankan untuk skema `bertahap`, sistem otomatis membuat baris `BookingPayment` untuk **Termin ke-2 s.d. `durasi_sewa_tahun`** menggunakan `firstOrCreate(['booking_id' => ..., 'termin_ke' => ...])` agar idempoten.
+  2. Nilai awal `tanggal_jatuh_tempo` diisi otomatis berdasarkan tanggal mulai PKS (mis. H-30 hari sebelum ulang tahun kontrak tiap periode tahunan, dikonfigurasi di `config/bmd.php`), dan `nominal_kewajiban` diisi dari tarif tahunan yang disepakati.
+  3. Admin tetap leluasa mengubah `tanggal_jatuh_tempo` maupun `nominal_kewajiban` per termin di `TerminPaymentsRelationManager` apabila pasal PKS menetapkan tanggal khusus.
+- **Estimasi:** 1 hari.
+
+### 9f. Denda Keterlambatan Opsional (`nominal_denda`) pada Termin Lewat Jatuh Tempo *(Menunggu Diskusi User)*
+
+- **Masalah:** Portal penyewa sudah menandai tombol termin dengan warna **Merah** saat melewati `tanggal_jatuh_tempo`, tetapi belum ada kolom pencatatan sanksi/denda keterlambatan sesuai klausul PKS ketika Admin menerbitkan kode bayar untuk penyewa yang terlambat.
+- **Aturan yang diusulkan:**
+  1. Tambah kolom nullable `nominal_denda` (`decimal(15,2)`) dan `keterangan_denda` (`string/text`) pada tabel `booking_payments`.
+  2. Pada aksi *"Upload Kode Bayar"* di `TerminPaymentsRelationManager`, tampilkan input opsional `nominal_denda` dan `keterangan_denda` (dengan penanda khusus jika termin berstatus `overdue`).
+  3. Di halaman status penyewa (`booking-status.blade.php`), apabila `nominal_denda > 0`, tampilkan rincian transparan: **Pokok Sewa + Denda Keterlambatan = Total Tagihan yang Harus Disetor**.
+- **Estimasi:** 1 hari.
+
+### 9g. Fitur Lupa Kata Sandi (*Forgot Password*) & Manajemen Profil / PIC Penyewa *(Menunggu Diskusi User)*
+
+- **Masalah:** Saat ini `routes/web.php` baru memiliki rute `/daftar`, `/masuk`, dan `/keluar` — belum tersedia fitur *Lupa Kata Sandi* maupun halaman *Profil Saya*. Karena kontrak sewa BMD berjalan **2–5 tahun**, sangat besar kemungkinan penyewa lupa kata sandi saat hendak meminta kode bayar di tahun ke-2 atau terjadi pergantian staf PIC/nomor WhatsApp perusahaan.
+- **Aturan yang diusulkan:**
+  1. **Reset Password Mandiri:** Tambahkan rute & halaman `/lupa-password` dan `/reset-password/{token}` menggunakan mekanisme standar Laravel Password Broker (`throttle` ketat, tautan kedaluwarsa 60 menit).
+  2. **Halaman Profil Penyewa (`/profil`):** Memungkinkan penyewa memperbarui kata sandi, nama kontak PIC, alamat korespondensi, dan nomor WhatsApp aktif.
+  3. **Kunci Identitas Hukum:** Kolom identitas inti (`nik`, `nib`, `npwp`, `tipe_pemohon`, dan nama badan usaha) dikunci (*read-only*) apabila akun sedang memiliki booking aktif atau kontrak berjalan agar konsisten dengan dokumen hukum PKS; perubahan identitas hukum hanya dapat dilakukan melalui Admin/Addendum.
+- **Estimasi:** 1,5–2 hari.
+
+### 9h. Skenario Pemenang Mengundurkan Diri / Gugur Bayar sebelum PKS Aktif *(Menunggu Diskusi User)*
+
+- **Masalah:** Di lapangan sering terjadi pemenang *Beauty Contest* (atau peminat tunggal terpilih) mengundurkan diri secara resmi sebelum penandatanganan PKS, atau gagal melunasi setoran awal hingga batas waktu Kepgub berakhir. Saat ini belum ada alur resmi untuk mengalihkan penetapan tanpa mengulang proses dari nol.
+- **Aturan yang diusulkan:**
+  1. Sediakan aksi khusus Admin di `BookingResource` (**"Pemenang Mengundurkan Diri / Gugur"**) yang mewajibkan pengisian alasan resmi dan unggahan opsional surat pengunduran diri / berita acara pembatalan.
+  2. Berikan 2 pilihan tindak lanjut dalam modal konfirmasi Admin:
+     - **Opsi A — Alihkan ke Peserta Peringkat Berikutnya:** (Khusus jika terdapat peserta *Beauty Contest* lain yang berkasnya lengkap pada objek yang sama) Mengubah status pemenang lama menjadi `cancelled`/`rejected`, lalu mengangkat peserta pilihan berikutnya menjadi pemenang baru untuk melanjutkan tahap negosiasi/Kepgub.
+     - **Opsi B — Kembalikan Aset ke Katalog (`tersedia`):** Menutup siklus pengajuan dan mereset status ketersediaan aset/unit beserta `booking_deadline_at` agar dapat dibuka kembali untuk umum.
+  3. Seluruh riwayat pengunduran diri dan pengalihan pemenang wajib tercatat di log audit.
+- **Estimasi:** 2 hari.
+
 ---
 
 ## 🟡 PRIORITAS RENDAH — Kualitas Kode
@@ -319,16 +370,27 @@
 
 ---
 
-## Roadmap Sprint
+## Roadmap Sprint & Urutan Paket Diskusi
 
 ```mermaid
 flowchart LR
-    S1["Sprint 1 (1 minggu): Keamanan, poin 1-5"] --> S2["Sprint 2 (1 minggu): Scheduler & Notifikasi, poin 8, 6"]
-    S2 --> S3["Sprint 3-4 (2,5 minggu): Kontrak otomatis 7a, lalu Perpanjangan 7b"]
-    S3 --> S4["Sprint 5 (1 minggu): Audit trail & Performa, poin 9, 14"]
-    S4 --> S5["Berkelanjutan: Refactor, poin 10-13"]
-    S5 --> S6["Pengembangan Lanjutan: Pelaporan, Monev/BAST, GIS Map & Integrasi, poin 15-17"]
+    S1["Sprint 1 (1 minggu): Keamanan, Scheduler & Action Inbox, poin 1-5, 8, 9d"] --> S2["Sprint 2 (1 minggu): Kontrak Otomatis & Auto-Termin, poin 7a, 9e, 9f"]
+    S2 --> S3["Sprint 3 (2 minggu): Portal Kontrak Saya, Perpanjangan H-4 & Akun/Profil, poin 7b, 9g"]
+    S3 --> S4["Sprint 4 (1,5 minggu): Notifikasi, Batas 3 Bln Kepgub & Pengunduran Diri, poin 6, 9c, 9h"]
+    S4 --> S5["Sprint 5 (1,5 minggu): Sewa Sebagian, Audit Trail & Performa, poin 9b, 9, 14"]
+    S5 --> S6["Berkelanjutan & Lanjutan: Refactor, Laporan PAD, BAST/Monev & GIS, poin 10-13, 15-17"]
 ```
+
+### Ringkasan Paket Eksekusi (Bahan Diskusi Prioritas)
+
+1. **Paket 1 — Fondasi Operasional & Antrian Admin (Cepat & Berdampak Langsung):**
+   - Aktifkan service `scheduler` & `queue` di Docker (poin 8) + *Rate Limiting* & patch `symfony/routing` (poin 1–5).
+   - Tambahkan **Widget Antrian Tindakan Admin / *Action Inbox*** (poin 9d) agar permintaan kode bayar termin, bukti setor, dan berkas `pending` langsung terpantau di dashboard `/admin`.
+2. **Paket 2 — Siklus Kontrak Aktif & Termin Multi-Tahun:**
+   - Otomatisasi pembuatan kontrak `AssetPemanfaatan` saat `contract_signed` (poin 7a) + **Auto-Generate Jadwal Termin Tahunan** (poin 9e) + **Denda Keterlambatan Opsional** (poin 9f), dilanjutkan Portal **"Kontrak Saya"** & perpanjangan H-4 bulan (poin 7b).
+3. **Paket 3 — Ketahanan Akun Jangka Panjang, Aturan Khusus & Notifikasi:**
+   - **Lupa Kata Sandi & Manajemen Profil/PIC** (poin 9g) + sistem notifikasi in-app/email/WA (poin 6).
+   - **Batas Bayar 3 Bulan Kepgub** (poin 9c), **Skenario Pemenang Mengundurkan Diri** (poin 9h), dan **Sewa Sebagian / *Partial Lease*** (poin 9b).
 
 ## Checklist Sebelum Go-Live
 
@@ -351,3 +413,7 @@ flowchart LR
 4. Lingkungan produksi: server sendiri (Docker) atau layanan terkelola.
 5. Konfirmasi alur **Sewa Sebagian (poin 9b)** bersama user: tampilan sisa luas di katalog, batas perubahan luas sebelum BA Negosiasi, dan aturan 5 hari kerja per kavling.
 6. Konfirmasi kebijakan tindak lanjut jika pembayaran melewati batas **3 bulan dari pengesahan Kepgub (poin 9c)** — pembatalan oleh Admin atau otomatis.
+7. Konfirmasi daftar indikator yang ditampilkan pada **Widget Antrian Tindakan Admin (poin 9d)** di dashboard `/admin`.
+8. Konfirmasi rumus default jatuh tempo pada **Auto-Generate Jadwal Termin (poin 9e)** (mis. H-30 hari sebelum ulang tahun tanggal mulai PKS) serta aturan perhitungan/input **Denda Keterlambatan (poin 9f)** (input nominal manual oleh Admin sesuai PKS atau rumus persentase otomatis).
+9. Konfirmasi kolom profil yang boleh diubah mandiri oleh penyewa pada **Manajemen Profil / PIC (poin 9g)** ketika kontrak sedang aktif.
+10. Konfirmasi SOP hukum untuk **Pemenang Mengundurkan Diri (poin 9h)**: apakah UPTD berwenang langsung menunjuk peringkat ke-2 *Beauty Contest* atau wajib membuka ulang penawaran di katalog.

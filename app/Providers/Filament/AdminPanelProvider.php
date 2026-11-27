@@ -2,8 +2,8 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\ActionInboxWidget;
 use App\Filament\Widgets\LatestBookingsWidget;
-use App\Filament\Widgets\RekapPemanfaatanTableWidget;
 use App\Filament\Widgets\StatsOverviewWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -33,33 +33,49 @@ class AdminPanelProvider extends PanelProvider
             ->darkMode(false)
             ->font('Plus Jakarta Sans')
             ->maxContentWidth(MaxWidth::Full)
+            ->sidebarWidth('17rem')
             ->sidebarCollapsibleOnDesktop()
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->globalSearchDebounce('300ms')
+            ->navigationGroups([
+                'Pelayanan Pemanfaatan',
+                'Manajemen BMD',
+                'Regulasi & Legal',
+                'Pengaturan',
+            ])
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.custom-sidebar')->render(),
             )
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn (): string => view('filament.topbar-portal-link')->render(),
+            )
             ->brandLogo(fn () => view('filament.brand-logo'))
-            ->brandLogoHeight('2.75rem')
+            ->brandLogoHeight('auto')
             ->brandName('UPTD Pengamanan dan Pemanfaatan Aset Jabar')
             ->favicon(asset('images/logo-jabar.svg'))
             ->colors([
                 'primary' => Color::Emerald,
                 'info' => Color::Blue,
-                'success' => Color::Green,
+                'success' => Color::Emerald,
                 'warning' => Color::Amber,
                 'danger' => Color::Rose,
-                'gray' => Color::Zinc,
+                'gray' => Color::Slate,
+                'purple' => Color::Purple,
+                'indigo' => Color::Indigo,
+                'teal' => Color::Teal,
+                'secondary' => Color::Slate,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Pages\Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                StatsOverviewWidget::class,
-                RekapPemanfaatanTableWidget::class,
+                ActionInboxWidget::class,
                 LatestBookingsWidget::class,
+                StatsOverviewWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

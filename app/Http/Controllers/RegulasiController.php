@@ -9,16 +9,33 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class RegulasiController extends Controller
 {
     /**
-     * Halaman indeks daftar dasar hukum & regulasi pemanfaatan BMD.
+     * Halaman indeks daftar dasar hukum, regulasi KDKMP, & SOP pemanfaatan BMD.
      */
     public function index(Request $request)
     {
         $search = trim((string) $request->get('q', ''));
+        $kelompok = trim((string) $request->get('kelompok', ''));
         $kategori = trim((string) $request->get('kategori', 'semua'));
+
+        // Kompatibilitas tautan lama (?kategori=sop)
+        if ($kategori === 'sop' && $kelompok === '') {
+            $kelompok = Regulation::KATEGORI_SOP;
+            $kategori = 'semua';
+        }
+
+        if (! in_array($kelompok, ['semua', Regulation::KATEGORI_PENGELOLAAN_BMD, Regulation::KATEGORI_KDKMP, Regulation::KATEGORI_SOP], true)) {
+            $kelompok = ($search !== '' && $kategori === 'semua')
+                ? 'semua'
+                : Regulation::KATEGORI_PENGELOLAAN_BMD;
+        }
 
         $query = Regulation::active()->ordered();
 
-        if (! empty($kategori) && $kategori !== 'semua') {
+        if ($kelompok !== 'semua') {
+            $query->where('kategori_regulasi', $kelompok);
+        }
+
+        if (! empty($kategori) && $kategori !== 'semua' && $kelompok !== Regulation::KATEGORI_SOP) {
             $query->where('tingkat', $kategori);
         }
 
@@ -35,16 +52,29 @@ class RegulasiController extends Controller
 
         $regulations = $query->get();
 
-        $activeQuery = Regulation::active();
-        $counts = [
-            'semua' => (clone $activeQuery)->count(),
-            'daerah' => (clone $activeQuery)->where('tingkat', 'daerah')->count(),
-            'kemendagri' => (clone $activeQuery)->where('tingkat', 'kemendagri')->count(),
-            'pusat' => (clone $activeQuery)->where('tingkat', 'pusat')->count(),
-            'sop' => (clone $activeQuery)->where('tingkat', 'sop')->count(),
+        $allActive = Regulation::active();
+        $groupCounts = [
+            'semua' => (clone $allActive)->count(),
+            Regulation::KATEGORI_PENGELOLAAN_BMD => (clone $allActive)->where('kategori_regulasi', Regulation::KATEGORI_PENGELOLAAN_BMD)->count(),
+            Regulation::KATEGORI_KDKMP => (clone $allActive)->where('kategori_regulasi', Regulation::KATEGORI_KDKMP)->count(),
+            Regulation::KATEGORI_SOP => (clone $allActive)->where('kategori_regulasi', Regulation::KATEGORI_SOP)->count(),
         ];
 
-        return view('pages.regulasi', compact('regulations', 'search', 'kategori', 'counts'));
+        $scopedForHierarchy = Regulation::active();
+        if ($kelompok !== 'semua') {
+            $scopedForHierarchy->where('kategori_regulasi', $kelompok);
+        }
+
+        $counts = [
+            'semua' => (clone $scopedForHierarchy)->count(),
+            'total_all' => $groupCounts['semua'],
+            'daerah' => (clone $scopedForHierarchy)->where('tingkat', 'daerah')->count(),
+            'kemendagri' => (clone $scopedForHierarchy)->where('tingkat', 'kemendagri')->count(),
+            'pusat' => (clone $scopedForHierarchy)->where('tingkat', 'pusat')->count(),
+            'sop' => $groupCounts[Regulation::KATEGORI_SOP],
+        ];
+
+        return view('pages.regulasi', compact('regulations', 'search', 'kelompok', 'kategori', 'groupCounts', 'counts'));
     }
 
     /**

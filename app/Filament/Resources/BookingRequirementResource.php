@@ -18,6 +18,8 @@ class BookingRequirementResource extends Resource
 
     protected static ?string $navigationGroup = 'Pengaturan';
 
+    protected static ?string $navigationLabel = 'Master Persyaratan';
+
     protected static ?string $modelLabel = 'Checklist Persyaratan';
 
     protected static ?string $pluralModelLabel = 'Master Persyaratan Sewa';

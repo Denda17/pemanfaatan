@@ -10,20 +10,42 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class AssetPemanfaatanResource extends Resource
 {
     protected static ?string $model = AssetPemanfaatan::class;
 
+    protected static ?string $recordTitleAttribute = 'nama_mitra';
+
     protected static ?string $navigationIcon = 'heroicon-o-document-currency-dollar';
 
     protected static ?string $navigationGroup = 'Manajemen BMD';
+
+    protected static ?string $navigationLabel = 'Rekap Sewa & PKS';
 
     protected static ?string $modelLabel = 'Rekap Sewa / PKS';
 
     protected static ?string $pluralModelLabel = 'Data Pemanfaatan & Sewa BMD';
 
     protected static ?int $navigationSort = 3;
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['nama_mitra', 'nomor_perjanjian', 'nomor_kepgub', 'asset.nama_objek'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        /** @var AssetPemanfaatan $record */
+        return [
+            'Objek' => $record->asset?->nama_objek ?? '-',
+            'No. PKS' => $record->nomor_perjanjian ?? '-',
+        ];
+    }
 
     public static function getNavigationBadge(): ?string
     {
